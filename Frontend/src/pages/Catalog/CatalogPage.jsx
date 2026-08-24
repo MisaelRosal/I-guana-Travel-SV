@@ -39,13 +39,28 @@ export default function CatalogPage() {
             anfitriones locales.
           </p>
           <form className="mt-8 flex max-w-2xl gap-2">
-            <input
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre o descripción…"
-              className="flex-1 rounded-lg border-0 px-4 py-3 text-neutral-800 shadow placeholder:text-white focus:outline-none focus:ring-2 focus:ring-verde-hoja"
-            />
+            <div className="relative flex-1">
+              <svg
+                className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cafe"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por nombre o descripción…"
+                className="w-full rounded-lg border-2 border-cafe-claro bg-white py-3 pl-11 pr-4 text-neutral-800 shadow-md placeholder:text-neutral-500 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
+              />
+            </div>
             <button
               type="submit"
               className="rounded-lg bg-terracota px-6 py-3 font-semibold text-white hover:bg-verde-hoja transition-colors"
