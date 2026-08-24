@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getCategorias, getDepartamentos } from '../../services/experiencias.js'
+import imagenHero from '../../assets/EL-TUNCO.jpg'
 
 const clasesSelect =
   'rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 focus:border-azul focus:outline-none focus:ring-2 focus:ring-azul-cielo/40'
@@ -18,8 +19,6 @@ export default function CatalogPage() {
     getCategorias().then(setCategorias)
     getDepartamentos().then(setDepartamentos)
   }, [])
-
-  const imagenHero = departamentos[0]?.imagen
 
   return (
     <div>

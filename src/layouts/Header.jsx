@@ -31,7 +31,7 @@ export default function Header() {
             </NavLink>
           ))}
           <Link
-            to=""
+            to="/login"
             className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-terracota/90 transition-colors"
           >
             Iniciar sesión
