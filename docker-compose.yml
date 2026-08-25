@@ -64,10 +64,11 @@ services:
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
       interval: 5s
       timeout: 3s
       retries: 10
+      start_period: 10s
 
 volumes:
   pgdata:

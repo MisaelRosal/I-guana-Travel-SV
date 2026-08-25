@@ -21,6 +21,8 @@ public class PublicacioneController : ControllerBase
     {
         return await _context.Publicaciones
             .Include(p => p.Anfitrion)
+                .ThenInclude(a => a.Municipio)
+                    .ThenInclude(m => m.Departamento)
             .Include(p => p.Categoria)
             .Include(p => p.Experiencia)
             .Include(p => p.Horarios)
@@ -35,6 +37,8 @@ public class PublicacioneController : ControllerBase
     {
         var publicacione = await _context.Publicaciones
             .Include(p => p.Anfitrion)
+                .ThenInclude(a => a.Municipio)
+                    .ThenInclude(m => m.Departamento)
             .Include(p => p.Categoria)
             .Include(p => p.Experiencia)
             .Include(p => p.Horarios)

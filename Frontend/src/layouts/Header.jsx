@@ -5,7 +5,6 @@ const links = [
   { to: '/', label: 'Inicio' },
   { to: '/reservas', label: 'Mis reservas' },
   { to: '/panel', label: 'Panel operador' },
-  { to: '/login', label: 'Iniciar sesión' },
 ]
 
 export default function Header() {
@@ -33,9 +32,9 @@ export default function Header() {
           ))}
           <Link
             to="/login"
-            className="text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-verde-bosque transition-colors"
+            className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-terracota/90 transition-colors"
           >
-            Registrarse
+            Iniciar sesión
           </Link>
         </nav>
       </div>
