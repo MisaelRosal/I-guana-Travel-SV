@@ -1,0 +1,107 @@
+name: Validación de PR
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend:
+    name: Backend - build (.NET 10)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar dependencias
+        run: dotnet restore IguanaSV.Api.sln
+
+      - name: Compilar solución
+        run: dotnet build IguanaSV.Api.sln -c Release --no-restore
+
+      - name: Ejecutar pruebas (si existen)
+        run: |
+          if find . -name "*Tests.csproj" | grep -q .; then
+            dotnet test -c Release --no-build --verbosity normal
+          else
+            echo "Sin proyecto de pruebas (*Tests.csproj); se omite."
+          fi
+
+  frontend:
+    name: Frontend - build (React + Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar
+        run: npm run build
+
+  docker:
+    name: Integración - Docker Compose
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Crear archivo .env de prueba
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_USER=usuario_test
+          POSTGRES_PASSWORD=pass_test_123
+          POSTGRES_DB=rutasv_test
+          MINIO_ROOT_USER=minio_test
+          MINIO_ROOT_PASSWORD=minio_test_123
+          EOF
+
+      - name: Construir imágenes
+        run: docker compose build
+
+      - name: Levantar servicios (espera healthchecks)
+        run: docker compose up -d --wait --wait-timeout 180
+
+      - name: Smoke test
+        run: |
+          echo "Verificando frontend (nginx)..."
+          curl --fail --retry 10 --retry-delay 3 --retry-all-errors \
+            --silent --show-error --output /dev/null http://localhost/
+          echo "Frontend OK"
+
+          echo "Verificando backend (.NET API)..."
+          # Acepta cualquier respuesta HTTP (200 o error controlado);
+          # lo importante es que Kestrel esté atendiendo peticiones.
+          curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
+            --silent --output /dev/null http://localhost:5000/api/departamento
+          echo "Backend OK"
+
+      - name: Diagnóstico en caso de fallo
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --tail=80
+
+      - name: Apagar y limpiar servicios
+        if: always()
+        run: docker compose down -v --remove-orphans
