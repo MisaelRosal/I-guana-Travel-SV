@@ -39,25 +39,25 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM anfitriones WHERE email = 'carlos.lopez@iguanasv.com') THEN
     INSERT INTO anfitriones (municipio_id, nombre, email, telefono, verificado)
     SELECT m.id, 'Carlos López', 'carlos.lopez@iguanasv.com', '+503 7012 3456', true
-    FROM municipios m WHERE m.nombre = 'San Salvador' LIMIT 1;
+    FROM municipios m WHERE m.nombre = 'San Salvador Centro' LIMIT 1;
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM anfitriones WHERE email = 'maria.hernandez@iguanasv.com') THEN
     INSERT INTO anfitriones (municipio_id, nombre, email, telefono, verificado)
     SELECT m.id, 'María Hernández', 'maria.hernandez@iguanasv.com', '+503 7234 5678', true
-    FROM municipios m WHERE m.nombre = 'Apaneca' LIMIT 1;
+    FROM municipios m WHERE m.nombre = 'Ahuachapan Centro' LIMIT 1;
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM anfitriones WHERE email = 'jose.martinez@iguanasv.com') THEN
     INSERT INTO anfitriones (municipio_id, nombre, email, telefono, verificado)
     SELECT m.id, 'José Martínez', 'jose.martinez@iguanasv.com', '+503 7345 6789', true
-    FROM municipios m WHERE m.nombre = 'Suchitoto' LIMIT 1;
+    FROM municipios m WHERE m.nombre = 'Cuscatlan Norte' LIMIT 1;
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM anfitriones WHERE email = 'ana.rivera@iguanasv.com') THEN
     INSERT INTO anfitriones (municipio_id, nombre, email, telefono, verificado)
     SELECT m.id, 'Ana Rivera', 'ana.rivera@iguanasv.com', '+503 7456 7890', false
-    FROM municipios m WHERE m.nombre = 'La Libertad' LIMIT 1;
+    FROM municipios m WHERE m.nombre = 'La Libertad Sur' LIMIT 1;
   END IF;
 END $$;
 

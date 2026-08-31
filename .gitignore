@@ -43,6 +43,11 @@ dist-ssr/
 docker-compose.override.yml
 
 # =========================
+# HERRAMIENTAS / MISC
+# =========================
+.playwright-mcp/
+
+# =========================
 # SISTEMA OPERATIVO / EDITOR
 # =========================
 .DS_Store
