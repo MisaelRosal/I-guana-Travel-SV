@@ -61,7 +61,7 @@ export default function OperatorPanelPage() {
         <button
           type="button"
           onClick={() => setModalAbierto(true)}
-          className="flex cursor-pointer items-center gap-2 rounded-lg bg-terracota px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-terracota/90"
+          className="flex cursor-pointer items-center gap-2 rounded-lg bg-terracota px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />

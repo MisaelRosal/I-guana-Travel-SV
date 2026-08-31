@@ -28,7 +28,7 @@ function Galeria({ imagenes, titulo }) {
 
   return (
     <div>
-      <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-neutral-100">
+      <div className="relative h-[min(60vw,420px)] max-sm:h-[320px] overflow-hidden rounded-xl bg-neutral-100">
         {primera ? (
           <>
             <img
@@ -74,7 +74,7 @@ function Galeria({ imagenes, titulo }) {
               onClick={() => setIndice(i)}
               className={`cursor-pointer overflow-hidden rounded-lg border-2 ${i === indice ? 'border-terracota' : 'border-transparent'}`}
             >
-              <img src={img} alt={`${titulo} ${i + 1}`} className="aspect-[4/3] w-full object-cover" />
+              <img src={img} alt={`${titulo} ${i + 1}`} className="aspect-[16/10] w-full object-cover" />
             </button>
           ))}
         </div>
@@ -88,69 +88,73 @@ function InfoBox({ experiencia }) {
   const unidad = esHospedaje ? '/noche' : '/persona'
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-6">
+    <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-md">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-cafe">{experiencia.categoria}</p>
-          <h2 className="text-2xl font-bold text-verde-bosque">{experiencia.titulo}</h2>
-          <p className="mt-1 text-sm text-cafe">
+          <p className="text-sm font-semibold uppercase tracking-wide text-terracota">{experiencia.categoria}</p>
+          <h2 className="mt-1 text-3xl font-bold leading-tight text-verde-bosque">{experiencia.titulo}</h2>
+          <p className="mt-2 flex items-center gap-1 text-base text-neutral-600">
+            <svg className="h-5 w-5 text-terracota" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
             {experiencia.municipio}, {experiencia.departamento}
           </p>
         </div>
       </div>
 
-      <div className="mt-4 flex items-baseline gap-1">
-        <span className="text-3xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
-        <span className="text-cafe"> {unidad}</span>
+      <div className="mt-5 flex items-baseline gap-1.5 border-b border-neutral-100 pb-5">
+        <span className="text-4xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
+        <span className="text-lg font-medium text-neutral-600"> {unidad}</span>
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-neutral-100 pt-5">
+      <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5">
         {esHospedaje ? (
           <>
             <div>
-              <dt className="text-xs uppercase text-cafe">Capacidad</dt>
-              <dd className="text-sm font-semibold text-verde-bosque">{experiencia.capacidad} huéspedes</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Capacidad</dt>
+              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.capacidad} huéspedes</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-cafe">Habitaciones</dt>
-              <dd className="text-sm font-semibold text-verde-bosque">{experiencia.habitaciones || '—'}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Habitaciones</dt>
+              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.habitaciones || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-cafe">Camas</dt>
-              <dd className="text-sm font-semibold text-verde-bosque">{experiencia.camas || '—'}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Camas</dt>
+              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.camas || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-cafe">Baños</dt>
-              <dd className="text-sm font-semibold text-verde-bosque">{experiencia.banos || '—'}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Baños</dt>
+              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.banos || '—'}</dd>
             </div>
           </>
         ) : (
           <div>
-            <dt className="text-xs uppercase text-cafe">Cupos</dt>
-            <dd className="text-sm font-semibold text-verde-bosque">{experiencia.capacidad} personas</dd>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Cupos</dt>
+            <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.capacidad} personas</dd>
           </div>
         )}
         {experiencia.anfitrion && (
           <div>
-            <dt className="text-xs uppercase text-cafe">Anfitrión</dt>
-            <dd className="text-sm font-semibold text-verde-bosque">{experiencia.anfitrion}</dd>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Anfitrión</dt>
+            <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.anfitrion}</dd>
           </div>
         )}
         {experiencia.direccion && (
           <div className="col-span-2">
-            <dt className="text-xs uppercase text-cafe">Dirección</dt>
-            <dd className="text-sm text-neutral-700">{experiencia.direccion}</dd>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Dirección</dt>
+            <dd className="mt-0.5 text-base text-neutral-700">{experiencia.direccion}</dd>
           </div>
         )}
         <div>
-          <dt className="text-xs uppercase text-cafe">Estado</dt>
-          <dd className="text-sm font-semibold text-verde-bosque capitalize">{experiencia.estado}</dd>
+          <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Estado</dt>
+          <dd className="mt-0.5 text-lg font-semibold text-verde-bosque capitalize">{experiencia.estado}</dd>
         </div>
       </dl>
 
       <Link
         to="/"
-        className="mt-6 block w-full rounded-lg bg-terracota px-4 py-3 text-center font-semibold text-white hover:bg-verde-bosque transition-colors"
+        className="mt-7 block w-full rounded-lg bg-terracota px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque shadow-sm"
       >
         Reservar ahora
       </Link>
@@ -162,13 +166,13 @@ function ExperienciasLista({ experiencias }) {
   if (!experiencias.length) return null
   return (
     <section className="mt-10">
-      <h3 className="text-xl font-bold text-verde-bosque">Experiencias incluidas</h3>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <h3 className="text-2xl font-bold text-verde-bosque">Experiencias incluidas</h3>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {experiencias.map((e, i) => (
-          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-4">
-            <h4 className="font-semibold text-verde-bosque">{e.nombre}</h4>
-            {e.descripcion && <p className="mt-1 text-sm text-neutral-600">{e.descripcion}</p>}
-            <p className="mt-2 text-xs text-cafe">
+          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <h4 className="text-lg font-bold text-verde-bosque">{e.nombre}</h4>
+            {e.descripcion && <p className="mt-1 text-base text-neutral-700">{e.descripcion}</p>}
+            <p className="mt-2 text-sm font-medium text-cafe">
               {e.duracionHoras ? `${e.duracionHoras} h` : ''}
               {e.duracionHoras && e.precioAdicional != null ? ' · ' : ''}
               {e.precioAdicional != null && e.precioAdicional > 0 ? `${formatoPrecio.format(e.precioAdicional)} adicional` : ''}
@@ -185,14 +189,14 @@ function Horarios({ horarios }) {
   const dias = [...new Set(horarios.map((h) => h.diaSemana))].sort()
   return (
     <section className="mt-10">
-      <h3 className="text-xl font-bold text-verde-bosque">Horarios disponibles</h3>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <h3 className="text-2xl font-bold text-verde-bosque">Horarios disponibles</h3>
+      <div className="mt-4 flex flex-wrap gap-3">
         {dias.map((dia) => {
           const hs = horarios.filter((h) => h.diaSemana === dia)
           return (
-            <div key={dia} className="rounded-xl border border-neutral-200 bg-white px-4 py-2">
-              <p className="text-sm font-semibold text-verde-bosque">{DIAS[dia]}</p>
-              <p className="text-xs text-cafe">
+            <div key={dia} className="rounded-xl border border-neutral-200 bg-white px-5 py-3 shadow-sm">
+              <p className="text-base font-bold text-verde-bosque">{DIAS[dia]}</p>
+              <p className="mt-0.5 text-sm font-medium text-cafe">
                 {hs.map((h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`).join(' · ')}
               </p>
             </div>
@@ -203,12 +207,12 @@ function Horarios({ horarios }) {
   )
 }
 
-function Mapa({ latitud, longitud, municipio }) {
+function Mapa({ latitud, longitud }) {
   const posicion = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
   return (
     <section className="mt-10">
-      <h3 className="text-xl font-bold text-verde-bosque">Ubicación</h3>
-      <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200">
+      <h3 className="text-2xl font-bold text-verde-bosque">Ubicación</h3>
+      <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 shadow-sm">
         <MapContainer
           center={posicion || [13.7, -89.2]}
           zoom={posicion ? 14 : 9}
@@ -221,9 +225,6 @@ function Mapa({ latitud, longitud, municipio }) {
           {posicion && <Marker position={posicion} icon={markerIcon} />}
         </MapContainer>
       </div>
-      <p className="mt-2 text-sm text-cafe">
-        {municipio || 'Ubicación no especificada'}
-      </p>
     </section>
   )
 }
@@ -263,27 +264,37 @@ export default function ExperienceDetailPage() {
 
       {experiencia && (
         <>
-          <div className="grid gap-8 lg:grid-cols-2">
-            <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
-            <InfoBox experiencia={experiencia} />
+          <div className="grid gap-8 lg:grid-cols-5">
+            <div className="lg:col-span-3">
+              <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
+            </div>
+            <div className="lg:col-span-2">
+              <InfoBox experiencia={experiencia} />
+            </div>
           </div>
 
           <ExperienciasLista experiencias={experiencia.experiencias} />
 
           <section className="mt-10">
-            <h3 className="text-xl font-bold text-verde-bosque">Descripción</h3>
-            <p className="mt-3 text-neutral-700">
-              {experiencia.descripcion || 'Sin descripción disponible.'}
-            </p>
+            <h3 className="text-2xl font-bold text-verde-bosque">Descripción</h3>
+            <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <p className="text-lg leading-relaxed text-neutral-800">
+                {experiencia.descripcion || 'Sin descripción disponible.'}
+              </p>
+            </div>
           </section>
 
           {experiencia.amenidades.length > 0 && (
             <section className="mt-10">
-              <h3 className="text-xl font-bold text-verde-bosque">Amenidades</h3>
-              <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <h3 className="text-2xl font-bold text-verde-bosque">Amenidades</h3>
+              <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {experiencia.amenidades.map((a, i) => (
-                  <li key={i} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-neutral-700 border border-neutral-100">
-                    <span className="text-verde-hoja">✓</span>
+                  <li key={i} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-base font-medium text-neutral-800 shadow-sm">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-verde-hoja/15 text-verde-bosque">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    </span>
                     {a}
                   </li>
                 ))}
@@ -296,7 +307,6 @@ export default function ExperienceDetailPage() {
           <Mapa
             latitud={experiencia.latitud}
             longitud={experiencia.longitud}
-            municipio={`${experiencia.municipio}, ${experiencia.departamento}`}
           />
         </>
       )}

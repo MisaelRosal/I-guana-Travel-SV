@@ -378,7 +378,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
               accept="image/*"
               multiple
               onChange={(e) => setArchivos((prev) => [...prev, ...Array.from(e.target.files)])}
-              className="block w-full text-sm text-cafe file:mr-4 file:rounded-lg file:border-0 file:bg-terracota file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:cursor-pointer hover:file:bg-terracota/90"
+              className="block w-full text-sm text-cafe file:mr-4 file:rounded-lg file:border-0 file:bg-terracota file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:cursor-pointer hover:file:bg-verde-bosque"
             />
             {archivos.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-3">

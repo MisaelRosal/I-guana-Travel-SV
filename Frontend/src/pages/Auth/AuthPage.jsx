@@ -43,7 +43,7 @@ export default function AuthPage() {
             </div>
             <button
               type="submit"
-              className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-terracota/90 transition-colors"
+              className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
             >
               Iniciar sesión
             </button>

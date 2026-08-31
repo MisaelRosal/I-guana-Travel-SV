@@ -32,7 +32,7 @@ export default function Header() {
           ))}
           <Link
             to="/login"
-            className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-terracota/90 transition-colors"
+            className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-[#00B4D8] hover:text-verde-bosque transition-colors"
           >
             Iniciar sesión
           </Link>
