@@ -134,7 +134,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
         publicacion.camas = null
         publicacion.banos = null
         publicacion.amenidadIds = []
-        publicacion.experiencia = { nombre: titulo, duracionHoras: null, precioAdicional: null }
+        publicacion.experiencia = [{ nombre: titulo, duracionHoras: null, precioAdicional: null }]
         publicacion.horarios = horarios.map((h) => ({
           diaSemana: parseInt(h.diaSemana),
           horaInicio: h.horaInicio,
