@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using PublicacioneEntity = IguanaSV.Api.Entities.Publicacione;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Publicacione>>> GetPublicaciones()
+    public async Task<ActionResult<IEnumerable<PublicacioneEntity>>> GetPublicaciones()
     {
         return await _context.Publicaciones
             .Include(p => p.Anfitrion)
@@ -33,7 +34,7 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Publicacione>> GetPublicacione(int id)
+    public async Task<ActionResult<PublicacioneEntity>> GetPublicacione(int id)
     {
         var publicacione = await _context.Publicaciones
             .Include(p => p.Anfitrion)
@@ -56,34 +57,38 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutPublicacione(int id, Publicacione publicacione)
+    public async Task<IActionResult> PutPublicacione(int id, CreatePublicacioneDto dto)
     {
-        if (id != publicacione.Id)
-        {
-            return BadRequest();
-        }
+        var publicacione = await _context.Publicaciones.FindAsync(id);
 
-        var exists = await _context.Publicaciones.AnyAsync(p => p.Id == id);
-
-        if (!exists)
+        if (publicacione == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Anfitriones.AnyAsync(a => a.Id == publicacione.AnfitrionId))
+        if (!await _context.Anfitriones.AnyAsync(a => a.Id == dto.AnfitrionId))
         {
-            return NotFound($"El anfitrion con id {publicacione.AnfitrionId} no existe.");
+            return NotFound($"El anfitrion con id {dto.AnfitrionId} no existe.");
         }
 
-        if (!await _context.Categorias.AnyAsync(c => c.Id == publicacione.CategoriaId))
+        if (!await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId))
         {
-            return NotFound($"La categoria con id {publicacione.CategoriaId} no existe.");
+            return NotFound($"La categoria con id {dto.CategoriaId} no existe.");
         }
 
-        if (publicacione.PrecioPorNoche < 0)
-        {
-            return BadRequest("El precio por noche no puede ser negativo.");
-        }
+        publicacione.AnfitrionId = dto.AnfitrionId;
+        publicacione.CategoriaId = dto.CategoriaId;
+        publicacione.Titulo = dto.Titulo;
+        publicacione.Descripcion = dto.Descripcion;
+        publicacione.PrecioPorNoche = dto.PrecioPorNoche;
+        publicacione.CapacidadMaxima = dto.CapacidadMaxima;
+        publicacione.Habitaciones = dto.Habitaciones;
+        publicacione.Camas = dto.Camas;
+        publicacione.Banos = dto.Banos;
+        publicacione.DireccionExacta = dto.DireccionExacta;
+        publicacione.Latitud = dto.Latitud;
+        publicacione.Longitud = dto.Longitud;
+        publicacione.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(publicacione).State = EntityState.Modified;
 
@@ -100,22 +105,35 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Publicacione>> PostPublicacione(Publicacione publicacione)
+    public async Task<ActionResult<PublicacioneEntity>> PostPublicacione(CreatePublicacioneDto dto)
     {
-        if (!await _context.Anfitriones.AnyAsync(a => a.Id == publicacione.AnfitrionId))
+        if (!await _context.Anfitriones.AnyAsync(a => a.Id == dto.AnfitrionId))
         {
-            return NotFound($"El anfitrion con id {publicacione.AnfitrionId} no existe.");
+            return NotFound($"El anfitrion con id {dto.AnfitrionId} no existe.");
         }
 
-        if (!await _context.Categorias.AnyAsync(c => c.Id == publicacione.CategoriaId))
+        if (!await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId))
         {
-            return NotFound($"La categoria con id {publicacione.CategoriaId} no existe.");
+            return NotFound($"La categoria con id {dto.CategoriaId} no existe.");
         }
 
-        if (publicacione.PrecioPorNoche < 0)
+        var publicacione = new PublicacioneEntity
         {
-            return BadRequest("El precio por noche no puede ser negativo.");
-        }
+            AnfitrionId = dto.AnfitrionId,
+            CategoriaId = dto.CategoriaId,
+            Titulo = dto.Titulo,
+            Descripcion = dto.Descripcion,
+            PrecioPorNoche = dto.PrecioPorNoche,
+            CapacidadMaxima = dto.CapacidadMaxima,
+            Habitaciones = dto.Habitaciones,
+            Camas = dto.Camas,
+            Banos = dto.Banos,
+            DireccionExacta = dto.DireccionExacta,
+            Latitud = dto.Latitud,
+            Longitud = dto.Longitud,
+            Estado = "activo",
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.Publicaciones.Add(publicacione);
         await _context.SaveChangesAsync();

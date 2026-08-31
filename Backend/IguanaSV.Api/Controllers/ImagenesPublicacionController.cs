@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using ImagenesPublicacionEntity = IguanaSV.Api.Entities.ImagenesPublicacion;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class ImagenesPublicacionController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ImagenesPublicacion>>> GetImagenesPublicacions()
+    public async Task<ActionResult<IEnumerable<ImagenesPublicacionEntity>>> GetImagenesPublicacions()
     {
         return await _context.ImagenesPublicacions
             .Include(ip => ip.Publicacion)
@@ -25,7 +26,7 @@ public class ImagenesPublicacionController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ImagenesPublicacion>> GetImagenesPublicacion(int id)
+    public async Task<ActionResult<ImagenesPublicacionEntity>> GetImagenesPublicacion(int id)
     {
         var imagenesPublicacion = await _context.ImagenesPublicacions
             .Include(ip => ip.Publicacion)
@@ -40,24 +41,25 @@ public class ImagenesPublicacionController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutImagenesPublicacion(int id, ImagenesPublicacion imagenesPublicacion)
+    public async Task<IActionResult> PutImagenesPublicacion(int id, CreateImagenPublicacionDto dto)
     {
-        if (id != imagenesPublicacion.Id)
-        {
-            return BadRequest();
-        }
+        var imagenesPublicacion = await _context.ImagenesPublicacions.FindAsync(id);
 
-        var exists = await _context.ImagenesPublicacions.AnyAsync(ip => ip.Id == id);
-
-        if (!exists)
+        if (imagenesPublicacion == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == imagenesPublicacion.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {imagenesPublicacion.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
+
+        imagenesPublicacion.PublicacionId = dto.PublicacionId;
+        imagenesPublicacion.Url = dto.Url;
+        imagenesPublicacion.EsPrincipal = dto.EsPrincipal;
+        imagenesPublicacion.Orden = dto.Orden;
+        imagenesPublicacion.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(imagenesPublicacion).State = EntityState.Modified;
 
@@ -74,12 +76,21 @@ public class ImagenesPublicacionController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ImagenesPublicacion>> PostImagenesPublicacion(ImagenesPublicacion imagenesPublicacion)
+    public async Task<ActionResult<ImagenesPublicacionEntity>> PostImagenesPublicacion(CreateImagenPublicacionDto dto)
     {
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == imagenesPublicacion.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {imagenesPublicacion.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
+
+        var imagenesPublicacion = new ImagenesPublicacionEntity
+        {
+            PublicacionId = dto.PublicacionId,
+            Url = dto.Url,
+            EsPrincipal = dto.EsPrincipal,
+            Orden = dto.Orden,
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.ImagenesPublicacions.Add(imagenesPublicacion);
         await _context.SaveChangesAsync();

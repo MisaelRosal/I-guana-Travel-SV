@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using DepartamentoEntity = IguanaSV.Api.Entities.Departamento;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class DepartamentoController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Departamento>>> GetDepartamentos()
+    public async Task<ActionResult<IEnumerable<DepartamentoEntity>>> GetDepartamentos()
     {
         return await _context.Departamentos
             .Include(d => d.Municipios)
@@ -25,7 +26,7 @@ public class DepartamentoController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Departamento>> GetDepartamento(int id)
+    public async Task<ActionResult<DepartamentoEntity>> GetDepartamento(int id)
     {
         var departamento = await _context.Departamentos
             .Include(d => d.Municipios)
@@ -40,19 +41,17 @@ public class DepartamentoController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutDepartamento(int id, Departamento departamento)
+    public async Task<IActionResult> PutDepartamento(int id, CreateDepartamentoDto dto)
     {
-        if (id != departamento.Id)
-        {
-            return BadRequest();
-        }
+        var departamento = await _context.Departamentos.FindAsync(id);
 
-        var exists = await _context.Departamentos.AnyAsync(d => d.Id == id);
-
-        if (!exists)
+        if (departamento == null)
         {
             return NotFound();
         }
+
+        departamento.Nombre = dto.Nombre;
+        departamento.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(departamento).State = EntityState.Modified;
 
@@ -69,8 +68,14 @@ public class DepartamentoController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Departamento>> PostDepartamento(Departamento departamento)
+    public async Task<ActionResult<DepartamentoEntity>> PostDepartamento(CreateDepartamentoDto dto)
     {
+        var departamento = new DepartamentoEntity
+        {
+            Nombre = dto.Nombre,
+            CreatedAt = DateTime.UtcNow
+        };
+
         _context.Departamentos.Add(departamento);
         await _context.SaveChangesAsync();
 
