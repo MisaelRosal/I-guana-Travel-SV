@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme {
   --color-crema: #FBF6EE;
@@ -27,4 +28,41 @@ body {
   margin: 0;
   min-height: 100svh;
   background-color: var(--color-crema);
+}
+
+.leaflet-geosearch-bar {
+  z-index: 1000;
+}
+
+.leaflet-geosearch-bar form {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.leaflet-geosearch-bar input {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem 0 0 0.5rem;
+  outline: none;
+  width: 250px;
+}
+
+.leaflet-geosearch-bar input:focus {
+  border-color: #52B788;
+  box-shadow: 0 0 0 2px rgba(82, 183, 136, 0.3);
+}
+
+.leaflet-geosearch-bar button {
+  padding: 0.5rem 0.75rem;
+  background: #1B4332;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.leaflet-geosearch-bar button:hover {
+  background: #163a2a;
 }

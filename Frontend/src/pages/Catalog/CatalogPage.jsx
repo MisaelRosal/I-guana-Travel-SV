@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getCategorias, getDepartamentos } from '../../services/experiencias.js'
+import { getCategorias, getDepartamentos, getExperiencias } from '../../services/experiencias.js'
+import ExperienceCard from '../../components/ExperienceCard.jsx'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
 
 const clasesSelect =
@@ -8,6 +9,8 @@ const clasesSelect =
 export default function CatalogPage() {
   const [categorias, setCategorias] = useState([])
   const [departamentos, setDepartamentos] = useState([])
+  const [experiencias, setExperiencias] = useState([])
+  const [cargando, setCargando] = useState(true)
 
   const [busqueda, setBusqueda] = useState('')
   const [categoria, setCategoria] = useState('')
@@ -19,6 +22,18 @@ export default function CatalogPage() {
     getCategorias().then(setCategorias)
     getDepartamentos().then(setDepartamentos)
   }, [])
+
+  useEffect(() => {
+    setCargando(true)
+    getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax })
+      .then(setExperiencias)
+      .catch(() => setExperiencias([]))
+      .finally(() => setCargando(false))
+  }, [busqueda, categoria, zona, tipo, precioMax])
+
+  const handleBuscar = (e) => {
+    e.preventDefault()
+  }
 
   return (
     <div>
@@ -37,7 +52,7 @@ export default function CatalogPage() {
             Surf, café, volcanes y pueblos con encanto. Explorá, reservá y viví el país con
             anfitriones locales.
           </p>
-          <form className="mt-8 flex max-w-2xl gap-2">
+          <form onSubmit={handleBuscar} className="mt-8 flex max-w-2xl gap-2">
             <div className="relative flex-1">
               <svg
                 className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cafe"
@@ -102,18 +117,33 @@ export default function CatalogPage() {
             <option value="80">Hasta $80</option>
           </select>
           <button
+            onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax('') }}
             className="rounded-lg bg-azul px-4 py-2 text-sm font-semibold text-white hover:bg-azul-cielo transition-colors"
           >
-            Filtrar
+            Limpiar filtros
           </button>
         </div>
 
-        <div className="flex h-72 items-center justify-center rounded-xl border-2 border-dashed border-cafe-claro bg-white/60 text-cafe">
-          <p className="px-6 text-center">
-            <span className="block text-lg font-semibold text-verde-bosque">Listado de experiencias</span>
-            El listado de tarjetas se integrará con el backend.
-          </p>
-        </div>
+        {cargando ? (
+          <div className="flex h-72 items-center justify-center rounded-xl border-2 border-dashed border-cafe-claro bg-white/60">
+            <p className="text-cafe">Cargando publicaciones…</p>
+          </div>
+        ) : experiencias.length === 0 ? (
+          <div className="flex h-72 items-center justify-center rounded-xl border-2 border-dashed border-cafe-claro bg-white/60 text-cafe">
+            <p className="px-6 text-center">
+              <span className="block text-lg font-semibold text-verde-bosque">No se encontraron publicaciones</span>
+              {busqueda || categoria || zona || tipo || precioMax
+                ? 'Probá cambiando los filtros de búsqueda.'
+                : 'Creá la primera publicación desde el panel del operador.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {experiencias.map((e) => (
+              <ExperienceCard key={e.id} experiencia={e} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )
