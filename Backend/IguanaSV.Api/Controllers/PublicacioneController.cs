@@ -28,6 +28,7 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.Horarios)
             .Include(p => p.ImagenesPublicacions)
             .Include(p => p.PublicacionAmenidads)
+                .ThenInclude(pa => pa.Amenidad)
             .Include(p => p.Reservas)
             .ToListAsync();
     }
@@ -44,6 +45,7 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.Horarios)
             .Include(p => p.ImagenesPublicacions)
             .Include(p => p.PublicacionAmenidads)
+                .ThenInclude(pa => pa.Amenidad)
             .Include(p => p.Reservas)
             .FirstOrDefaultAsync(p => p.Id == id);
 
