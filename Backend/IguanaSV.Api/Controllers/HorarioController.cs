@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using HorarioEntity = IguanaSV.Api.Entities.Horario;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class HorarioController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Horario>>> GetHorarios()
+    public async Task<ActionResult<IEnumerable<HorarioEntity>>> GetHorarios()
     {
         return await _context.Horarios
             .Include(h => h.Publicacion)
@@ -26,7 +27,7 @@ public class HorarioController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Horario>> GetHorario(int id)
+    public async Task<ActionResult<HorarioEntity>> GetHorario(int id)
     {
         var horario = await _context.Horarios
             .Include(h => h.Publicacion)
@@ -42,29 +43,25 @@ public class HorarioController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutHorario(int id, Horario horario)
+    public async Task<IActionResult> PutHorario(int id, CreateHorarioDto dto)
     {
-        if (id != horario.Id)
-        {
-            return BadRequest();
-        }
+        var horario = await _context.Horarios.FindAsync(id);
 
-        var exists = await _context.Horarios.AnyAsync(h => h.Id == id);
-
-        if (!exists)
+        if (horario == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == horario.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {horario.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        if (horario.HoraFin <= horario.HoraInicio)
-        {
-            return BadRequest("La hora de fin debe ser posterior a la hora de inicio.");
-        }
+        horario.PublicacionId = dto.PublicacionId;
+        horario.DiaSemana = dto.DiaSemana;
+        horario.HoraInicio = dto.HoraInicio;
+        horario.HoraFin = dto.HoraFin;
+        horario.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(horario).State = EntityState.Modified;
 
@@ -81,17 +78,22 @@ public class HorarioController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Horario>> PostHorario(Horario horario)
+    public async Task<ActionResult<HorarioEntity>> PostHorario(CreateHorarioDto dto)
     {
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == horario.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {horario.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        if (horario.HoraFin <= horario.HoraInicio)
+        var horario = new HorarioEntity
         {
-            return BadRequest("La hora de fin debe ser posterior a la hora de inicio.");
-        }
+            PublicacionId = dto.PublicacionId,
+            DiaSemana = dto.DiaSemana,
+            HoraInicio = dto.HoraInicio,
+            HoraFin = dto.HoraFin,
+            Disponible = true,
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.Horarios.Add(horario);
         await _context.SaveChangesAsync();

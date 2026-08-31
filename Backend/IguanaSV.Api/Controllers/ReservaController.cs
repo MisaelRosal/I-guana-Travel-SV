@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using ReservaEntity = IguanaSV.Api.Entities.Reserva;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class ReservaController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Reserva>>> GetReservas()
+    public async Task<ActionResult<IEnumerable<ReservaEntity>>> GetReservas()
     {
         return await _context.Reservas
             .Include(r => r.Publicacion)
@@ -27,7 +28,7 @@ public class ReservaController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Reserva>> GetReserva(int id)
+    public async Task<ActionResult<ReservaEntity>> GetReserva(int id)
     {
         var reserva = await _context.Reservas
             .Include(r => r.Publicacion)
@@ -44,29 +45,29 @@ public class ReservaController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutReserva(int id, Reserva reserva)
+    public async Task<IActionResult> PutReserva(int id, CreateReservaDto dto)
     {
-        if (id != reserva.Id)
-        {
-            return BadRequest();
-        }
+        var reserva = await _context.Reservas.FindAsync(id);
 
-        var exists = await _context.Reservas.AnyAsync(r => r.Id == id);
-
-        if (!exists)
+        if (reserva == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == reserva.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {reserva.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        if (reserva.FechaFin < reserva.FechaInicio)
-        {
-            return BadRequest("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
-        }
+        reserva.PublicacionId = dto.PublicacionId;
+        reserva.NombreHuesped = dto.NombreHuesped;
+        reserva.EmailHuesped = dto.EmailHuesped;
+        reserva.TelefonoHuesped = dto.TelefonoHuesped;
+        reserva.FechaInicio = dto.FechaInicio;
+        reserva.FechaFin = dto.FechaFin;
+        reserva.NumeroHuespedes = dto.NumeroHuespedes;
+        reserva.PrecioTotal = dto.PrecioTotal;
+        reserva.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(reserva).State = EntityState.Modified;
 
@@ -83,17 +84,26 @@ public class ReservaController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Reserva>> PostReserva(Reserva reserva)
+    public async Task<ActionResult<ReservaEntity>> PostReserva(CreateReservaDto dto)
     {
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == reserva.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {reserva.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        if (reserva.FechaFin < reserva.FechaInicio)
+        var reserva = new ReservaEntity
         {
-            return BadRequest("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
-        }
+            PublicacionId = dto.PublicacionId,
+            NombreHuesped = dto.NombreHuesped,
+            EmailHuesped = dto.EmailHuesped,
+            TelefonoHuesped = dto.TelefonoHuesped,
+            FechaInicio = dto.FechaInicio,
+            FechaFin = dto.FechaFin,
+            NumeroHuespedes = dto.NumeroHuespedes,
+            PrecioTotal = dto.PrecioTotal,
+            Estado = "pendiente",
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.Reservas.Add(reserva);
         await _context.SaveChangesAsync();

@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using CategoriaEntity = IguanaSV.Api.Entities.Categoria;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Categoria>>> GetCategorias()
+    public async Task<ActionResult<IEnumerable<CategoriaEntity>>> GetCategorias()
     {
         return await _context.Categorias
             .Include(c => c.Publicaciones)
@@ -25,7 +26,7 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Categoria>> GetCategoria(int id)
+    public async Task<ActionResult<CategoriaEntity>> GetCategoria(int id)
     {
         var categoria = await _context.Categorias
             .Include(c => c.Publicaciones)
@@ -40,19 +41,18 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutCategoria(int id, Categoria categoria)
+    public async Task<IActionResult> PutCategoria(int id, CreateCategoriaDto dto)
     {
-        if (id != categoria.Id)
-        {
-            return BadRequest();
-        }
+        var categoria = await _context.Categorias.FindAsync(id);
 
-        var exists = await _context.Categorias.AnyAsync(c => c.Id == id);
-
-        if (!exists)
+        if (categoria == null)
         {
             return NotFound();
         }
+
+        categoria.Nombre = dto.Nombre;
+        categoria.Descripcion = dto.Descripcion;
+        categoria.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(categoria).State = EntityState.Modified;
 
@@ -69,8 +69,15 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria)
+    public async Task<ActionResult<CategoriaEntity>> PostCategoria(CreateCategoriaDto dto)
     {
+        var categoria = new CategoriaEntity
+        {
+            Nombre = dto.Nombre,
+            Descripcion = dto.Descripcion,
+            CreatedAt = DateTime.UtcNow
+        };
+
         _context.Categorias.Add(categoria);
         await _context.SaveChangesAsync();
 

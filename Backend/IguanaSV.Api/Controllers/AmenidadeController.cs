@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using AmenidadeEntity = IguanaSV.Api.Entities.Amenidade;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class AmenidadeController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Amenidade>>> GetAmenidades()
+    public async Task<ActionResult<IEnumerable<AmenidadeEntity>>> GetAmenidades()
     {
         return await _context.Amenidades
             .Include(a => a.PublicacionAmenidads)
@@ -25,7 +26,7 @@ public class AmenidadeController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Amenidade>> GetAmenidade(int id)
+    public async Task<ActionResult<AmenidadeEntity>> GetAmenidade(int id)
     {
         var amenidade = await _context.Amenidades
             .Include(a => a.PublicacionAmenidads)
@@ -40,19 +41,18 @@ public class AmenidadeController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutAmenidade(int id, Amenidade amenidade)
+    public async Task<IActionResult> PutAmenidade(int id, CreateAmenidadDto dto)
     {
-        if (id != amenidade.Id)
-        {
-            return BadRequest();
-        }
+        var amenidade = await _context.Amenidades.FindAsync(id);
 
-        var exists = await _context.Amenidades.AnyAsync(a => a.Id == id);
-
-        if (!exists)
+        if (amenidade == null)
         {
             return NotFound();
         }
+
+        amenidade.Nombre = dto.Nombre;
+        amenidade.Icono = dto.Icono;
+        amenidade.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(amenidade).State = EntityState.Modified;
 
@@ -69,8 +69,15 @@ public class AmenidadeController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Amenidade>> PostAmenidade(Amenidade amenidade)
+    public async Task<ActionResult<AmenidadeEntity>> PostAmenidade(CreateAmenidadDto dto)
     {
+        var amenidade = new AmenidadeEntity
+        {
+            Nombre = dto.Nombre,
+            Icono = dto.Icono,
+            CreatedAt = DateTime.UtcNow
+        };
+
         _context.Amenidades.Add(amenidade);
         await _context.SaveChangesAsync();
 
