@@ -12,16 +12,16 @@ const markerIcon = new L.Icon({
   shadowSize: [41, 41],
 })
 
-function MapEventsHandler({ onMarkerMove }) {
+function MapEventsHandler({ onMarkerMove, disabled }) {
   useMapEvents({
     click(e) {
-      onMarkerMove(e.latlng)
+      if (!disabled) onMarkerMove(e.latlng)
     },
   })
   return null
 }
 
-function DraggableMarker({ position, onMove }) {
+function DraggableMarker({ position, onMove, disabled }) {
   const markerRef = useRef(null)
 
   const onDragEnd = useCallback(() => {
@@ -39,13 +39,13 @@ function DraggableMarker({ position, onMove }) {
       ref={markerRef}
       position={position}
       icon={markerIcon}
-      draggable={true}
+      draggable={!disabled}
       eventHandlers={{ dragend: onDragEnd }}
     />
   )
 }
 
-function SearchBar({ onSearch }) {
+function SearchBar({ onSearch, disabled }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
@@ -90,12 +90,13 @@ function SearchBar({ onSearch }) {
           onChange={(e) => { setQuery(e.target.value); setResults([]) }}
           onKeyDown={handleKeyDown}
           placeholder="Buscar ubicación..."
-          className="flex-1 rounded-l-lg border border-r-0 border-neutral-300 bg-white px-3 py-2 text-sm focus:border-verde-hoja focus:outline-none focus:ring-1 focus:ring-verde-hoja/40"
+          disabled={disabled}
+          className="flex-1 rounded-l-lg border border-r-0 border-neutral-300 bg-white px-3 py-2 text-sm focus:border-verde-hoja focus:outline-none focus:ring-1 focus:ring-verde-hoja/40 disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <button
           type="button"
           onClick={handleSearch}
-          disabled={searching}
+          disabled={searching || disabled}
           className="cursor-pointer rounded-r-lg bg-verde-bosque px-3 py-2 text-sm font-semibold text-white hover:bg-verde-bosque/90 disabled:opacity-50"
         >
           {searching ? '...' : 'Buscar'}
@@ -128,6 +129,7 @@ export default function LocationPicker({
   onLocationChange,
   onDepartamentoChange,
   onMunicipioChange,
+  disabled = false,
 }) {
   const defaultPosition = [13.7, -89.2]
   const markerPosition = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
@@ -171,27 +173,28 @@ export default function LocationPicker({
 
   const handleMarkerMove = useCallback(
     (latlng) => {
+      if (disabled) return
       onLocationChange(String(latlng.lat.toFixed(6)), String(latlng.lng.toFixed(6)))
       reverseGeocode(latlng)
     },
-    [onLocationChange, reverseGeocode]
+    [onLocationChange, reverseGeocode, disabled]
   )
 
   return (
     <div className="overflow-hidden rounded-xl border border-neutral-200">
-      <SearchBar onSearch={handleMarkerMove} />
+      <SearchBar onSearch={handleMarkerMove} disabled={disabled} />
       <MapContainer
         center={markerPosition || defaultPosition}
         zoom={markerPosition ? 14 : 9}
         style={{ height: '300px', width: '100%' }}
-        scrollWheelZoom={true}
+        scrollWheelZoom={!disabled}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapEventsHandler onMarkerMove={handleMarkerMove} />
-        <DraggableMarker position={markerPosition} onMove={handleMarkerMove} />
+        <MapEventsHandler onMarkerMove={handleMarkerMove} disabled={disabled} />
+        <DraggableMarker position={markerPosition} onMove={handleMarkerMove} disabled={disabled} />
       </MapContainer>
       {markerPosition && (
         <div className="bg-neutral-50 px-3 py-2 text-xs text-neutral-600">

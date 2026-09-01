@@ -7,7 +7,7 @@ const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
 const labelCls = 'block text-sm font-semibold text-cafe-oscuro mb-1'
 
-export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
+export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion }) {
   const [categorias, setCategorias] = useState([])
   const [anfitriones, setAnfitriones] = useState([])
   const [amenidades, setAmenidades] = useState([])
@@ -52,6 +52,37 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
 
   useEffect(() => {
     if (!abierto) return
+    if (esEdicion && pubExistente) {
+      const tipoPub = pubExistente.experiencia?.length > 0 ? 'experiencia' : 'hospedaje'
+      setTipo(tipoPub)
+      setTitulo(pubExistente.titulo || '')
+      setDescripcion(pubExistente.descripcion || '')
+      setAnfitrionId(pubExistente.anfitrionId != null ? String(pubExistente.anfitrionId) : '')
+      setCategoriaId(pubExistente.categoriaId != null ? String(pubExistente.categoriaId) : '')
+      setPrecio(pubExistente.precioPorNoche != null ? String(pubExistente.precioPorNoche) : '')
+      setCapacidad(pubExistente.capacidadMaxima != null ? String(pubExistente.capacidadMaxima) : '')
+      setHabitaciones(pubExistente.habitaciones != null ? String(pubExistente.habitaciones) : '')
+      setCamas(pubExistente.camas != null ? String(pubExistente.camas) : '')
+      setBanos(pubExistente.banos != null ? String(pubExistente.banos) : '')
+      const municipio = pubExistente.anfitrion?.municipio
+      setDepartamentoId(municipio?.departamentoId != null ? String(municipio.departamentoId) : '')
+      setMunicipioId(municipio?.id != null ? String(municipio.id) : '')
+      setLatitud(pubExistente.latitud != null ? String(pubExistente.latitud) : '')
+      setLongitud(pubExistente.longitud != null ? String(pubExistente.longitud) : '')
+      setAmenidadIds((pubExistente.publicacionAmenidads || []).map((pa) => pa.amenidadId))
+      setArchivos([])
+      setHorarios(
+        (pubExistente.horarios || []).length > 0
+          ? pubExistente.horarios.map((h) => ({
+              diaSemana: h.diaSemana,
+              horaInicio: h.horaInicio,
+              horaFin: h.horaFin,
+            }))
+          : [{ diaSemana: 1, horaInicio: '08:00', horaFin: '17:00' }]
+      )
+      setError(null)
+      return
+    }
     setTipo('hospedaje')
     setTitulo('')
     setDescripcion('')
@@ -70,7 +101,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
     setArchivos([])
     setHorarios([{ diaSemana: 1, horaInicio: '08:00', horaFin: '17:00' }])
     setError(null)
-  }, [abierto])
+  }, [abierto, esEdicion, pubExistente])
 
   const toggleAmenidad = (id) => {
     setAmenidadIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
@@ -142,23 +173,43 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
         }))
       }
 
-      const res = await api.post('/Publicacione', publicacion)
-      const pubId = res.id
+      publicacion.publicacionAmenidads = amenidadIds.map((aid) => ({ amenidadId: aid }))
 
-      if (archivos.length > 0) {
-        const urls = await subirArchivos()
-        for (let i = 0; i < urls.length; i++) {
-          await api.post('/ImagenesPublicacion', {
-            publicacionId: pubId,
-            url: urls[i],
-            esPrincipal: i === 0,
-          })
+      if (esEdicion && pubExistente) {
+        await api.put(`/Publicacione/${pubExistente.id}`, {
+          ...publicacion,
+          id: pubExistente.id,
+        })
+
+        if (archivos.length > 0) {
+          const urls = await subirArchivos()
+          for (let i = 0; i < urls.length; i++) {
+            await api.post('/ImagenesPublicacion', {
+              publicacionId: pubExistente.id,
+              url: urls[i],
+              esPrincipal: i === 0,
+            })
+          }
+        }
+      } else {
+        const res = await api.post('/Publicacione', publicacion)
+        const pubId = res.id
+
+        if (archivos.length > 0) {
+          const urls = await subirArchivos()
+          for (let i = 0; i < urls.length; i++) {
+            await api.post('/ImagenesPublicacion', {
+              publicacionId: pubId,
+              url: urls[i],
+              esPrincipal: i === 0,
+            })
+          }
         }
       }
 
       onCreada()
     } catch (err) {
-      setError(err.message || 'Error al crear la publicación')
+      setError(esEdicion ? 'Error al actualizar la publicación' : err.message || 'Error al crear la publicación')
     } finally {
       setEnviando(false)
     }
@@ -192,7 +243,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
         className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-crema shadow-2xl"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cafe-claro/30 bg-crema px-6 py-4">
-          <h2 className="text-xl font-bold text-verde-bosque">Crear publicación</h2>
+          <h2 className="text-xl font-bold text-verde-bosque">{esEdicion ? 'Editar publicación' : 'Crear publicación'}</h2>
           <button
             type="button"
             onClick={handleCerrar}
@@ -215,12 +266,14 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
           <fieldset className="mb-6">
             <legend className="mb-3 text-lg font-bold text-verde-bosque">¿Qué querés publicar?</legend>
             <div className="grid grid-cols-2 gap-3">
-              <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all cursor-pointer ${
+              <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all ${
+                esEdicion ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+              } ${
                 tipo === 'hospedaje'
                   ? 'border-verde-bosque bg-verde-bosque/10 text-verde-bosque shadow-sm'
-                  : 'border-neutral-200 bg-white text-neutral-600 hover:border-verde-hoja/50'
+                  : 'border-neutral-200 bg-white text-neutral-600' + (esEdicion ? '' : ' hover:border-verde-hoja/50')
               }`}>
-                <input type="radio" name="tipo" value="hospedaje" checked={tipo === 'hospedaje'} onChange={(e) => setTipo(e.target.value)} className="sr-only" />
+                <input type="radio" name="tipo" value="hospedaje" checked={tipo === 'hospedaje'} onChange={(e) => setTipo(e.target.value)} disabled={esEdicion} className="sr-only" />
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-6 w-6">
                   <path d="M3 21V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v14" />
                   <path d="M13 21V11a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v10" />
@@ -229,12 +282,14 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
                 </svg>
                 Hospedaje
               </label>
-              <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all cursor-pointer ${
+              <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all ${
+                esEdicion ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+              } ${
                 tipo === 'experiencia'
                   ? 'border-terracota bg-terracota/10 text-terracota shadow-sm'
-                  : 'border-neutral-200 bg-white text-neutral-600 hover:border-terracota/50'
+                  : 'border-neutral-200 bg-white text-neutral-600' + (esEdicion ? '' : ' hover:border-terracota/50')
               }`}>
-                <input type="radio" name="tipo" value="experiencia" checked={tipo === 'experiencia'} onChange={(e) => setTipo(e.target.value)} className="sr-only" />
+                <input type="radio" name="tipo" value="experiencia" checked={tipo === 'experiencia'} onChange={(e) => setTipo(e.target.value)} disabled={esEdicion} className="sr-only" />
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-6 w-6">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 6v6l4 2" />
@@ -299,12 +354,13 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
                 onLocationChange={(lat, lng) => { setLatitud(lat); setLongitud(lng) }}
                 onDepartamentoChange={(id) => { setDepartamentoId(id); setMunicipioId('') }}
                 onMunicipioChange={setMunicipioId}
+                disabled={esEdicion && tipo === 'hospedaje'}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>Departamento *</label>
-                <select required value={departamentoId} onChange={(e) => { setDepartamentoId(e.target.value); setMunicipioId('') }} className={inputCls}>
+                <select required value={departamentoId} onChange={(e) => { setDepartamentoId(e.target.value); setMunicipioId('') }} className={inputCls} disabled={esEdicion && tipo === 'hospedaje'}>
                   <option value="">Seleccionar...</option>
                   {departamentos.map((d) => (
                     <option key={d.id} value={d.id}>{d.nombre}</option>
@@ -313,7 +369,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
               </div>
               <div>
                 <label className={labelCls}>Municipio *</label>
-                <select required value={municipioId} onChange={(e) => setMunicipioId(e.target.value)} className={inputCls} disabled={!departamentoId}>
+                <select required value={municipioId} onChange={(e) => setMunicipioId(e.target.value)} className={inputCls} disabled={!departamentoId || (esEdicion && tipo === 'hospedaje')}>
                   <option value="">{departamentoId ? 'Seleccionar...' : 'Primero elegí un departamento'}</option>
                   {municipios.map((m) => (
                     <option key={m.id} value={m.id}>{m.nombre}</option>
@@ -445,7 +501,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada }) {
               disabled={enviando}
               className="cursor-pointer rounded-lg bg-verde-bosque px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque/90 disabled:opacity-50"
             >
-              {enviando ? 'Creando...' : 'Crear publicación'}
+              {enviando ? (esEdicion ? 'Guardando...' : 'Creando...') : (esEdicion ? 'Guardar cambios' : 'Crear publicación')}
             </button>
           </div>
         </form>
