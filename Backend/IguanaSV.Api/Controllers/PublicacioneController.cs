@@ -72,19 +72,9 @@ public class PublicacioneController : ControllerBase
             return NotFound();
         }
 
-        if (!await _context.Anfitriones.AnyAsync(a => a.Id == publicacione.AnfitrionId))
+        if (publicacione.Tipo != "hospedaje" && publicacione.Tipo != "experiencia")
         {
-            return NotFound($"El anfitrion con id {publicacione.AnfitrionId} no existe.");
-        }
-
-        if (!await _context.Categorias.AnyAsync(c => c.Id == publicacione.CategoriaId))
-        {
-            return NotFound($"La categoria con id {publicacione.CategoriaId} no existe.");
-        }
-
-        if (publicacione.PrecioPorNoche < 0)
-        {
-            return BadRequest("El precio por noche no puede ser negativo.");
+            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
         }
 
         var existente = await _context.Publicaciones
@@ -98,6 +88,7 @@ public class PublicacioneController : ControllerBase
 
         existente.AnfitrionId = publicacione.AnfitrionId;
         existente.CategoriaId = publicacione.CategoriaId;
+        existente.Tipo = publicacione.Tipo;
         existente.Titulo = publicacione.Titulo;
         existente.Descripcion = publicacione.Descripcion;
         existente.PrecioPorNoche = publicacione.PrecioPorNoche;
@@ -156,6 +147,11 @@ public class PublicacioneController : ControllerBase
         if (!await _context.Categorias.AnyAsync(c => c.Id == publicacione.CategoriaId))
         {
             return NotFound($"La categoria con id {publicacione.CategoriaId} no existe.");
+        }
+
+        if (publicacione.Tipo != "hospedaje" && publicacione.Tipo != "experiencia")
+        {
+            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
         }
 
         if (publicacione.PrecioPorNoche < 0)

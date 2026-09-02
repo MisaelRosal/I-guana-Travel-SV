@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
 import { getExperienciaById } from '../../services/experiencias'
+import { getDisponibilidad } from '../../services/reservas'
+import FormularioReserva from '../../components/FormularioReserva'
 
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -238,15 +240,32 @@ function Mapa({ latitud, longitud }) {
   )
 }
 
-function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
+function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCerrar }) {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const [mes, setMes] = useState(() => hoy.getMonth())
   const [anio, setAnio] = useState(() => hoy.getFullYear())
   const [fechaInicio, setFechaInicio] = useState(null)
   const [fechaFin, setFechaFin] = useState(null)
-  const [paso, setPaso] = useState(esHospedaje ? 'fecha' : 'personas')
+  const [paso, setPaso] = useState('personas')
   const [numPersonas, setNumPersonas] = useState(1)
+  const [fechasOcupadas, setFechasOcupadas] = useState([])
+  const [cargandoFechas, setCargandoFechas] = useState(true)
+
+  useEffect(() => {
+    let activo = true
+    getDisponibilidad(experiencia.id)
+      .then((data) => {
+        if (activo) setFechasOcupadas(Array.isArray(data) ? data : [])
+      })
+      .catch(() => {
+        if (activo) setFechasOcupadas([])
+      })
+      .finally(() => {
+        if (activo) setCargandoFechas(false)
+      })
+    return () => { activo = false }
+  }, [experiencia.id])
 
   const nombreMeses = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -256,69 +275,70 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
 
   const primerDia = new Date(anio, mes, 1)
   const diasEnMes = new Date(anio, mes + 1, 0).getDate()
-  // getDay(): 0=Dom ... 6=Sáb. Nuestra semana empieza en Lunes; offset = (getDay()+6)%7
   const offset = (primerDia.getDay() + 6) % 7
 
   const cambiarMes = (delta) => {
     let nuevoMes = mes + delta
     let nuevoAnio = anio
-    if (nuevoMes < 0) {
-      nuevoMes = 11
-      nuevoAnio -= 1
-    } else if (nuevoMes > 11) {
-      nuevoMes = 0
-      nuevoAnio += 1
-    }
+    if (nuevoMes < 0) { nuevoMes = 11; nuevoAnio -= 1 }
+    else if (nuevoMes > 11) { nuevoMes = 0; nuevoAnio += 1 }
     setMes(nuevoMes)
     setAnio(nuevoAnio)
   }
 
-  const esHoy = (dia) => {
-    const f = new Date(anio, mes, dia)
-    return f.getTime() === hoy.getTime()
+  const esHoy = (dia) => new Date(anio, mes, dia).getTime() === hoy.getTime()
+  const esPasado = (dia) => new Date(anio, mes, dia).getTime() < hoy.getTime()
+
+  const fechaStr = (dia) => {
+    const d = new Date(anio, mes, dia)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }
 
-  const esPasado = (dia) => {
-    const f = new Date(anio, mes, dia)
-    return f.getTime() < hoy.getTime()
+  const estaOcupado = (dia) => {
+    const fStr = fechaStr(dia)
+    return fechasOcupadas.some((r) => fStr >= r.inicio && fStr <= r.fin)
   }
 
   const seleccionarDia = (dia) => {
+    if (estaOcupado(dia)) return
     const fecha = new Date(anio, mes, dia)
-    if (esHospedaje) {
-      if (!fechaInicio || (fechaInicio && fechaFin)) {
-        setFechaInicio(fecha)
-        setFechaFin(null)
-        return
-      }
-      if (fecha.getTime() <= fechaInicio.getTime()) {
-        setFechaInicio(fecha)
-        setFechaFin(null)
-        return
-      }
-      setFechaFin(fecha)
-    } else {
+    if (!esHospedaje) {
       setFechaInicio(fecha)
       setFechaFin(null)
+      return
     }
-  }
-
-  const esExtremoInicio = (dia) => {
-    if (!fechaInicio) return false
-    const f = new Date(anio, mes, dia)
-    return f.getTime() === fechaInicio.getTime()
-  }
-
-  const esExtremoFin = (dia) => {
-    if (!esHospedaje || !fechaFin) return false
-    const f = new Date(anio, mes, dia)
-    return f.getTime() === fechaFin.getTime()
+    // Hospedaje: si no hay inicio, o ya hay un rango completo, reiniciamos con la llegada
+    if (!fechaInicio || fechaFin) {
+      setFechaInicio(fecha)
+      setFechaFin(null)
+      return
+    }
+    // Si elige un día menor o igual a la llegada, reasignamos la llegada
+    if (fecha.getTime() <= fechaInicio.getTime()) {
+      setFechaInicio(fecha)
+      setFechaFin(null)
+      return
+    }
+    // Validar que todo el rango del llegada->salida esté libre
+    const fStr = fechaStr(dia)
+    const inicioStr = `${fechaInicio.getFullYear()}-${String(fechaInicio.getMonth() + 1).padStart(2, '0')}-${String(fechaInicio.getDate()).padStart(2, '0')}`
+    const rangoOk = fechasOcupadas.every((r) => r.inicio > fStr || r.fin < inicioStr)
+    if (!rangoOk) return
+    setFechaFin(fecha)
   }
 
   const estaEnRango = (dia) => {
     if (!fechaInicio || !fechaFin) return false
     const f = new Date(anio, mes, dia)
     return f.getTime() >= fechaInicio.getTime() && f.getTime() <= fechaFin.getTime()
+  }
+  const esExtremoInicio = (dia) => {
+    if (!fechaInicio) return false
+    return new Date(anio, mes, dia).getTime() === fechaInicio.getTime()
+  }
+  const esExtremoFin = (dia) => {
+    if (!esHospedaje || !fechaFin) return false
+    return new Date(anio, mes, dia).getTime() === fechaFin.getTime()
   }
 
   const textoSeleccion = () => {
@@ -337,6 +357,15 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
     return 'Seleccioná un día'
   }
 
+  const confirmarSeleccion = () => {
+    const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    onSeleccionarFechas({
+      fechaInicio: toISO(fechaInicio),
+      fechaFin: fechaFin ? toISO(fechaFin) : toISO(fechaInicio),
+      numPersonas,
+    })
+  }
+
   return (
     <div
       className="animate-modal-backdrop fixed inset-x-0 top-20 z-[70] flex justify-center px-4"
@@ -347,7 +376,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
       <div className="animate-modal-box w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/5">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-verde-bosque">
-            {!esHospedaje && paso === 'personas'
+            {paso === 'personas'
               ? '¿Para cuántas personas?'
               : esHospedaje
                 ? 'Elegí tus fechas'
@@ -365,10 +394,10 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
           </button>
         </div>
 
-        {!esHospedaje && paso === 'personas' && (
+        {paso === 'personas' && (
           <div className="mt-6">
             <p className="text-base text-neutral-700">
-              ¿Cuántas personas van a participar de la experiencia?
+              {esHospedaje ? '¿Para cuántas personas es la reserva?' : '¿Cuántas personas van a participar de la experiencia?'}
             </p>
             <p className="mt-1 text-sm text-cafe">
               Capacidad máxima: {experiencia.capacidad || 1} personas
@@ -391,9 +420,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
               </div>
               <button
                 type="button"
-                onClick={() =>
-                  setNumPersonas((n) => Math.min(experiencia.capacidad || 99, n + 1))
-                }
+                onClick={() => setNumPersonas((n) => Math.min(experiencia.capacidad || 99, n + 1))}
                 aria-label="Más personas"
                 className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
               >
@@ -412,6 +439,10 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
         )}
 
         {paso === 'fecha' && (
+        <>
+        {cargandoFechas ? (
+          <p className="mt-6 text-center text-sm text-cafe">Cargando disponibilidad…</p>
+        ) : (
         <>
         <div className="mt-4 flex items-center justify-between">
           <button
@@ -451,6 +482,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
           {Array.from({ length: diasEnMes }).map((_, i) => {
             const dia = i + 1
             const pasado = esPasado(dia)
+            const ocupado = !pasado && estaOcupado(dia)
             const esHoyDia = esHoy(dia)
             const enRango = estaEnRango(dia)
             const esInicio = esExtremoInicio(dia)
@@ -459,6 +491,8 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
               'flex h-10 items-center justify-center rounded-lg text-sm transition-colors '
             if (pasado) {
               clases += 'cursor-not-allowed text-neutral-300'
+            } else if (ocupado) {
+              clases += 'cursor-not-allowed bg-red-100 text-red-400 line-through'
             } else if (enRango) {
               clases += 'bg-terracota/20 font-semibold text-verde-bosque hover:bg-terracota/30'
             } else if (esInicio || esFin) {
@@ -472,15 +506,22 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
               <button
                 key={dia}
                 type="button"
-                disabled={pasado}
+                disabled={pasado || ocupado}
                 onClick={() => seleccionarDia(dia)}
                 className={clases}
+                title={ocupado ? 'Fecha no disponible' : ''}
               >
                 {dia}
               </button>
             )
           })}
         </div>
+
+        {fechasOcupadas.length > 0 && (
+          <p className="mt-2 text-center text-xs text-red-500">
+            Las fechas en rojo ya están reservadas
+          </p>
+        )}
 
         <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-4">
           <p className="text-sm text-neutral-600">
@@ -489,12 +530,14 @@ function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
           <button
             type="button"
             disabled={!fechaInicio || (esHospedaje && !fechaFin)}
-            onClick={onCerrar}
+            onClick={confirmarSeleccion}
             className="cursor-pointer rounded-lg bg-terracota px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:cursor-not-allowed disabled:opacity-50"
           >
             Continuar
           </button>
         </div>
+        </>
+        )}
         </>
         )}
       </div>
@@ -507,7 +550,8 @@ export default function ExperienceDetailPage() {
   const [experiencia, setExperiencia] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [modalAbierto, setModalAbierto] = useState(false)
+  const [pasoReserva, setPasoReserva] = useState('inicio')
+  const [datosReserva, setDatosReserva] = useState(null)
 
   useEffect(() => {
     let activo = true
@@ -521,10 +565,13 @@ export default function ExperienceDetailPage() {
       .finally(() => {
         if (activo) setCargando(false)
       })
-    return () => {
-      activo = false
-    }
+    return () => { activo = false }
   }, [id])
+
+  const seleccionarFechas = useCallback((datos) => {
+    setDatosReserva(datos)
+    setPasoReserva('formulario')
+  }, [])
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
@@ -543,7 +590,7 @@ export default function ExperienceDetailPage() {
               <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
             </div>
             <div className="lg:col-span-2">
-              <InfoBox experiencia={experiencia} onReservar={() => setModalAbierto(true)} />
+              <InfoBox experiencia={experiencia} onReservar={() => setPasoReserva('calendario')} />
             </div>
           </div>
 
@@ -578,19 +625,28 @@ export default function ExperienceDetailPage() {
 
           <Horarios horarios={experiencia.horarios} />
 
-          <Mapa
-            latitud={experiencia.latitud}
-            longitud={experiencia.longitud}
-          />
-
-          {modalAbierto && (
-            <CalendarioReserva
-              experiencia={experiencia}
-              esHospedaje={experiencia.tipo === 'hospedaje'}
-              onCerrar={() => setModalAbierto(false)}
-            />
-          )}
+          <Mapa latitud={experiencia.latitud} longitud={experiencia.longitud} />
         </>
+      )}
+
+      {experiencia && pasoReserva === 'calendario' && (
+        <CalendarioReserva
+          experiencia={experiencia}
+          esHospedaje={experiencia.tipo === 'hospedaje'}
+          onSeleccionarFechas={seleccionarFechas}
+          onCerrar={() => setPasoReserva('inicio')}
+        />
+      )}
+
+      {experiencia && pasoReserva === 'formulario' && datosReserva && (
+        <FormularioReserva
+          experiencia={experiencia}
+          fechaInicio={datosReserva.fechaInicio}
+          fechaFin={datosReserva.fechaFin}
+          numPersonas={datosReserva.numPersonas}
+          onCancelar={() => setPasoReserva('calendario')}
+          onReservada={() => setPasoReserva('inicio')}
+        />
       )}
     </main>
   )

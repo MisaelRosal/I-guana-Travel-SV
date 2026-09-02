@@ -43,6 +43,19 @@ public class ReservaController : ControllerBase
         return reserva;
     }
 
+    [HttpGet("disponibilidad/{publicacionId}")]
+    public async Task<IActionResult> GetDisponibilidad(int publicacionId)
+    {
+        var reservasOcupadas = await _context.Reservas
+            .Where(r => r.PublicacionId == publicacionId
+                && r.Estado != "cancelada"
+                && r.FechaFin >= DateOnly.FromDateTime(DateTime.Today))
+            .Select(r => new { inicio = r.FechaInicio, fin = r.FechaFin })
+            .ToListAsync();
+
+        return Ok(reservasOcupadas);
+    }
+
     [HttpPut("{id}")]
     public async Task<IActionResult> PutReserva(int id, Reserva reserva)
     {
@@ -93,6 +106,17 @@ public class ReservaController : ControllerBase
         if (reserva.FechaFin < reserva.FechaInicio)
         {
             return BadRequest("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
+        }
+
+        var hayConflicto = await _context.Reservas
+            .AnyAsync(r => r.PublicacionId == reserva.PublicacionId
+                && r.Estado != "cancelada"
+                && r.FechaInicio <= reserva.FechaFin
+                && r.FechaFin >= reserva.FechaInicio);
+
+        if (hayConflicto)
+        {
+            return Conflict(new { mensaje = "Las fechas seleccionadas no están disponibles. Alguien ya reservó en ese rango de fechas." });
         }
 
         _context.Reservas.Add(reserva);

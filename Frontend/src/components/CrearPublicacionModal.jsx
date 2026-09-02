@@ -55,7 +55,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   useEffect(() => {
     if (!abierto) return
     if (esEdicion && pubExistente) {
-      const tipoPub = pubExistente.experiencia?.length > 0 ? 'experiencia' : 'hospedaje'
+      const tipoPub = pubExistente.tipo || (pubExistente.experiencia?.length > 0 ? 'experiencia' : 'hospedaje')
       setTipo(tipoPub)
       setTitulo(pubExistente.titulo || '')
       setDescripcion(pubExistente.descripcion || '')
@@ -153,6 +153,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         descripcion: descripcion || null,
         categoriaId: parseInt(categoriaId),
         anfitrionId: parseInt(anfitrionId),
+        tipo,
         precioPorNoche: parseFloat(precio),
         capacidadMaxima: parseInt(capacidad),
         latitud: parseFloat(latitud),
@@ -332,7 +333,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                 <label className={labelCls}>Categoría *</label>
                 <select required value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={inputCls}>
                   <option value="">Seleccionar...</option>
-                  {categorias.map((c) => (
+                  {categorias.filter((c) => c.tipo === tipo).map((c) => (
                     <option key={c.id} value={c.id}>{c.nombre}</option>
                   ))}
                 </select>

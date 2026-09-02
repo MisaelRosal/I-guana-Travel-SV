@@ -11,6 +11,8 @@ public partial class Publicacione
 
     public int CategoriaId { get; set; }
 
+    public string Tipo { get; set; } = null!;
+
     public string Titulo { get; set; } = null!;
 
     public string? Descripcion { get; set; }

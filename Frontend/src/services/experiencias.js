@@ -20,7 +20,7 @@ const imagenesDepartamentos = {
 function mapearPublicacion(p) {
   const experiencias = p.experiencia ?? []
   const categoriaNombre = p.categoria?.nombre ?? ''
-  const esHospedaje = categoriaNombre.toLowerCase() === 'hospedaje'
+  const esHospedaje = (p.tipo || (experiencias.length === 0 ? 'hospedaje' : 'experiencia')) === 'hospedaje'
   const horariosPub = p.horarios ?? []
   const horarioEntradaSalida = esHospedaje
     ? horariosPub.find((h) => h.diaSemana === 0)

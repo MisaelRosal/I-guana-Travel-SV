@@ -124,6 +124,10 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Nombre)
                 .HasMaxLength(50)
                 .HasColumnName("nombre");
+            entity.Property(e => e.Tipo)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'experiencia'::character varying")
+                .HasColumnName("tipo");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
@@ -345,6 +349,8 @@ public class IguanasDbContext : DbContext
 
             entity.HasIndex(e => e.Estado, "idx_publicaciones_estado");
 
+            entity.HasIndex(e => e.Tipo, "idx_publicaciones_tipo");
+
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.AnfitrionId).HasColumnName("anfitrion_id");
             entity.Property(e => e.Banos)
@@ -380,6 +386,10 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Titulo)
                 .HasMaxLength(200)
                 .HasColumnName("titulo");
+            entity.Property(e => e.Tipo)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'experiencia'::character varying")
+                .HasColumnName("tipo");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
