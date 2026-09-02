@@ -92,7 +92,51 @@ public class PublicacioneController : ControllerBase
         publicacione.Longitud = dto.Longitud;
         publicacione.UpdatedAt = DateTime.UtcNow;
 
-        _context.Entry(publicacione).State = EntityState.Modified;
+        var existente = await _context.Publicaciones
+            .Include(p => p.PublicacionAmenidads)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (existente == null)
+        {
+            return NotFound();
+        }
+
+        existente.AnfitrionId = publicacione.AnfitrionId;
+        existente.CategoriaId = publicacione.CategoriaId;
+        existente.Titulo = publicacione.Titulo;
+        existente.Descripcion = publicacione.Descripcion;
+        existente.PrecioPorNoche = publicacione.PrecioPorNoche;
+        existente.CapacidadMaxima = publicacione.CapacidadMaxima;
+        existente.Habitaciones = publicacione.Habitaciones;
+        existente.Camas = publicacione.Camas;
+        existente.Banos = publicacione.Banos;
+        existente.DireccionExacta = publicacione.DireccionExacta;
+        existente.Latitud = publicacione.Latitud;
+        existente.Longitud = publicacione.Longitud;
+        existente.Estado = publicacione.Estado;
+
+        var idsSolicitados = (publicacione.PublicacionAmenidads ?? new List<PublicacionAmenidad>())
+            .Where(pa => pa.AmenidadId != 0)
+            .Select(pa => pa.AmenidadId)
+            .ToHashSet();
+
+        var aBorrar = existente.PublicacionAmenidads
+            .Where(pa => !idsSolicitados.Contains(pa.AmenidadId))
+            .ToList();
+        _context.PublicacionAmenidads.RemoveRange(aBorrar);
+
+        var idsExistentes = existente.PublicacionAmenidads.Select(pa => pa.AmenidadId).ToHashSet();
+        foreach (var amenidadId in idsSolicitados)
+        {
+            if (!idsExistentes.Contains(amenidadId))
+            {
+                _context.PublicacionAmenidads.Add(new PublicacionAmenidad
+                {
+                    PublicacionId = id,
+                    AmenidadId = amenidadId,
+                });
+            }
+        }
 
         try
         {

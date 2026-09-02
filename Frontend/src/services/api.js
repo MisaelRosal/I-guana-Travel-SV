@@ -6,7 +6,14 @@ async function request(path, options = {}) {
     ...options,
   })
   if (!res.ok) {
-    throw new Error(`Error ${res.status}: ${res.statusText}`)
+    let detalle = null
+    try {
+      detalle = await res.json()
+    } catch (e) { /* sin cuerpo JSON */ }
+    const error = new Error(detalle?.mensaje || `Error ${res.status}: ${res.statusText}`)
+    error.mensaje = detalle?.mensaje
+    error.status = res.status
+    throw error
   }
   if (res.status === 204) return null
   return res.json()
