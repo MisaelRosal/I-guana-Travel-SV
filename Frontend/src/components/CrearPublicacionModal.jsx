@@ -28,6 +28,8 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const [habitaciones, setHabitaciones] = useState('')
   const [camas, setCamas] = useState('')
   const [banos, setBanos] = useState('')
+  const [horaEntrada, setHoraEntrada] = useState('')
+  const [horaSalida, setHoraSalida] = useState('')
   const [departamentoId, setDepartamentoId] = useState('')
   const [municipioId, setMunicipioId] = useState('')
   const [latitud, setLatitud] = useState('')
@@ -64,6 +66,8 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setHabitaciones(pubExistente.habitaciones != null ? String(pubExistente.habitaciones) : '')
       setCamas(pubExistente.camas != null ? String(pubExistente.camas) : '')
       setBanos(pubExistente.banos != null ? String(pubExistente.banos) : '')
+      setHoraEntrada(pubExistente.horaEntrada || '')
+      setHoraSalida(pubExistente.horaSalida || '')
       const municipio = pubExistente.anfitrion?.municipio
       setDepartamentoId(municipio?.departamentoId != null ? String(municipio.departamentoId) : '')
       setMunicipioId(municipio?.id != null ? String(municipio.id) : '')
@@ -93,6 +97,8 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setHabitaciones('')
     setCamas('')
     setBanos('')
+    setHoraEntrada('')
+    setHoraSalida('')
     setDepartamentoId('')
     setMunicipioId('')
     setLatitud('')
@@ -159,7 +165,9 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         publicacion.camas = camas ? parseInt(camas) : null
         publicacion.banos = banos ? parseInt(banos) : null
         publicacion.amenidadIds = amenidadIds
-        publicacion.horarios = []
+        publicacion.horarios = horaEntrada || horaSalida
+          ? [{ diaSemana: 0, horaInicio: horaEntrada, horaFin: horaSalida }]
+          : []
       } else {
         publicacion.habitaciones = null
         publicacion.camas = null
@@ -217,7 +225,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
   const tieneDatos = () => {
     return titulo || descripcion || anfitrionId || categoriaId || precio || capacidad ||
-      habitaciones || camas || banos || departamentoId || municipioId ||
+      habitaciones || camas || banos || horaEntrada || horaSalida || departamentoId || municipioId ||
       latitud || longitud || amenidadIds.length > 0 || archivos.length > 0 ||
       horarios.length > 1 || (horarios[0] && (horarios[0].horaInicio !== '08:00' || horarios[0].horaFin !== '17:00'))
   }
@@ -401,6 +409,16 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                 <div>
                   <label className={labelCls}>Baños</label>
                   <input type="number" min="0" value={banos} onChange={(e) => setBanos(e.target.value)} className={inputCls} placeholder="0" />
+                </div>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls}>Hora de entrada</label>
+                  <input type="time" value={horaEntrada} onChange={(e) => setHoraEntrada(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Hora de salida</label>
+                  <input type="time" value={horaSalida} onChange={(e) => setHoraSalida(e.target.value)} className={inputCls} />
                 </div>
               </div>
             </fieldset>

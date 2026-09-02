@@ -83,7 +83,7 @@ function Galeria({ imagenes, titulo }) {
   )
 }
 
-function InfoBox({ experiencia }) {
+function InfoBox({ experiencia, onReservar }) {
   const esHospedaje = experiencia.tipo === 'hospedaje'
   const unidad = esHospedaje ? '/noche' : '/persona'
 
@@ -127,6 +127,14 @@ function InfoBox({ experiencia }) {
               <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Baños</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.banos || '—'}</dd>
             </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Entrada</dt>
+              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.horaEntrada || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Salida</dt>
+              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.horaSalida || '—'}</dd>
+            </div>
           </>
         ) : (
           <div>
@@ -152,12 +160,13 @@ function InfoBox({ experiencia }) {
         </div>
       </dl>
 
-      <Link
-        to="/"
-        className="mt-7 block w-full rounded-lg bg-terracota px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque shadow-sm"
+      <button
+        type="button"
+        onClick={onReservar}
+        className="mt-7 block w-full cursor-pointer rounded-lg bg-terracota px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque shadow-sm"
       >
         Reservar ahora
-      </Link>
+      </button>
     </div>
   )
 }
@@ -229,11 +238,276 @@ function Mapa({ latitud, longitud }) {
   )
 }
 
+function CalendarioReserva({ experiencia, esHospedaje, onCerrar }) {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const [mes, setMes] = useState(() => hoy.getMonth())
+  const [anio, setAnio] = useState(() => hoy.getFullYear())
+  const [fechaInicio, setFechaInicio] = useState(null)
+  const [fechaFin, setFechaFin] = useState(null)
+  const [paso, setPaso] = useState(esHospedaje ? 'fecha' : 'personas')
+  const [numPersonas, setNumPersonas] = useState(1)
+
+  const nombreMeses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ]
+  const nombreDias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+  const primerDia = new Date(anio, mes, 1)
+  const diasEnMes = new Date(anio, mes + 1, 0).getDate()
+  // getDay(): 0=Dom ... 6=Sáb. Nuestra semana empieza en Lunes; offset = (getDay()+6)%7
+  const offset = (primerDia.getDay() + 6) % 7
+
+  const cambiarMes = (delta) => {
+    let nuevoMes = mes + delta
+    let nuevoAnio = anio
+    if (nuevoMes < 0) {
+      nuevoMes = 11
+      nuevoAnio -= 1
+    } else if (nuevoMes > 11) {
+      nuevoMes = 0
+      nuevoAnio += 1
+    }
+    setMes(nuevoMes)
+    setAnio(nuevoAnio)
+  }
+
+  const esHoy = (dia) => {
+    const f = new Date(anio, mes, dia)
+    return f.getTime() === hoy.getTime()
+  }
+
+  const esPasado = (dia) => {
+    const f = new Date(anio, mes, dia)
+    return f.getTime() < hoy.getTime()
+  }
+
+  const seleccionarDia = (dia) => {
+    const fecha = new Date(anio, mes, dia)
+    if (esHospedaje) {
+      if (!fechaInicio || (fechaInicio && fechaFin)) {
+        setFechaInicio(fecha)
+        setFechaFin(null)
+        return
+      }
+      if (fecha.getTime() <= fechaInicio.getTime()) {
+        setFechaInicio(fecha)
+        setFechaFin(null)
+        return
+      }
+      setFechaFin(fecha)
+    } else {
+      setFechaInicio(fecha)
+      setFechaFin(null)
+    }
+  }
+
+  const esExtremoInicio = (dia) => {
+    if (!fechaInicio) return false
+    const f = new Date(anio, mes, dia)
+    return f.getTime() === fechaInicio.getTime()
+  }
+
+  const esExtremoFin = (dia) => {
+    if (!esHospedaje || !fechaFin) return false
+    const f = new Date(anio, mes, dia)
+    return f.getTime() === fechaFin.getTime()
+  }
+
+  const estaEnRango = (dia) => {
+    if (!fechaInicio || !fechaFin) return false
+    const f = new Date(anio, mes, dia)
+    return f.getTime() >= fechaInicio.getTime() && f.getTime() <= fechaFin.getTime()
+  }
+
+  const textoSeleccion = () => {
+    if (esHospedaje) {
+      if (fechaInicio && fechaFin) {
+        return `${fechaInicio.getDate()} al ${fechaFin.getDate()} de ${nombreMeses[fechaFin.getMonth()]}`
+      }
+      if (fechaInicio) {
+        return `Inicio: ${fechaInicio.getDate()} de ${nombreMeses[fechaInicio.getMonth()]} — elegí la fecha de salida`
+      }
+      return 'Seleccioná la fecha de llegada'
+    }
+    if (fechaInicio) {
+      return `${fechaInicio.getDate()} de ${nombreMeses[fechaInicio.getMonth()]} de ${fechaInicio.getFullYear()}`
+    }
+    return 'Seleccioná un día'
+  }
+
+  return (
+    <div
+      className="animate-modal-backdrop fixed inset-x-0 top-20 z-[70] flex justify-center px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Elegir fecha de reserva"
+    >
+      <div className="animate-modal-box w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-verde-bosque">
+            {!esHospedaje && paso === 'personas'
+              ? '¿Para cuántas personas?'
+              : esHospedaje
+                ? 'Elegí tus fechas'
+                : 'Elegí tu fecha'}
+          </h3>
+          <button
+            type="button"
+            onClick={onCerrar}
+            aria-label="Cerrar"
+            className="cursor-pointer rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+          >
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {!esHospedaje && paso === 'personas' && (
+          <div className="mt-6">
+            <p className="text-base text-neutral-700">
+              ¿Cuántas personas van a participar de la experiencia?
+            </p>
+            <p className="mt-1 text-sm text-cafe">
+              Capacidad máxima: {experiencia.capacidad || 1} personas
+            </p>
+
+            <div className="mt-4 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => setNumPersonas((n) => Math.max(1, n - 1))}
+                aria-label="Menos personas"
+                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
+              >
+                −
+              </button>
+              <div className="w-20 text-center">
+                <p className="text-4xl font-extrabold text-verde-bosque">{numPersonas}</p>
+                <p className="text-xs font-semibold uppercase text-cafe">
+                  {numPersonas === 1 ? 'persona' : 'personas'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setNumPersonas((n) => Math.min(experiencia.capacidad || 99, n + 1))
+                }
+                aria-label="Más personas"
+                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
+              >
+                +
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPaso('fecha')}
+              className="mt-6 w-full cursor-pointer rounded-lg bg-terracota px-4 py-3 text-base font-bold text-white transition-colors hover:bg-verde-bosque"
+            >
+              Continuar
+            </button>
+          </div>
+        )}
+
+        {paso === 'fecha' && (
+        <>
+        <div className="mt-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => cambiarMes(-1)}
+            aria-label="Mes anterior"
+            className="cursor-pointer rounded-lg p-2 text-terracota transition-colors hover:bg-terracota/10"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <p className="text-base font-bold text-verde-bosque">
+            {nombreMeses[mes]} {anio}
+          </p>
+          <button
+            type="button"
+            onClick={() => cambiarMes(1)}
+            aria-label="Mes siguiente"
+            className="cursor-pointer rounded-lg p-2 text-terracota transition-colors hover:bg-terracota/10"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-7 gap-1">
+          {nombreDias.map((d) => (
+            <div key={d} className="py-1 text-center text-xs font-semibold uppercase text-cafe">
+              {d}
+            </div>
+          ))}
+          {Array.from({ length: offset }).map((_, i) => (
+            <div key={`vacio-${i}`} />
+          ))}
+          {Array.from({ length: diasEnMes }).map((_, i) => {
+            const dia = i + 1
+            const pasado = esPasado(dia)
+            const esHoyDia = esHoy(dia)
+            const enRango = estaEnRango(dia)
+            const esInicio = esExtremoInicio(dia)
+            const esFin = esExtremoFin(dia)
+            let clases =
+              'flex h-10 items-center justify-center rounded-lg text-sm transition-colors '
+            if (pasado) {
+              clases += 'cursor-not-allowed text-neutral-300'
+            } else if (enRango) {
+              clases += 'bg-terracota/20 font-semibold text-verde-bosque hover:bg-terracota/30'
+            } else if (esInicio || esFin) {
+              clases += 'cursor-pointer bg-terracota font-bold text-white hover:bg-terracota'
+            } else if (esHoyDia) {
+              clases += 'cursor-pointer border border-terracota font-semibold text-terracota hover:bg-terracota/10'
+            } else {
+              clases += 'cursor-pointer text-neutral-700 hover:bg-terracota/10'
+            }
+            return (
+              <button
+                key={dia}
+                type="button"
+                disabled={pasado}
+                onClick={() => seleccionarDia(dia)}
+                className={clases}
+              >
+                {dia}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-4">
+          <p className="text-sm text-neutral-600">
+            {textoSeleccion()}
+          </p>
+          <button
+            type="button"
+            disabled={!fechaInicio || (esHospedaje && !fechaFin)}
+            onClick={onCerrar}
+            className="cursor-pointer rounded-lg bg-terracota px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Continuar
+          </button>
+        </div>
+        </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function ExperienceDetailPage() {
   const { id } = useParams()
   const [experiencia, setExperiencia] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  const [modalAbierto, setModalAbierto] = useState(false)
 
   useEffect(() => {
     let activo = true
@@ -269,7 +543,7 @@ export default function ExperienceDetailPage() {
               <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
             </div>
             <div className="lg:col-span-2">
-              <InfoBox experiencia={experiencia} />
+              <InfoBox experiencia={experiencia} onReservar={() => setModalAbierto(true)} />
             </div>
           </div>
 
@@ -308,6 +582,14 @@ export default function ExperienceDetailPage() {
             latitud={experiencia.latitud}
             longitud={experiencia.longitud}
           />
+
+          {modalAbierto && (
+            <CalendarioReserva
+              experiencia={experiencia}
+              esHospedaje={experiencia.tipo === 'hospedaje'}
+              onCerrar={() => setModalAbierto(false)}
+            />
+          )}
         </>
       )}
     </main>

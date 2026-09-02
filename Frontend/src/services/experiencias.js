@@ -21,6 +21,10 @@ function mapearPublicacion(p) {
   const experiencias = p.experiencia ?? []
   const categoriaNombre = p.categoria?.nombre ?? ''
   const esHospedaje = categoriaNombre.toLowerCase() === 'hospedaje'
+  const horariosPub = p.horarios ?? []
+  const horarioEntradaSalida = esHospedaje
+    ? horariosPub.find((h) => h.diaSemana === 0)
+    : null
   return {
     id: p.id,
     titulo: p.titulo,
@@ -50,11 +54,15 @@ function mapearPublicacion(p) {
       duracionHoras: e.duracionHoras ?? null,
       precioAdicional: e.precioAdicional ?? null,
     })),
-    horarios: (p.horarios ?? []).map((h) => ({
-      diaSemana: h.diaSemana,
-      horaInicio: h.horaInicio,
-      horaFin: h.horaFin,
-    })),
+    horarios: (p.horarios ?? [])
+      .filter((h) => h.diaSemana !== 0)
+      .map((h) => ({
+        diaSemana: h.diaSemana,
+        horaInicio: h.horaInicio,
+        horaFin: h.horaFin,
+      })),
+    horaEntrada: horarioEntradaSalida?.horaInicio || '',
+    horaSalida: horarioEntradaSalida?.horaFin || '',
     popular: false,
   }
 }
