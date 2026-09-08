@@ -17,6 +17,8 @@ public partial class Usuario
 
     public string PasswordHash { get; set; } = null!;
 
+    public string Rol { get; set; } = "usuario";
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }

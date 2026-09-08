@@ -7,7 +7,7 @@ const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
 const labelCls = 'block text-sm font-semibold text-cafe-oscuro mb-1'
 
-export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion }) {
+export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion, anfitrionFijo }) {
   const [categorias, setCategorias] = useState([])
   const [anfitriones, setAnfitriones] = useState([])
   const [amenidades, setAmenidades] = useState([])
@@ -68,7 +68,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setBanos(pubExistente.banos != null ? String(pubExistente.banos) : '')
       setHoraEntrada(pubExistente.horaEntrada || '')
       setHoraSalida(pubExistente.horaSalida || '')
-      const municipio = pubExistente.anfitrion?.municipio
+      const municipio = pubExistente.municipio ?? pubExistente.anfitrion?.municipio
       setDepartamentoId(municipio?.departamentoId != null ? String(municipio.departamentoId) : '')
       setMunicipioId(municipio?.id != null ? String(municipio.id) : '')
       setLatitud(pubExistente.latitud != null ? String(pubExistente.latitud) : '')
@@ -108,6 +108,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setHorarios([{ diaSemana: 1, horaInicio: '08:00', horaFin: '17:00' }])
     setError(null)
   }, [abierto, esEdicion, pubExistente])
+
+  useEffect(() => {
+    if (!abierto || esEdicion || !anfitrionFijo) return
+    setAnfitrionId(String(anfitrionFijo.id))
+  }, [abierto, esEdicion, anfitrionFijo])
 
   const toggleAmenidad = (id) => {
     setAmenidadIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
@@ -158,6 +163,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         capacidadMaxima: parseInt(capacidad),
         latitud: parseFloat(latitud),
         longitud: parseFloat(longitud),
+        municipioId: municipioId ? parseInt(municipioId) : null,
         estado: 'activo',
       }
 
@@ -322,12 +328,21 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               </div>
               <div>
                 <label className={labelCls}>Anfitrión *</label>
-                <select required value={anfitrionId} onChange={(e) => setAnfitrionId(e.target.value)} className={inputCls}>
-                  <option value="">Seleccionar...</option>
-                  {anfitriones.map((a) => (
-                    <option key={a.id} value={a.id}>{a.nombre}</option>
-                  ))}
-                </select>
+                {anfitrionFijo && !esEdicion ? (
+                  <input
+                    type="text"
+                    value={anfitrionFijo.nombre}
+                    disabled
+                    className={inputCls + ' opacity-70'}
+                  />
+                ) : (
+                  <select required value={anfitrionId} onChange={(e) => setAnfitrionId(e.target.value)} className={inputCls}>
+                    <option value="">Seleccionar...</option>
+                    {anfitriones.map((a) => (
+                      <option key={a.id} value={a.id}>{a.nombre}</option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div>
                 <label className={labelCls}>Categoría *</label>
@@ -369,7 +384,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>Departamento *</label>
-                <select required value={departamentoId} onChange={(e) => { setDepartamentoId(e.target.value); setMunicipioId('') }} className={inputCls} disabled={esEdicion && tipo === 'hospedaje'}>
+                <select required value={departamentoId} onChange={(e) => { setDepartamentoId(e.target.value); setMunicipioId('') }} className={inputCls}>
                   <option value="">Seleccionar...</option>
                   {departamentos.map((d) => (
                     <option key={d.id} value={d.id}>{d.nombre}</option>
@@ -378,7 +393,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               </div>
               <div>
                 <label className={labelCls}>Municipio *</label>
-                <select required value={municipioId} onChange={(e) => setMunicipioId(e.target.value)} className={inputCls} disabled={!departamentoId || (esEdicion && tipo === 'hospedaje')}>
+                <select required value={municipioId} onChange={(e) => setMunicipioId(e.target.value)} className={inputCls} disabled={!departamentoId}>
                   <option value="">{departamentoId ? 'Seleccionar...' : 'Primero elegí un departamento'}</option>
                   {municipios.map((m) => (
                     <option key={m.id} value={m.id}>{m.nombre}</option>

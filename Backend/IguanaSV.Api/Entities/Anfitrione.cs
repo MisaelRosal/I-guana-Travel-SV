@@ -9,6 +9,8 @@ public partial class Anfitrione
 
     public int MunicipioId { get; set; }
 
+    public int? UsuarioId { get; set; }
+
     public string Nombre { get; set; } = null!;
 
     public string Email { get; set; } = null!;
@@ -17,6 +19,10 @@ public partial class Anfitrione
 
     public string? Direccion { get; set; }
 
+    public string? Descripcion { get; set; }
+
+    public string? FotoPerfil { get; set; }
+
     public bool? Verificado { get; set; }
 
     public DateTime? CreatedAt { get; set; }
@@ -24,6 +30,8 @@ public partial class Anfitrione
     public DateTime? UpdatedAt { get; set; }
 
     public virtual Municipio? Municipio { get; set; }
+
+    public virtual Usuario? Usuario { get; set; }
 
     public virtual ICollection<Publicacione> Publicaciones { get; set; } = new List<Publicacione>();
 }

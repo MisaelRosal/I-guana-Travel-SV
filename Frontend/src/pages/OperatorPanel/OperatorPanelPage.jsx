@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
+import { obtenerSesion } from '../../services/anfitriones.js'
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
   style: 'currency',
@@ -9,6 +10,7 @@ const formatoPrecio = new Intl.NumberFormat('es-SV', {
 })
 
 export default function OperatorPanelPage() {
+  const usuario = obtenerSesion()
   const [publicaciones, setPublicaciones] = useState([])
   const [cargando, setCargando] = useState(true)
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -16,17 +18,25 @@ export default function OperatorPanelPage() {
   const [mensaje, setMensaje] = useState(null)
   const [eliminando, setEliminando] = useState(null)
   const [confirmando, setConfirmando] = useState(null)
+  const [anfitrionPropio, setAnfitrionPropio] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
-      setPublicaciones(await api.get('/Publicacione'))
+      if (usuario?.rol === 'administrador') {
+        setPublicaciones(await api.get('/Publicacione'))
+      } else {
+        const anfitriones = await api.get('/Anfitrione')
+        const propio = anfitriones.find((a) => a.usuarioId === usuario?.id) ?? null
+        setAnfitrionPropio(propio)
+        setPublicaciones(propio ? await api.get(`/Publicacione/anfitrion/${propio.id}`) : [])
+      }
     } catch {
       setPublicaciones([])
     } finally {
       setCargando(false)
     }
-  }, [])
+  }, [usuario?.rol, usuario?.id])
 
   useEffect(() => {
     cargar()
@@ -131,9 +141,9 @@ export default function OperatorPanelPage() {
                     <td className="px-4 py-3">
                       <span className="block font-semibold text-verde-bosque">{p.titulo}</span>
                       <span className="text-xs text-cafe">
-                        {p.anfitrion?.municipio?.nombre ?? ''}
-                        {p.anfitrion?.municipio?.departamento?.nombre
-                          ? `, ${p.anfitrion.municipio.departamento.nombre}`
+                        {(p.municipio ?? p.anfitrion?.municipio)?.nombre ?? ''}
+                        {(p.municipio ?? p.anfitrion?.municipio)?.departamento?.nombre
+                          ? `, ${(p.municipio ?? p.anfitrion?.municipio).departamento.nombre}`
                           : ''}
                       </span>
                     </td>
@@ -215,6 +225,7 @@ export default function OperatorPanelPage() {
         onCreada={pubEditando ? alGuardarEdicion : alCrear}
         pubExistente={pubEditando}
         esEdicion={!!pubEditando}
+        anfitrionFijo={usuario?.rol === 'anfitrion' ? anfitrionPropio : null}
       />
     </main>
   )

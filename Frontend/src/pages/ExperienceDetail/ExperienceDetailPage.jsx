@@ -195,6 +195,43 @@ function ExperienciasLista({ experiencias }) {
   )
 }
 
+function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
+  if (!anfitrionId) return null
+  return (
+    <section className="mt-10">
+      <h3 className="text-2xl font-bold text-verde-bosque">Tu anfitrión</h3>
+      <Link
+        to={`/anfitriones/${anfitrionId}`}
+        className="mt-4 flex items-start gap-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+      >
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-crema text-2xl font-bold text-cafe">
+          {foto ? (
+            <img src={foto} alt="Foto de perfil" className="h-full w-full object-cover" />
+          ) : (
+            (nombre || '').charAt(0).toUpperCase()
+          )}
+        </div>
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-lg font-bold text-verde-bosque">{nombre}</span>
+            {verificado && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-verde-hoja/15 px-2 py-0.5 text-xs font-semibold text-verde-bosque">
+                Verificado
+              </span>
+            )}
+          </div>
+          <p className="mt-1 line-clamp-2 text-sm text-neutral-700">
+            {descripcion || 'Este anfitrión aún no agregó una descripción.'}
+          </p>
+          <span className="mt-2 inline-block font-medium text-azul hover:text-azul-cielo">
+            Ver perfil completo →
+          </span>
+        </div>
+      </Link>
+    </section>
+  )
+}
+
 function Horarios({ horarios }) {
   if (!horarios.length) return null
   const dias = [...new Set(horarios.map((h) => h.diaSemana))].sort()
@@ -604,6 +641,14 @@ export default function ExperienceDetailPage() {
               </p>
             </div>
           </section>
+
+          <CardAnfitrion
+            anfitrionId={experiencia.anfitrionId}
+            nombre={experiencia.anfitrion}
+            foto={experiencia.anfitrionFoto}
+            descripcion={experiencia.anfitrionDescripcion}
+            verificado={experiencia.anfitrionVerificado}
+          />
 
           {experiencia.amenidades.length > 0 && (
             <section className="mt-10">

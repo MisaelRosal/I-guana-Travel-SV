@@ -33,6 +33,8 @@ public partial class Publicacione
 
     public decimal? Longitud { get; set; }
 
+    public int? MunicipioId { get; set; }
+
     public string? Estado { get; set; }
 
     public DateTime? CreatedAt { get; set; }
@@ -42,6 +44,8 @@ public partial class Publicacione
     public virtual Anfitrione? Anfitrion { get; set; }
 
     public virtual Categoria? Categoria { get; set; }
+
+    public virtual Municipio? Municipio { get; set; }
 
     public virtual ICollection<Experiencia> Experiencia { get; set; } = new List<Experiencia>();
 

@@ -2,38 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMisReservas } from '../../services/reservas.js'
 
-// IMPORTANTE: mientras no exista el backend de reservas, se muestran datos de
-// ejemplo para previsualizar la vista. Cuando el backend esté listo, poner
-// MOSTRAR_DE_MUESTRA a false y descomentar la llamada real en el useEffect.
-const MOSTRAR_DE_MUESTRA = true
-
-const datosDeMuestra = [
-  {
-    id: 1,
-    experienciaTitulo: 'Tour a El Tunco y la Bocana',
-    experienciaCategoria: 'Aventura',
-    experienciaImagen:
-      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-    fechaInicio: '2026-09-15',
-    fechaFin: '2026-09-15',
-    personas: 2,
-    precioTotal: 96,
-    estado: 'confirmada',
-  },
-  {
-    id: 2,
-    experienciaTitulo: 'Hostal El Centro Demo',
-    experienciaCategoria: 'Hospedaje',
-    experienciaImagen:
-      'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800',
-    fechaInicio: '2026-10-02',
-    fechaFin: '2026-10-05',
-    personas: 1,
-    precioTotal: 180,
-    estado: 'pendiente',
-  },
-]
-
 const etiquetasEstado = {
   pendiente: 'Pendiente',
   confirmada: 'Confirmada',
@@ -150,16 +118,10 @@ export default function ReservationsPage() {
     let activo = true
     ;(async () => {
       try {
-        let lista
-        if (MOSTRAR_DE_MUESTRA) {
-          lista = datosDeMuestra
-        } else {
-          lista = await getMisReservas()
-        }
+        const lista = await getMisReservas()
         if (activo) setReservas(lista)
       } catch (e) {
-        // Si el backend aún no existe, no dejamos la vista rota
-        if (activo && !MOSTRAR_DE_MUESTRA) setReservas([])
+        if (activo) setReservas([])
       } finally {
         if (activo) setCargando(false)
       }

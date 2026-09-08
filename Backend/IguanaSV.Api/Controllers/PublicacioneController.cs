@@ -23,6 +23,8 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)
+            .Include(p => p.Municipio)
+                .ThenInclude(m => m.Departamento)
             .Include(p => p.Categoria)
             .Include(p => p.Experiencia)
             .Include(p => p.Horarios)
@@ -40,6 +42,8 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)
+            .Include(p => p.Municipio)
+                .ThenInclude(m => m.Departamento)
             .Include(p => p.Categoria)
             .Include(p => p.Experiencia)
             .Include(p => p.Horarios)
@@ -55,6 +59,26 @@ public class PublicacioneController : ControllerBase
         }
 
         return publicacione;
+    }
+
+    [HttpGet("anfitrion/{anfitrionId}")]
+    public async Task<ActionResult<IEnumerable<Publicacione>>> GetPublicacionesByAnfitrion(int anfitrionId)
+    {
+        return await _context.Publicaciones
+            .Include(p => p.Anfitrion)
+                .ThenInclude(a => a.Municipio)
+                    .ThenInclude(m => m.Departamento)
+            .Include(p => p.Municipio)
+                .ThenInclude(m => m.Departamento)
+            .Include(p => p.Categoria)
+            .Include(p => p.Experiencia)
+            .Include(p => p.Horarios)
+            .Include(p => p.ImagenesPublicacions)
+            .Include(p => p.PublicacionAmenidads)
+                .ThenInclude(pa => pa.Amenidad)
+            .Include(p => p.Reservas)
+            .Where(p => p.AnfitrionId == anfitrionId)
+            .ToListAsync();
     }
 
     [HttpPut("{id}")]
@@ -99,6 +123,7 @@ public class PublicacioneController : ControllerBase
         existente.DireccionExacta = publicacione.DireccionExacta;
         existente.Latitud = publicacione.Latitud;
         existente.Longitud = publicacione.Longitud;
+        existente.MunicipioId = publicacione.MunicipioId;
         existente.Estado = publicacione.Estado;
 
         var idsSolicitados = (publicacione.PublicacionAmenidads ?? new List<PublicacionAmenidad>())
