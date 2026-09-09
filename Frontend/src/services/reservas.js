@@ -27,12 +27,36 @@ export async function getMisReservas() {
       experienciaTitulo: r.publicacion?.titulo ?? 'Experiencia',
       experienciaCategoria: r.publicacion?.categoria?.nombre ?? '',
       experienciaImagen: imagenPrincipal(r.publicacion),
+      tipo: r.publicacion?.tipo ?? 'experiencia',
+      precioPorNoche: r.publicacion?.precioPorNoche ?? 0,
+      capacidadMaxima: r.publicacion?.capacidadMaxima ?? 1,
       fechaInicio: formatearFecha(r.fechaInicio),
       fechaFin: formatearFecha(r.fechaFin),
       personas: r.numeroHuespedes ?? 1,
       precioTotal: r.precioTotal ?? 0,
       estado: r.estado ?? 'pendiente',
+      nombreHuesped: r.nombreHuesped ?? '',
+      emailHuesped: r.emailHuesped ?? '',
+      telefonoHuesped: r.telefonoHuesped ?? '',
     }))
+}
+
+export async function actualizarReserva({ id, publicacionId, nombreHuesped, emailHuesped, telefonoHuesped, fechaInicio, fechaFin, numeroHuespedes, precioTotal }) {
+  return await api.put(`/Reserva/${id}`, {
+    id,
+    publicacionId,
+    nombreHuesped,
+    emailHuesped,
+    telefonoHuesped,
+    fechaInicio,
+    fechaFin,
+    numeroHuespedes,
+    precioTotal,
+  })
+}
+
+export async function eliminarReserva(id) {
+  return await api.delete(`/Reserva/${id}`)
 }
 
 export async function getDisponibilidad(publicacionId) {
