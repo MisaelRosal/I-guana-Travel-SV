@@ -82,7 +82,7 @@ export default function Header() {
   if (rol !== 'anfitrion') {
     links.push({ to: '/reservas', label: 'Mis reservas' })
   }
-  if (rol === 'anfitrion' || rol === 'administrador') {
+  if (rol === 'anfitrion') {
     links.push({ to: '/panel', label: 'Panel operador' })
   }
   if (rol === 'administrador') {
