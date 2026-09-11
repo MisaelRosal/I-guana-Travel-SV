@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme {
   --color-crema: #FBF6EE;
@@ -9,8 +10,9 @@
   --color-cafe: #8B5E3C;
   --color-cafe-claro: #C89F7B;
   --color-cafe-oscuro: #4E342E;
-  --color-terracota: #C8553D;
+  --color-terracota: #00838F;
   --color-terracota-claro: #FFE890;
+  --color-amber: #D97706;
 }
 
 :root {
@@ -27,4 +29,84 @@ body {
   margin: 0;
   min-height: 100svh;
   background-color: var(--color-crema);
+}
+
+.leaflet-geosearch-bar {
+  z-index: 1000;
+}
+
+/* Limitar el z-index del mapa Leaflet para que nunca se sobreponga a los modales */
+.leaflet-container {
+  z-index: 0;
+}
+.leaflet-pane {
+  z-index: 1;
+}
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 2;
+}
+.leaflet-popup {
+  z-index: 3;
+}
+
+.leaflet-geosearch-bar form {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.leaflet-geosearch-bar input {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem 0 0 0.5rem;
+  outline: none;
+  width: 250px;
+}
+
+.leaflet-geosearch-bar input:focus {
+  border-color: #52B788;
+  box-shadow: 0 0 0 2px rgba(82, 183, 136, 0.3);
+}
+
+.leaflet-geosearch-bar button {
+  padding: 0.5rem 0.75rem;
+  background: #1B4332;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.leaflet-geosearch-bar button:hover {
+  background: #163a2a;
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-box-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modal-backdrop {
+  animation: modal-backdrop-in 0.25s ease-out both;
+}
+
+.animate-modal-box {
+  animation: modal-box-in 0.3s ease-out both;
 }

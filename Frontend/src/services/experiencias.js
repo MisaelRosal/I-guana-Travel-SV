@@ -18,25 +18,55 @@ const imagenesDepartamentos = {
 }
 
 function mapearPublicacion(p) {
-  const experiencia = p.experiencia?.[0] ?? null
+  const experiencias = p.experiencia ?? []
+  const categoriaNombre = p.categoria?.nombre ?? ''
+  const esHospedaje = (p.tipo || (experiencias.length === 0 ? 'hospedaje' : 'experiencia')) === 'hospedaje'
+  const horariosPub = p.horarios ?? []
+  const horarioEntradaSalida = esHospedaje
+    ? horariosPub.find((h) => h.diaSemana === 0)
+    : null
   return {
     id: p.id,
     titulo: p.titulo,
-    tipo: p.experiencia?.length ? 'experiencia' : 'hospedaje',
-    categoria: p.categoria?.nombre ?? '',
+    tipo: esHospedaje ? 'hospedaje' : 'experiencia',
+    categoria: categoriaNombre,
     descripcion: p.descripcion ?? '',
     precio: p.precioPorNoche,
-    municipio: p.anfitrion?.municipio?.nombre ?? '',
-    departamento: p.anfitrion?.municipio?.departamento?.nombre ?? '',
+    anfitrion: p.anfitrion?.nombre ?? '',
+    anfitrionId: p.anfitrion?.id ?? null,
+    anfitrionFoto: p.anfitrion?.fotoPerfil ?? '',
+    anfitrionDescripcion: p.anfitrion?.descripcion ?? '',
+    anfitrionVerificado: p.anfitrion?.verificado ?? false,
+    municipio: p.municipio?.nombre ?? p.anfitrion?.municipio?.nombre ?? '',
+    departamento: p.municipio?.departamento?.nombre ?? p.anfitrion?.municipio?.departamento?.nombre ?? '',
+    direccion: p.direccionExacta ?? '',
     latitud: p.latitud,
     longitud: p.longitud,
+    estado: p.estado ?? '',
     imagenes: (p.imagenesPublicacions ?? [])
       .slice()
       .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
       .map((i) => i.url),
     capacidad: p.capacidadMaxima,
-    duracionHoras: experiencia?.duracionHoras ?? null,
-    habitaciones: p.habitaciones ?? null,
+    habitaciones: p.habitaciones ?? 0,
+    camas: p.camas ?? 0,
+    banos: p.banos ?? 0,
+    amenidades: (p.publicacionAmenidads ?? []).map((pa) => pa.amenidad?.nombre).filter(Boolean),
+    experiencias: experiencias.map((e) => ({
+      nombre: e.nombre,
+      descripcion: e.descripcion ?? '',
+      duracionHoras: e.duracionHoras ?? null,
+      precioAdicional: e.precioAdicional ?? null,
+    })),
+    horarios: (p.horarios ?? [])
+      .filter((h) => h.diaSemana !== 0)
+      .map((h) => ({
+        diaSemana: h.diaSemana,
+        horaInicio: h.horaInicio,
+        horaFin: h.horaFin,
+      })),
+    horaEntrada: horarioEntradaSalida?.horaInicio || '',
+    horaSalida: horarioEntradaSalida?.horaFin || '',
     popular: false,
   }
 }

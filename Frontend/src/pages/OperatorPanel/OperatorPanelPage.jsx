@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
+import { obtenerSesion } from '../../services/anfitriones.js'
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
   style: 'currency',
@@ -9,23 +10,33 @@ const formatoPrecio = new Intl.NumberFormat('es-SV', {
 })
 
 export default function OperatorPanelPage() {
+  const usuario = obtenerSesion()
   const [publicaciones, setPublicaciones] = useState([])
   const [cargando, setCargando] = useState(true)
   const [modalAbierto, setModalAbierto] = useState(false)
+  const [pubEditando, setPubEditando] = useState(null)
   const [mensaje, setMensaje] = useState(null)
   const [eliminando, setEliminando] = useState(null)
   const [confirmando, setConfirmando] = useState(null)
+  const [anfitrionPropio, setAnfitrionPropio] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
-      setPublicaciones(await api.get('/Publicacione'))
+      if (usuario?.rol === 'administrador') {
+        setPublicaciones(await api.get('/Publicacione'))
+      } else {
+        const anfitriones = await api.get('/Anfitrione')
+        const propio = anfitriones.find((a) => a.usuarioId === usuario?.id) ?? null
+        setAnfitrionPropio(propio)
+        setPublicaciones(propio ? await api.get(`/Publicacione/anfitrion/${propio.id}`) : [])
+      }
     } catch {
       setPublicaciones([])
     } finally {
       setCargando(false)
     }
-  }, [])
+  }, [usuario?.rol, usuario?.id])
 
   useEffect(() => {
     cargar()
@@ -34,6 +45,20 @@ export default function OperatorPanelPage() {
   const alCrear = () => {
     setModalAbierto(false)
     setMensaje('Publicación creada exitosamente.')
+    cargar()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const alEditar = (p) => {
+    setConfirmando(null)
+    setPubEditando(p)
+    setModalAbierto(true)
+  }
+
+  const alGuardarEdicion = () => {
+    setModalAbierto(false)
+    setPubEditando(null)
+    setMensaje('Publicación actualizada exitosamente.')
     cargar()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -60,8 +85,8 @@ export default function OperatorPanelPage() {
         </div>
         <button
           type="button"
-          onClick={() => setModalAbierto(true)}
-          className="flex cursor-pointer items-center gap-2 rounded-lg bg-terracota px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-terracota/90"
+          onClick={() => { setPubEditando(null); setModalAbierto(true) }}
+          className="flex cursor-pointer items-center gap-2 rounded-lg bg-terracota px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
@@ -116,9 +141,9 @@ export default function OperatorPanelPage() {
                     <td className="px-4 py-3">
                       <span className="block font-semibold text-verde-bosque">{p.titulo}</span>
                       <span className="text-xs text-cafe">
-                        {p.anfitrion?.municipio?.nombre ?? ''}
-                        {p.anfitrion?.municipio?.departamento?.nombre
-                          ? `, ${p.anfitrion.municipio.departamento.nombre}`
+                        {(p.municipio ?? p.anfitrion?.municipio)?.nombre ?? ''}
+                        {(p.municipio ?? p.anfitrion?.municipio)?.departamento?.nombre
+                          ? `, ${(p.municipio ?? p.anfitrion?.municipio).departamento.nombre}`
                           : ''}
                       </span>
                     </td>
@@ -153,24 +178,37 @@ export default function OperatorPanelPage() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmando(p.id)}
-                          disabled={eliminando === p.id}
-                          className="cursor-pointer rounded p-1.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
-                          title="Eliminar publicación"
-                        >
-                          {eliminando === p.id ? (
-                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                              <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                              <path d="M12 2a10 10 0 0 1 10 10" />
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => alEditar(p)}
+                            className="cursor-pointer rounded p-1.5 text-cafe transition-colors hover:bg-cafe/10 hover:text-cafe-oscuro"
+                            title="Editar publicación"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                             </svg>
-                          ) : (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
-                              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6" />
-                            </svg>
-                          )}
-                        </button>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmando(p.id)}
+                            disabled={eliminando === p.id}
+                            className="cursor-pointer rounded p-1.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+                            title="Eliminar publicación"
+                          >
+                            {eliminando === p.id ? (
+                              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                                <path d="M12 2a10 10 0 0 1 10 10" />
+                              </svg>
+                            ) : (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
+                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -183,8 +221,11 @@ export default function OperatorPanelPage() {
 
       <CrearPublicacionModal
         abierto={modalAbierto}
-        onCerrar={() => setModalAbierto(false)}
-        onCreada={alCrear}
+        onCerrar={() => { setModalAbierto(false); setPubEditando(null) }}
+        onCreada={pubEditando ? alGuardarEdicion : alCrear}
+        pubExistente={pubEditando}
+        esEdicion={!!pubEditando}
+        anfitrionFijo={usuario?.rol === 'anfitrion' ? anfitrionPropio : null}
       />
     </main>
   )

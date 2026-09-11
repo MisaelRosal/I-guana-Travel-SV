@@ -3,6 +3,7 @@ using System;
 using IguanaSV.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IguanaSV.Api.Migrations
 {
     [DbContext(typeof(IguanasDbContext))]
-    partial class IguanasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901171228_AddUsuarios")]
+    partial class AddUsuarios
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -79,10 +82,6 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Descripcion")
-                        .HasColumnType("text")
-                        .HasColumnName("descripcion");
-
                     b.Property<string>("Direccion")
                         .HasColumnType("text")
                         .HasColumnName("direccion");
@@ -92,10 +91,6 @@ namespace IguanaSV.Api.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
                         .HasColumnName("email");
-
-                    b.Property<string>("FotoPerfil")
-                        .HasColumnType("text")
-                        .HasColumnName("foto_perfil");
 
                     b.Property<int>("MunicipioId")
                         .HasColumnType("integer")
@@ -118,10 +113,6 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("integer")
-                        .HasColumnName("usuario_id");
-
                     b.Property<bool?>("Verificado")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -130,8 +121,6 @@ namespace IguanaSV.Api.Migrations
 
                     b.HasKey("Id")
                         .HasName("anfitriones_pkey");
-
-                    b.HasIndex("UsuarioId");
 
                     b.HasIndex(new[] { "Email" }, "anfitriones_email_key")
                         .IsUnique();
@@ -165,14 +154,6 @@ namespace IguanaSV.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("nombre");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("tipo")
-                        .HasDefaultValueSql("'experiencia'::character varying");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -579,22 +560,10 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("numeric(11,8)")
                         .HasColumnName("longitud");
 
-                    b.Property<int?>("MunicipioId")
-                        .HasColumnType("integer")
-                        .HasColumnName("municipio_id");
-
                     b.Property<decimal>("PrecioPorNoche")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("precio_por_noche");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("tipo")
-                        .HasDefaultValueSql("'experiencia'::character varying");
 
                     b.Property<string>("Titulo")
                         .IsRequired()
@@ -611,15 +580,11 @@ namespace IguanaSV.Api.Migrations
                     b.HasKey("Id")
                         .HasName("publicaciones_pkey");
 
-                    b.HasIndex("MunicipioId");
-
                     b.HasIndex(new[] { "AnfitrionId" }, "idx_publicaciones_anfitrion");
 
                     b.HasIndex(new[] { "CategoriaId" }, "idx_publicaciones_categoria");
 
                     b.HasIndex(new[] { "Estado" }, "idx_publicaciones_estado");
-
-                    b.HasIndex(new[] { "Tipo" }, "idx_publicaciones_tipo");
 
                     b.ToTable("publicaciones", (string)null);
                 });
@@ -771,14 +736,6 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
-                    b.Property<string>("Rol")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("rol")
-                        .HasDefaultValueSql("'usuario'::character varying");
-
                     b.Property<string>("Telefono")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -808,15 +765,7 @@ namespace IguanaSV.Api.Migrations
                         .IsRequired()
                         .HasConstraintName("anfitriones_municipio_id_fkey");
 
-                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("anfitriones_usuario_id_fkey");
-
                     b.Navigation("Municipio");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.Experiencia", b =>
@@ -916,16 +865,9 @@ namespace IguanaSV.Api.Migrations
                         .IsRequired()
                         .HasConstraintName("publicaciones_categoria_id_fkey");
 
-                    b.HasOne("IguanaSV.Api.Entities.Municipio", "Municipio")
-                        .WithMany()
-                        .HasForeignKey("MunicipioId")
-                        .HasConstraintName("publicaciones_municipio_id_fkey");
-
                     b.Navigation("Anfitrion");
 
                     b.Navigation("Categoria");
-
-                    b.Navigation("Municipio");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.Reserva", b =>

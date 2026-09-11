@@ -1,0 +1,152 @@
+================================================================================
+IGUANA TRAVEL SV - EXPLICACION DEL BACKEND, LAS APIS Y LA BASE DE DATOS
+================================================================================
+
+Este documento explica de forma breve como esta construida la parte del
+servidor del proyecto: la API de .NET, los endpoints disponibles y la base
+de datos PostgreSQL.
+
+
+--------------------------------------------------------------------------------
+1. BACKEND (ASP.NET CORE / .NET 10)
+--------------------------------------------------------------------------------
+
+Ubicacion:  Backend/IguanaSV.Api/
+Tecnologia: C# con ASP.NET Core Web API (.NET 10), Entity Framework Core 10
+            y base de datos PostgreSQL (driver Npgsql).
+
+Es una API REST "minimal hosting": toda la configuracion inicial vive en
+Program.cs, que hace lo siguiente:
+
+- Registra los controladores REST y configura JSON para ignorar ciclos de
+  referencias (evita errores al serializar relaciones entre tablas).
+- Conecta la base de datos con Entity Framework Core usando la cadena de
+  conexion "DefaultConnection" (definida en appsettings.json).
+- Configura la integracion con MinIO (almacenamiento de imagenes tipo S3)
+  mediante MinioStorageService.
+- Habilita Swagger/OpenAPI solo en ambiente Development (documentacion
+  interactiva en http://localhost:5000/swagger).
+- Habilita CORS abierto (por ahora permite cualquier origen).
+
+Estructura de carpetas:
+  Controllers/    Endpoints REST (uno por entidad, 14 en total)
+  Entities/       Entidades de EF Core mapeadas a las tablas
+  Infrastructure/ DbContext activo (IguanasDbContext) + migraciones
+  Services/       Integracion con MinIO (subir/borrar imagenes)
+  Migrations/     Migraciones de EF Core (creacion inicial de tablas)
+  Properties/     launchSettings.json (puertos locales de desarrollo)
+
+Nota: correr local con "dotnet run" usa el puerto 5100; dentro de Docker el
+contenedor escucha en 8080 y docker-compose lo publica en el puerto 5000.
+
+
+--------------------------------------------------------------------------------
+2. LAS APIS (ENDPOINTS DISPONIBLES)
+--------------------------------------------------------------------------------
+
+Cada controlador expone un CRUD completo bajo el prefijo /api/. Por ejemplo,
+el controlador PublicacioneController atiende /api/Publicacione.
+
+Metodos estandar en cada recurso:
+  GET    /api/{recurso}          -> lista todos
+  GET    /api/{recurso}/{id}     -> obtiene uno por id
+  POST   /api/{recurso}          -> crea (recibe JSON, devuelve el creado)
+  PUT    /api/{recurso}/{id}     -> actualiza
+  DELETE /api/{recurso}/{id}     -> elimina
+
+Recursos principales (14 controladores):
+
+  /api/Departamento        Departamentos de El Salvador (con municipios)
+  /api/Municipio           Municipios
+  /api/Categoria           Categorias de publicaciones (Cabana, Surf, Cafe...)
+  /api/Anfitrione          Anfitriones (personas que publican experiencias)
+  /api/Publicacione        Publicaciones (hospedajes/experiencias). Es el
+                           recurso central: incluye anfitrion, categoria,
+                           horarios, imagenes y reservas relacionadas
+  /api/Experiencia         Detalles de experiencia (duracion, precio extra)
+  /api/Horario             Horarios de disponibilidad por publicacion
+  /api/Reserva             Reservas hechas por usuarios
+  /api/ReservaHorario      Relacion reserva-horario (fechas reservadas)
+  /api/Amenidade           Amenidades (wifi, piscina, etc.)
+  /api/PublicacionAmenidad Relacion publicacion-amenidad (N:M)
+  /api/ImagenesPublicacion Imagenes asociadas a cada publicacion
+  /api/Notificacione       Notificaciones
+  /api/Imagenes/upload     ESPECIAL: sube archivos a MinIO y devuelve la URL
+                           publica; DELETE /api/Imagenes/{fileName} borra
+
+Convenciones importantes:
+- El frontend consume todo con rutas relativas "/api/..." (en desarrollo las
+  redirige el proxy de Vite al puerto 5000; en produccion las redirige Nginx
+  hacia el contenedor backend:8080).
+- Las respuestas usan nombres de propiedades en camelCase.
+- Validaciones basicas en POST/PUT: existencia de claves foraneas y precios
+  no negativos.
+
+
+--------------------------------------------------------------------------------
+3. BASE DE DATOS (POSTGRESQL 16)
+--------------------------------------------------------------------------------
+
+Motor:      PostgreSQL 16 (contenedor Docker "rutasv-db", puerto 5432)
+Nombre BD:  configurado en el archivo .env (POSTGRES_DB)
+Acceso:     docker compose exec postgres psql -U <usuario> -d <bd>
+
+La estructura se creo con una migracion inicial de EF Core (InitialCreate)
+y son 13 tablas:
+
+  departamentos         Division politica (14 departamentos de El Salvador)
+  municipios            Municipios, pertenecen a un departamento
+  categorias            Tipos de publicacion (Cabana, Surf, Cafe...)
+  anfitriones           Personas/anfitriones que publican; pertenecen a un
+                        municipio y tienen email unico
+  publicaciones         TABLA CENTRAL: hospedajes y experiencias. Referencia
+                        a anfitrion y categoria; guarda titulo, descripcion,
+                        precio por noche, capacidad, habitaciones/camas/banos,
+                        direccion y coordenadas (latitud/longitud)
+  experiencias          Detalle cuando la publicacion es tipo experiencia
+  horarios              Franjas de disponibilidad (dia de la semana + hora
+                        inicio/fin) por publicacion
+  reservas              Reservas de usuarios sobre una publicacion
+  reserva_horario       Une reservas con horarios especificos
+  amenidades            Catalogo de amenidades (wifi, piscina...)
+  publicacion_amenidad  Tabla pivote publicacion <-> amenidad (muchos a muchos)
+  imagenes_publicacion  Imagenes de cada publicacion (URL apunta a MinIO)
+  notificaciones        Mensajes/notificaciones del sistema
+
+Ademas hay triggers updated_at (actualizan esa columna automaticamente) e
+indices en las llaves foraneas.
+
+Datos actuales de ejemplo:
+- 14 departamentos con sus municipios (seed inicial)
+- 3 categorias: Cabana, Surf, Cafe
+- 3 anfitriones: Maria Gonzalez, Carlos Martinez, Ana Rodriguez
+
+IMPORTANTE sobre persistencia: los datos viven en el volumen Docker "pgdata".
+Sobreviven a reinicios y a "docker compose down", pero SE PIERDEN si se
+ejecuta "docker compose down -v". Para datos semilla reproducibles existe el
+script Backend/scripts/seed_datos_ejemplo.sql.
+
+
+--------------------------------------------------------------------------------
+4. COMO SE CONECTA TODO (FLUJO RESUMIDO)
+--------------------------------------------------------------------------------
+
+  Navegador
+     |  http://localhost  (frontend React compilado, servido por Nginx)
+     v
+  Nginx (contenedor frontend, puerto 80)
+     |  peticiones /api/*  -->  proxy_pass http://backend:8080
+     v
+  API .NET (contenedor backend, puerto interno 8080, publicado en 5000)
+     |  Entity Framework Core (Npgsql)          |  SDK MinIO
+     v                                          v
+  PostgreSQL (contenedor db, puerto 5432)   MinIO (puertos 9000/9001)
+                                             bucket "rutasv" con imagenes
+
+En desarrollo sin Docker: "dotnet run" levanta la API (puerto 5100 segun
+launchSettings.json) y "npm run dev" levanta Vite (5173) cuyo proxy envia
+/api al puerto 5000.
+
+================================================================================
+Fin del documento - generado el 25/08/2026
+================================================================================

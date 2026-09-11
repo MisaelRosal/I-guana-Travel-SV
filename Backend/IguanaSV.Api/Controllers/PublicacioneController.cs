@@ -23,11 +23,14 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)
+            .Include(p => p.Municipio)
+                .ThenInclude(m => m.Departamento)
             .Include(p => p.Categoria)
             .Include(p => p.Experiencia)
             .Include(p => p.Horarios)
             .Include(p => p.ImagenesPublicacions)
             .Include(p => p.PublicacionAmenidads)
+                .ThenInclude(pa => pa.Amenidad)
             .Include(p => p.Reservas)
             .ToListAsync();
     }
@@ -39,11 +42,14 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)
+            .Include(p => p.Municipio)
+                .ThenInclude(m => m.Departamento)
             .Include(p => p.Categoria)
             .Include(p => p.Experiencia)
             .Include(p => p.Horarios)
             .Include(p => p.ImagenesPublicacions)
             .Include(p => p.PublicacionAmenidads)
+                .ThenInclude(pa => pa.Amenidad)
             .Include(p => p.Reservas)
             .FirstOrDefaultAsync(p => p.Id == id);
 
@@ -53,6 +59,26 @@ public class PublicacioneController : ControllerBase
         }
 
         return publicacione;
+    }
+
+    [HttpGet("anfitrion/{anfitrionId}")]
+    public async Task<ActionResult<IEnumerable<Publicacione>>> GetPublicacionesByAnfitrion(int anfitrionId)
+    {
+        return await _context.Publicaciones
+            .Include(p => p.Anfitrion)
+                .ThenInclude(a => a.Municipio)
+                    .ThenInclude(m => m.Departamento)
+            .Include(p => p.Municipio)
+                .ThenInclude(m => m.Departamento)
+            .Include(p => p.Categoria)
+            .Include(p => p.Experiencia)
+            .Include(p => p.Horarios)
+            .Include(p => p.ImagenesPublicacions)
+            .Include(p => p.PublicacionAmenidads)
+                .ThenInclude(pa => pa.Amenidad)
+            .Include(p => p.Reservas)
+            .Where(p => p.AnfitrionId == anfitrionId)
+            .ToListAsync();
     }
 
     [HttpPut("{id}")]
@@ -70,22 +96,58 @@ public class PublicacioneController : ControllerBase
             return NotFound();
         }
 
-        if (!await _context.Anfitriones.AnyAsync(a => a.Id == publicacione.AnfitrionId))
+        if (publicacione.Tipo != "hospedaje" && publicacione.Tipo != "experiencia")
         {
-            return NotFound($"El anfitrion con id {publicacione.AnfitrionId} no existe.");
+            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
         }
 
-        if (!await _context.Categorias.AnyAsync(c => c.Id == publicacione.CategoriaId))
+        var existente = await _context.Publicaciones
+            .Include(p => p.PublicacionAmenidads)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (existente == null)
         {
-            return NotFound($"La categoria con id {publicacione.CategoriaId} no existe.");
+            return NotFound();
         }
 
-        if (publicacione.PrecioPorNoche < 0)
-        {
-            return BadRequest("El precio por noche no puede ser negativo.");
-        }
+        existente.AnfitrionId = publicacione.AnfitrionId;
+        existente.CategoriaId = publicacione.CategoriaId;
+        existente.Tipo = publicacione.Tipo;
+        existente.Titulo = publicacione.Titulo;
+        existente.Descripcion = publicacione.Descripcion;
+        existente.PrecioPorNoche = publicacione.PrecioPorNoche;
+        existente.CapacidadMaxima = publicacione.CapacidadMaxima;
+        existente.Habitaciones = publicacione.Habitaciones;
+        existente.Camas = publicacione.Camas;
+        existente.Banos = publicacione.Banos;
+        existente.DireccionExacta = publicacione.DireccionExacta;
+        existente.Latitud = publicacione.Latitud;
+        existente.Longitud = publicacione.Longitud;
+        existente.MunicipioId = publicacione.MunicipioId;
+        existente.Estado = publicacione.Estado;
 
-        _context.Entry(publicacione).State = EntityState.Modified;
+        var idsSolicitados = (publicacione.PublicacionAmenidads ?? new List<PublicacionAmenidad>())
+            .Where(pa => pa.AmenidadId != 0)
+            .Select(pa => pa.AmenidadId)
+            .ToHashSet();
+
+        var aBorrar = existente.PublicacionAmenidads
+            .Where(pa => !idsSolicitados.Contains(pa.AmenidadId))
+            .ToList();
+        _context.PublicacionAmenidads.RemoveRange(aBorrar);
+
+        var idsExistentes = existente.PublicacionAmenidads.Select(pa => pa.AmenidadId).ToHashSet();
+        foreach (var amenidadId in idsSolicitados)
+        {
+            if (!idsExistentes.Contains(amenidadId))
+            {
+                _context.PublicacionAmenidads.Add(new PublicacionAmenidad
+                {
+                    PublicacionId = id,
+                    AmenidadId = amenidadId,
+                });
+            }
+        }
 
         try
         {
@@ -110,6 +172,11 @@ public class PublicacioneController : ControllerBase
         if (!await _context.Categorias.AnyAsync(c => c.Id == publicacione.CategoriaId))
         {
             return NotFound($"La categoria con id {publicacione.CategoriaId} no existe.");
+        }
+
+        if (publicacione.Tipo != "hospedaje" && publicacione.Tipo != "experiencia")
+        {
+            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
         }
 
         if (publicacione.PrecioPorNoche < 0)

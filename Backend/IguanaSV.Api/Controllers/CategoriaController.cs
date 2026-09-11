@@ -17,11 +17,18 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Categoria>>> GetCategorias()
+    public async Task<ActionResult<IEnumerable<Categoria>>> GetCategorias([FromQuery] string? tipo = null)
     {
-        return await _context.Categorias
+        var query = _context.Categorias
             .Include(c => c.Publicaciones)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(tipo))
+        {
+            query = query.Where(c => c.Tipo == tipo);
+        }
+
+        return await query.ToListAsync();
     }
 
     [HttpGet("{id}")]
@@ -45,6 +52,11 @@ public class CategoriaController : ControllerBase
         if (id != categoria.Id)
         {
             return BadRequest();
+        }
+
+        if (categoria.Tipo != "hospedaje" && categoria.Tipo != "experiencia")
+        {
+            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
         }
 
         var exists = await _context.Categorias.AnyAsync(c => c.Id == id);
@@ -71,6 +83,11 @@ public class CategoriaController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria)
     {
+        if (categoria.Tipo != "hospedaje" && categoria.Tipo != "experiencia")
+        {
+            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
+        }
+
         _context.Categorias.Add(categoria);
         await _context.SaveChangesAsync();
 
