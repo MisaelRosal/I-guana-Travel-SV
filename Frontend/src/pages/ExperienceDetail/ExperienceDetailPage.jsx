@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
 import { getExperienciaById } from '../../services/experiencias'
-import { getDisponibilidad } from '../../services/reservas'
-import FormularioReserva from '../../components/FormularioReserva'
+import { crearReserva } from '../../services/reservas'
+import Toast from '../../components/Toast.jsx'
 
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -30,7 +30,7 @@ function Galeria({ imagenes, titulo }) {
 
   return (
     <div>
-      <div className="relative h-[min(60vw,420px)] max-sm:h-[320px] overflow-hidden rounded-xl bg-neutral-100">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-neutral-100">
         {primera ? (
           <>
             <img
@@ -76,7 +76,7 @@ function Galeria({ imagenes, titulo }) {
               onClick={() => setIndice(i)}
               className={`cursor-pointer overflow-hidden rounded-lg border-2 ${i === indice ? 'border-terracota' : 'border-transparent'}`}
             >
-              <img src={img} alt={`${titulo} ${i + 1}`} className="aspect-[16/10] w-full object-cover" />
+              <img src={img} alt={`${titulo} ${i + 1}`} className="aspect-[4/3] w-full object-cover" />
             </button>
           ))}
         </div>
@@ -90,82 +90,70 @@ function InfoBox({ experiencia, onReservar }) {
   const unidad = esHospedaje ? '/noche' : '/persona'
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-md">
+    <div className="rounded-xl border border-neutral-200 bg-white p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-terracota">{experiencia.categoria}</p>
-          <h2 className="mt-1 text-3xl font-bold leading-tight text-verde-bosque">{experiencia.titulo}</h2>
-          <p className="mt-2 flex items-center gap-1 text-base text-neutral-600">
-            <svg className="h-5 w-5 text-terracota" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
+          <p className="text-sm text-cafe">{experiencia.categoria}</p>
+          <h2 className="text-2xl font-bold text-verde-bosque">{experiencia.titulo}</h2>
+          <p className="mt-1 text-sm text-cafe">
             {experiencia.municipio}, {experiencia.departamento}
           </p>
         </div>
       </div>
 
-      <div className="mt-5 flex items-baseline gap-1.5 border-b border-neutral-100 pb-5">
-        <span className="text-4xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
-        <span className="text-lg font-medium text-neutral-600"> {unidad}</span>
+      <div className="mt-4 flex items-baseline gap-1">
+        <span className="text-3xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
+        <span className="text-cafe"> {unidad}</span>
       </div>
 
-      <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5">
+      <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-neutral-100 pt-5">
         {esHospedaje ? (
           <>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Capacidad</dt>
-              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.capacidad} huéspedes</dd>
+              <dt className="text-xs uppercase text-cafe">Capacidad</dt>
+              <dd className="text-sm font-semibold text-verde-bosque">{experiencia.capacidad} huéspedes</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Habitaciones</dt>
-              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.habitaciones || '—'}</dd>
+              <dt className="text-xs uppercase text-cafe">Habitaciones</dt>
+              <dd className="text-sm font-semibold text-verde-bosque">{experiencia.habitaciones || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Camas</dt>
-              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.camas || '—'}</dd>
+              <dt className="text-xs uppercase text-cafe">Camas</dt>
+              <dd className="text-sm font-semibold text-verde-bosque">{experiencia.camas || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Baños</dt>
-              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.banos || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Entrada</dt>
-              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.horaEntrada || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Salida</dt>
-              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.horaSalida || '—'}</dd>
+              <dt className="text-xs uppercase text-cafe">Baños</dt>
+              <dd className="text-sm font-semibold text-verde-bosque">{experiencia.banos || '—'}</dd>
             </div>
           </>
         ) : (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Cupos</dt>
-            <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.capacidad} personas</dd>
+            <dt className="text-xs uppercase text-cafe">Cupos</dt>
+            <dd className="text-sm font-semibold text-verde-bosque">{experiencia.capacidad} personas</dd>
           </div>
         )}
         {experiencia.anfitrion && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Anfitrión</dt>
-            <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.anfitrion}</dd>
+            <dt className="text-xs uppercase text-cafe">Anfitrión</dt>
+            <dd className="text-sm font-semibold text-verde-bosque">{experiencia.anfitrion}</dd>
           </div>
         )}
         {experiencia.direccion && (
           <div className="col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Dirección</dt>
-            <dd className="mt-0.5 text-base text-neutral-700">{experiencia.direccion}</dd>
+            <dt className="text-xs uppercase text-cafe">Dirección</dt>
+            <dd className="text-sm text-neutral-700">{experiencia.direccion}</dd>
           </div>
         )}
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Estado</dt>
-          <dd className="mt-0.5 text-lg font-semibold text-verde-bosque capitalize">{experiencia.estado}</dd>
+          <dt className="text-xs uppercase text-cafe">Estado</dt>
+          <dd className="text-sm font-semibold text-verde-bosque capitalize">{experiencia.estado}</dd>
         </div>
       </dl>
 
       <button
         type="button"
         onClick={onReservar}
-        className="mt-7 block w-full cursor-pointer rounded-lg bg-terracota px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque shadow-sm"
+        className="mt-6 block w-full cursor-pointer rounded-lg bg-terracota px-4 py-3 text-center font-semibold text-white hover:bg-verde-bosque transition-colors"
       >
         Reservar ahora
       </button>
@@ -177,13 +165,13 @@ function ExperienciasLista({ experiencias }) {
   if (!experiencias.length) return null
   return (
     <section className="mt-10">
-      <h3 className="text-2xl font-bold text-verde-bosque">Experiencias incluidas</h3>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <h3 className="text-xl font-bold text-verde-bosque">Experiencias incluidas</h3>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {experiencias.map((e, i) => (
-          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-            <h4 className="text-lg font-bold text-verde-bosque">{e.nombre}</h4>
-            {e.descripcion && <p className="mt-1 text-base text-neutral-700">{e.descripcion}</p>}
-            <p className="mt-2 text-sm font-medium text-cafe">
+          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-4">
+            <h4 className="font-semibold text-verde-bosque">{e.nombre}</h4>
+            {e.descripcion && <p className="mt-1 text-sm text-neutral-600">{e.descripcion}</p>}
+            <p className="mt-2 text-xs text-cafe">
               {e.duracionHoras ? `${e.duracionHoras} h` : ''}
               {e.duracionHoras && e.precioAdicional != null ? ' · ' : ''}
               {e.precioAdicional != null && e.precioAdicional > 0 ? `${formatoPrecio.format(e.precioAdicional)} adicional` : ''}
@@ -195,56 +183,19 @@ function ExperienciasLista({ experiencias }) {
   )
 }
 
-function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
-  if (!anfitrionId) return null
-  return (
-    <section className="mt-10">
-      <h3 className="text-2xl font-bold text-verde-bosque">Tu anfitrión</h3>
-      <Link
-        to={`/anfitriones/${anfitrionId}`}
-        className="mt-4 flex items-start gap-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
-      >
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-crema text-2xl font-bold text-cafe">
-          {foto ? (
-            <img src={foto} alt="Foto de perfil" className="h-full w-full object-cover" />
-          ) : (
-            (nombre || '').charAt(0).toUpperCase()
-          )}
-        </div>
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-bold text-verde-bosque">{nombre}</span>
-            {verificado && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-verde-hoja/15 px-2 py-0.5 text-xs font-semibold text-verde-bosque">
-                Verificado
-              </span>
-            )}
-          </div>
-          <p className="mt-1 line-clamp-2 text-sm text-neutral-700">
-            {descripcion || 'Este anfitrión aún no agregó una descripción.'}
-          </p>
-          <span className="mt-2 inline-block font-medium text-azul hover:text-azul-cielo">
-            Ver perfil completo →
-          </span>
-        </div>
-      </Link>
-    </section>
-  )
-}
-
 function Horarios({ horarios }) {
   if (!horarios.length) return null
   const dias = [...new Set(horarios.map((h) => h.diaSemana))].sort()
   return (
     <section className="mt-10">
-      <h3 className="text-2xl font-bold text-verde-bosque">Horarios disponibles</h3>
-      <div className="mt-4 flex flex-wrap gap-3">
+      <h3 className="text-xl font-bold text-verde-bosque">Horarios disponibles</h3>
+      <div className="mt-3 flex flex-wrap gap-2">
         {dias.map((dia) => {
           const hs = horarios.filter((h) => h.diaSemana === dia)
           return (
-            <div key={dia} className="rounded-xl border border-neutral-200 bg-white px-5 py-3 shadow-sm">
-              <p className="text-base font-bold text-verde-bosque">{DIAS[dia]}</p>
-              <p className="mt-0.5 text-sm font-medium text-cafe">
+            <div key={dia} className="rounded-xl border border-neutral-200 bg-white px-4 py-2">
+              <p className="text-sm font-semibold text-verde-bosque">{DIAS[dia]}</p>
+              <p className="text-xs text-cafe">
                 {hs.map((h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`).join(' · ')}
               </p>
             </div>
@@ -255,12 +206,12 @@ function Horarios({ horarios }) {
   )
 }
 
-function Mapa({ latitud, longitud }) {
+function Mapa({ latitud, longitud, municipio }) {
   const posicion = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
   return (
     <section className="mt-10">
-      <h3 className="text-2xl font-bold text-verde-bosque">Ubicación</h3>
-      <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 shadow-sm">
+      <h3 className="text-xl font-bold text-verde-bosque">Ubicación</h3>
+      <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200">
         <MapContainer
           center={posicion || [13.7, -89.2]}
           zoom={posicion ? 14 : 9}
@@ -273,310 +224,161 @@ function Mapa({ latitud, longitud }) {
           {posicion && <Marker position={posicion} icon={markerIcon} />}
         </MapContainer>
       </div>
+      <p className="mt-2 text-sm text-cafe">
+        {municipio || 'Ubicación no especificada'}
+      </p>
     </section>
   )
 }
 
-function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCerrar }) {
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const [mes, setMes] = useState(() => hoy.getMonth())
-  const [anio, setAnio] = useState(() => hoy.getFullYear())
-  const [fechaInicio, setFechaInicio] = useState(null)
-  const [fechaFin, setFechaFin] = useState(null)
-  const [paso, setPaso] = useState('personas')
-  const [numPersonas, setNumPersonas] = useState(1)
-  const [fechasOcupadas, setFechasOcupadas] = useState([])
-  const [cargandoFechas, setCargandoFechas] = useState(true)
+function FormularioReserva({ experiencia, onCerrar, onReservaCreada }) {
+  const usuario = JSON.parse(sessionStorage.getItem('iguana_usuario') || 'null')
+  const [nombre, setNombre] = useState(usuario?.nombre ?? '')
+  const [email, setEmail] = useState(usuario?.email ?? '')
+  const [telefono, setTelefono] = useState('')
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
+  const [numeroHuespedes, setNumeroHuespedes] = useState(1)
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    let activo = true
-    getDisponibilidad(experiencia.id)
-      .then((data) => {
-        if (activo) setFechasOcupadas(Array.isArray(data) ? data : [])
-      })
-      .catch(() => {
-        if (activo) setFechasOcupadas([])
-      })
-      .finally(() => {
-        if (activo) setCargandoFechas(false)
-      })
-    return () => { activo = false }
-  }, [experiencia.id])
+  const precioUnitario = experiencia.precio
+  const noches = fechaInicio && fechaFin
+    ? Math.max(1, Math.ceil((new Date(fechaFin) - new Date(fechaInicio)) / (1000 * 60 * 60 * 24)))
+    : 1
+  const precioTotal = precioUnitario * noches
 
-  const nombreMeses = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  ]
-  const nombreDias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
 
-  const primerDia = new Date(anio, mes, 1)
-  const diasEnMes = new Date(anio, mes + 1, 0).getDate()
-  const offset = (primerDia.getDay() + 6) % 7
-
-  const cambiarMes = (delta) => {
-    let nuevoMes = mes + delta
-    let nuevoAnio = anio
-    if (nuevoMes < 0) { nuevoMes = 11; nuevoAnio -= 1 }
-    else if (nuevoMes > 11) { nuevoMes = 0; nuevoAnio += 1 }
-    setMes(nuevoMes)
-    setAnio(nuevoAnio)
-  }
-
-  const esHoy = (dia) => new Date(anio, mes, dia).getTime() === hoy.getTime()
-  const esPasado = (dia) => new Date(anio, mes, dia).getTime() < hoy.getTime()
-
-  const fechaStr = (dia) => {
-    const d = new Date(anio, mes, dia)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  }
-
-  const estaOcupado = (dia) => {
-    const fStr = fechaStr(dia)
-    return fechasOcupadas.some((r) => fStr >= r.inicio && fStr <= r.fin)
-  }
-
-  const seleccionarDia = (dia) => {
-    if (estaOcupado(dia)) return
-    const fecha = new Date(anio, mes, dia)
-    if (!esHospedaje) {
-      setFechaInicio(fecha)
-      setFechaFin(null)
+    if (!nombre.trim() || !email.trim() || !fechaInicio || !fechaFin) {
+      setError('Todos los campos obligatorios deben estar completos.')
       return
     }
-    // Hospedaje: si no hay inicio, o ya hay un rango completo, reiniciamos con la llegada
-    if (!fechaInicio || fechaFin) {
-      setFechaInicio(fecha)
-      setFechaFin(null)
+    if (new Date(fechaFin) < new Date(fechaInicio)) {
+      setError('La fecha de check-out debe ser posterior al check-in.')
       return
     }
-    // Si elige un día menor o igual a la llegada, reasignamos la llegada
-    if (fecha.getTime() <= fechaInicio.getTime()) {
-      setFechaInicio(fecha)
-      setFechaFin(null)
-      return
-    }
-    // Validar que todo el rango del llegada->salida esté libre
-    const fStr = fechaStr(dia)
-    const inicioStr = `${fechaInicio.getFullYear()}-${String(fechaInicio.getMonth() + 1).padStart(2, '0')}-${String(fechaInicio.getDate()).padStart(2, '0')}`
-    const rangoOk = fechasOcupadas.every((r) => r.inicio > fStr || r.fin < inicioStr)
-    if (!rangoOk) return
-    setFechaFin(fecha)
-  }
 
-  const estaEnRango = (dia) => {
-    if (!fechaInicio || !fechaFin) return false
-    const f = new Date(anio, mes, dia)
-    return f.getTime() >= fechaInicio.getTime() && f.getTime() <= fechaFin.getTime()
-  }
-  const esExtremoInicio = (dia) => {
-    if (!fechaInicio) return false
-    return new Date(anio, mes, dia).getTime() === fechaInicio.getTime()
-  }
-  const esExtremoFin = (dia) => {
-    if (!esHospedaje || !fechaFin) return false
-    return new Date(anio, mes, dia).getTime() === fechaFin.getTime()
-  }
-
-  const textoSeleccion = () => {
-    if (esHospedaje) {
-      if (fechaInicio && fechaFin) {
-        return `${fechaInicio.getDate()} al ${fechaFin.getDate()} de ${nombreMeses[fechaFin.getMonth()]}`
-      }
-      if (fechaInicio) {
-        return `Inicio: ${fechaInicio.getDate()} de ${nombreMeses[fechaInicio.getMonth()]} — elegí la fecha de salida`
-      }
-      return 'Seleccioná la fecha de llegada'
+    setEnviando(true)
+    try {
+      await crearReserva({
+        publicacionId: experiencia.id,
+        nombreHuesped: nombre.trim(),
+        emailHuesped: email.trim(),
+        telefonoHuesped: telefono.trim() || null,
+        fechaInicio,
+        fechaFin,
+        numeroHuespedes,
+        precioTotal,
+      })
+      onReservaCreada()
+    } catch (err) {
+      setError(err.mensaje || err.message || 'No se pudo crear la reserva.')
+    } finally {
+      setEnviando(false)
     }
-    if (fechaInicio) {
-      return `${fechaInicio.getDate()} de ${nombreMeses[fechaInicio.getMonth()]} de ${fechaInicio.getFullYear()}`
-    }
-    return 'Seleccioná un día'
-  }
-
-  const confirmarSeleccion = () => {
-    const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    onSeleccionarFechas({
-      fechaInicio: toISO(fechaInicio),
-      fechaFin: fechaFin ? toISO(fechaFin) : toISO(fechaInicio),
-      numPersonas,
-    })
   }
 
   return (
-    <div
-      className="animate-modal-backdrop fixed inset-x-0 top-20 z-[70] flex justify-center px-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Elegir fecha de reserva"
-    >
-      <div className="animate-modal-box w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-verde-bosque">
-            {paso === 'personas'
-              ? '¿Para cuántas personas?'
-              : esHospedaje
-                ? 'Elegí tus fechas'
-                : 'Elegí tu fecha'}
-          </h3>
+          <h2 className="text-xl font-bold text-verde-bosque">Reservar</h2>
           <button
             type="button"
             onClick={onCerrar}
-            aria-label="Cerrar"
-            className="cursor-pointer rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+            className="cursor-pointer text-2xl text-cafe hover:text-terracota"
           >
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            &times;
           </button>
         </div>
+        <p className="mt-1 text-sm text-cafe">{experiencia.titulo}</p>
 
-        {paso === 'personas' && (
-          <div className="mt-6">
-            <p className="text-base text-neutral-700">
-              {esHospedaje ? '¿Para cuántas personas es la reserva?' : '¿Cuántas personas van a participar de la experiencia?'}
-            </p>
-            <p className="mt-1 text-sm text-cafe">
-              Capacidad máxima: {experiencia.capacidad || 1} personas
-            </p>
-
-            <div className="mt-4 flex items-center justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => setNumPersonas((n) => Math.max(1, n - 1))}
-                aria-label="Menos personas"
-                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
-              >
-                −
-              </button>
-              <div className="w-20 text-center">
-                <p className="text-4xl font-extrabold text-verde-bosque">{numPersonas}</p>
-                <p className="text-xs font-semibold uppercase text-cafe">
-                  {numPersonas === 1 ? 'persona' : 'personas'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setNumPersonas((n) => Math.min(experiencia.capacidad || 99, n + 1))}
-                aria-label="Más personas"
-                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
-              >
-                +
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setPaso('fecha')}
-              className="mt-6 w-full cursor-pointer rounded-lg bg-terracota px-4 py-3 text-base font-bold text-white transition-colors hover:bg-verde-bosque"
-            >
-              Continuar
-            </button>
+        <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-verde-bosque">Nombre del huésped *</label>
+            <input
+              type="text"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              required
+              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+            />
           </div>
-        )}
-
-        {paso === 'fecha' && (
-        <>
-        {cargandoFechas ? (
-          <p className="mt-6 text-center text-sm text-cafe">Cargando disponibilidad…</p>
-        ) : (
-        <>
-        <div className="mt-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => cambiarMes(-1)}
-            aria-label="Mes anterior"
-            className="cursor-pointer rounded-lg p-2 text-terracota transition-colors hover:bg-terracota/10"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-          <p className="text-base font-bold text-verde-bosque">
-            {nombreMeses[mes]} {anio}
-          </p>
-          <button
-            type="button"
-            onClick={() => cambiarMes(1)}
-            aria-label="Mes siguiente"
-            className="cursor-pointer rounded-lg p-2 text-terracota transition-colors hover:bg-terracota/10"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="mt-3 grid grid-cols-7 gap-1">
-          {nombreDias.map((d) => (
-            <div key={d} className="py-1 text-center text-xs font-semibold uppercase text-cafe">
-              {d}
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-verde-bosque">Email *</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-verde-bosque">Teléfono</label>
+            <input
+              type="tel"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-verde-bosque">Check-in *</label>
+              <input
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                required
+                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+              />
             </div>
-          ))}
-          {Array.from({ length: offset }).map((_, i) => (
-            <div key={`vacio-${i}`} />
-          ))}
-          {Array.from({ length: diasEnMes }).map((_, i) => {
-            const dia = i + 1
-            const pasado = esPasado(dia)
-            const ocupado = !pasado && estaOcupado(dia)
-            const esHoyDia = esHoy(dia)
-            const enRango = estaEnRango(dia)
-            const esInicio = esExtremoInicio(dia)
-            const esFin = esExtremoFin(dia)
-            let clases =
-              'flex h-10 items-center justify-center rounded-lg text-sm transition-colors '
-            if (pasado) {
-              clases += 'cursor-not-allowed text-neutral-300'
-            } else if (ocupado) {
-              clases += 'cursor-not-allowed bg-red-100 text-red-400 line-through'
-            } else if (enRango) {
-              clases += 'bg-terracota/20 font-semibold text-verde-bosque hover:bg-terracota/30'
-            } else if (esInicio || esFin) {
-              clases += 'cursor-pointer bg-terracota font-bold text-white hover:bg-terracota'
-            } else if (esHoyDia) {
-              clases += 'cursor-pointer border border-terracota font-semibold text-terracota hover:bg-terracota/10'
-            } else {
-              clases += 'cursor-pointer text-neutral-700 hover:bg-terracota/10'
-            }
-            return (
-              <button
-                key={dia}
-                type="button"
-                disabled={pasado || ocupado}
-                onClick={() => seleccionarDia(dia)}
-                className={clases}
-                title={ocupado ? 'Fecha no disponible' : ''}
-              >
-                {dia}
-              </button>
-            )
-          })}
-        </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-verde-bosque">Check-out *</label>
+              <input
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                required
+                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-verde-bosque">Número de huéspedes *</label>
+            <input
+              type="number"
+              min="1"
+              value={numeroHuespedes}
+              onChange={(e) => setNumeroHuespedes(Number(e.target.value))}
+              required
+              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+            />
+          </div>
 
-        {fechasOcupadas.length > 0 && (
-          <p className="mt-2 text-center text-xs text-red-500">
-            Las fechas en rojo ya están reservadas
-          </p>
-        )}
+          <div className="rounded-lg bg-crema p-4">
+            <div className="flex items-center justify-between text-sm text-cafe">
+              <span>{formatoPrecio.format(precioUnitario)} x {noches} noche(s)</span>
+              <span className="font-bold text-terracota text-lg">{formatoPrecio.format(precioTotal)}</span>
+            </div>
+          </div>
 
-        <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-4">
-          <p className="text-sm text-neutral-600">
-            {textoSeleccion()}
-          </p>
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{error}</p>
+          )}
+
           <button
-            type="button"
-            disabled={!fechaInicio || (esHospedaje && !fechaFin)}
-            onClick={confirmarSeleccion}
-            className="cursor-pointer rounded-lg bg-terracota px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:cursor-not-allowed disabled:opacity-50"
+            type="submit"
+            disabled={enviando}
+            className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
           >
-            Continuar
+            {enviando ? 'Creando reserva...' : 'Confirmar reserva'}
           </button>
-        </div>
-        </>
-        )}
-        </>
-        )}
+        </form>
       </div>
     </div>
   )
@@ -584,11 +386,12 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 
 export default function ExperienceDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [experiencia, setExperiencia] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [pasoReserva, setPasoReserva] = useState('inicio')
-  const [datosReserva, setDatosReserva] = useState(null)
+  const [mostrarFormulario, setMostrarFormulario] = useState(false)
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     let activo = true
@@ -602,13 +405,10 @@ export default function ExperienceDetailPage() {
       .finally(() => {
         if (activo) setCargando(false)
       })
-    return () => { activo = false }
+    return () => {
+      activo = false
+    }
   }, [id])
-
-  const seleccionarFechas = useCallback((datos) => {
-    setDatosReserva(datos)
-    setPasoReserva('formulario')
-  }, [])
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
@@ -622,45 +422,27 @@ export default function ExperienceDetailPage() {
 
       {experiencia && (
         <>
-          <div className="grid gap-8 lg:grid-cols-5">
-            <div className="lg:col-span-3">
-              <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
-            </div>
-            <div className="lg:col-span-2">
-              <InfoBox experiencia={experiencia} onReservar={() => setPasoReserva('calendario')} />
-            </div>
+          <div className="grid gap-8 lg:grid-cols-2">
+            <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
+            <InfoBox experiencia={experiencia} onReservar={() => setMostrarFormulario(true)} />
           </div>
 
           <ExperienciasLista experiencias={experiencia.experiencias} />
 
           <section className="mt-10">
-            <h3 className="text-2xl font-bold text-verde-bosque">Descripción</h3>
-            <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-              <p className="text-lg leading-relaxed text-neutral-800">
-                {experiencia.descripcion || 'Sin descripción disponible.'}
-              </p>
-            </div>
+            <h3 className="text-xl font-bold text-verde-bosque">Descripción</h3>
+            <p className="mt-3 text-neutral-700">
+              {experiencia.descripcion || 'Sin descripción disponible.'}
+            </p>
           </section>
-
-          <CardAnfitrion
-            anfitrionId={experiencia.anfitrionId}
-            nombre={experiencia.anfitrion}
-            foto={experiencia.anfitrionFoto}
-            descripcion={experiencia.anfitrionDescripcion}
-            verificado={experiencia.anfitrionVerificado}
-          />
 
           {experiencia.amenidades.length > 0 && (
             <section className="mt-10">
-              <h3 className="text-2xl font-bold text-verde-bosque">Amenidades</h3>
-              <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <h3 className="text-xl font-bold text-verde-bosque">Amenidades</h3>
+              <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {experiencia.amenidades.map((a, i) => (
-                  <li key={i} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-base font-medium text-neutral-800 shadow-sm">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-verde-hoja/15 text-verde-bosque">
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M20 6 9 17l-5-5" />
-                      </svg>
-                    </span>
+                  <li key={i} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-neutral-700 border border-neutral-100">
+                    <span className="text-verde-hoja">✓</span>
                     {a}
                   </li>
                 ))}
@@ -670,29 +452,31 @@ export default function ExperienceDetailPage() {
 
           <Horarios horarios={experiencia.horarios} />
 
-          <Mapa latitud={experiencia.latitud} longitud={experiencia.longitud} />
+          <Mapa
+            latitud={experiencia.latitud}
+            longitud={experiencia.longitud}
+            municipio={`${experiencia.municipio}, ${experiencia.departamento}`}
+          />
         </>
       )}
 
-      {experiencia && pasoReserva === 'calendario' && (
-        <CalendarioReserva
+      {mostrarFormulario && experiencia && (
+        <FormularioReserva
           experiencia={experiencia}
-          esHospedaje={experiencia.tipo === 'hospedaje'}
-          onSeleccionarFechas={seleccionarFechas}
-          onCerrar={() => setPasoReserva('inicio')}
+          onCerrar={() => setMostrarFormulario(false)}
+          onReservaCreada={() => {
+            setMostrarFormulario(false)
+            setToast({ tipo: 'exito', mensaje: 'Reserva creada exitosamente. Ve a "Mis reservas" para pagar.' })
+            setTimeout(() => navigate('/reservas'), 2000)
+          }}
         />
       )}
 
-      {experiencia && pasoReserva === 'formulario' && datosReserva && (
-        <FormularioReserva
-          experiencia={experiencia}
-          fechaInicio={datosReserva.fechaInicio}
-          fechaFin={datosReserva.fechaFin}
-          numPersonas={datosReserva.numPersonas}
-          onCancelar={() => setPasoReserva('calendario')}
-          onReservada={() => setPasoReserva('inicio')}
-        />
-      )}
+      <Toast
+        mensaje={toast?.mensaje || ''}
+        tipo={toast?.tipo || 'exito'}
+        onCerrar={() => setToast(null)}
+      />
     </main>
   )
 }

@@ -166,6 +166,36 @@ public class ReservaController : ControllerBase
         return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);
     }
 
+    [HttpPut("{id}/confirmar")]
+    public async Task<IActionResult> ConfirmarReserva(int id)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (reserva.Estado != "pendiente")
+        {
+            return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden confirmar reservas pendientes." });
+        }
+
+        reserva.Estado = "confirmada";
+        reserva.UpdatedAt = DateTime.UtcNow;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict();
+        }
+
+        return Ok(new { mensaje = "Reserva confirmada exitosamente.", reserva });
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteReserva(int id)
     {

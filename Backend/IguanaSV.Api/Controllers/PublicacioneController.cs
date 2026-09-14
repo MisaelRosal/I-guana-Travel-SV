@@ -1,5 +1,7 @@
+using PublicacioneEntity = IguanaSV.Api.Entities.Publicacione;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,14 +19,12 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Publicacione>>> GetPublicaciones()
+    public async Task<ActionResult<IEnumerable<PublicacioneEntity>>> GetPublicaciones()
     {
         return await _context.Publicaciones
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)
-            .Include(p => p.Municipio)
-                .ThenInclude(m => m.Departamento)
             .Include(p => p.Categoria)
             .Include(p => p.Experiencia)
             .Include(p => p.Horarios)
@@ -36,14 +36,12 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Publicacione>> GetPublicacione(int id)
+    public async Task<ActionResult<PublicacioneEntity>> GetPublicacione(int id)
     {
         var publicacione = await _context.Publicaciones
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)
-            .Include(p => p.Municipio)
-                .ThenInclude(m => m.Departamento)
             .Include(p => p.Categoria)
             .Include(p => p.Experiencia)
             .Include(p => p.Horarios)
@@ -61,45 +59,39 @@ public class PublicacioneController : ControllerBase
         return publicacione;
     }
 
-    [HttpGet("anfitrion/{anfitrionId}")]
-    public async Task<ActionResult<IEnumerable<Publicacione>>> GetPublicacionesByAnfitrion(int anfitrionId)
-    {
-        return await _context.Publicaciones
-            .Include(p => p.Anfitrion)
-                .ThenInclude(a => a.Municipio)
-                    .ThenInclude(m => m.Departamento)
-            .Include(p => p.Municipio)
-                .ThenInclude(m => m.Departamento)
-            .Include(p => p.Categoria)
-            .Include(p => p.Experiencia)
-            .Include(p => p.Horarios)
-            .Include(p => p.ImagenesPublicacions)
-            .Include(p => p.PublicacionAmenidads)
-                .ThenInclude(pa => pa.Amenidad)
-            .Include(p => p.Reservas)
-            .Where(p => p.AnfitrionId == anfitrionId)
-            .ToListAsync();
-    }
-
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutPublicacione(int id, Publicacione publicacione)
+    public async Task<IActionResult> PutPublicacione(int id, CreatePublicacioneDto dto)
     {
-        if (id != publicacione.Id)
-        {
-            return BadRequest();
-        }
+        var publicacione = await _context.Publicaciones.FindAsync(id);
 
-        var exists = await _context.Publicaciones.AnyAsync(p => p.Id == id);
-
-        if (!exists)
+        if (publicacione == null)
         {
             return NotFound();
         }
 
-        if (publicacione.Tipo != "hospedaje" && publicacione.Tipo != "experiencia")
+        if (!await _context.Anfitriones.AnyAsync(a => a.Id == dto.AnfitrionId))
         {
-            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
+            return NotFound($"El anfitrion con id {dto.AnfitrionId} no existe.");
         }
+
+        if (!await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId))
+        {
+            return NotFound($"La categoria con id {dto.CategoriaId} no existe.");
+        }
+
+        publicacione.AnfitrionId = dto.AnfitrionId;
+        publicacione.CategoriaId = dto.CategoriaId;
+        publicacione.Titulo = dto.Titulo;
+        publicacione.Descripcion = dto.Descripcion;
+        publicacione.PrecioPorNoche = dto.PrecioPorNoche;
+        publicacione.CapacidadMaxima = dto.CapacidadMaxima;
+        publicacione.Habitaciones = dto.Habitaciones;
+        publicacione.Camas = dto.Camas;
+        publicacione.Banos = dto.Banos;
+        publicacione.DireccionExacta = dto.DireccionExacta;
+        publicacione.Latitud = dto.Latitud;
+        publicacione.Longitud = dto.Longitud;
+        publicacione.UpdatedAt = DateTime.UtcNow;
 
         var existente = await _context.Publicaciones
             .Include(p => p.PublicacionAmenidads)
@@ -112,7 +104,6 @@ public class PublicacioneController : ControllerBase
 
         existente.AnfitrionId = publicacione.AnfitrionId;
         existente.CategoriaId = publicacione.CategoriaId;
-        existente.Tipo = publicacione.Tipo;
         existente.Titulo = publicacione.Titulo;
         existente.Descripcion = publicacione.Descripcion;
         existente.PrecioPorNoche = publicacione.PrecioPorNoche;
@@ -123,7 +114,6 @@ public class PublicacioneController : ControllerBase
         existente.DireccionExacta = publicacione.DireccionExacta;
         existente.Latitud = publicacione.Latitud;
         existente.Longitud = publicacione.Longitud;
-        existente.MunicipioId = publicacione.MunicipioId;
         existente.Estado = publicacione.Estado;
 
         var idsSolicitados = (publicacione.PublicacionAmenidads ?? new List<PublicacionAmenidad>())
@@ -162,27 +152,35 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Publicacione>> PostPublicacione(Publicacione publicacione)
+    public async Task<ActionResult<PublicacioneEntity>> PostPublicacione(CreatePublicacioneDto dto)
     {
-        if (!await _context.Anfitriones.AnyAsync(a => a.Id == publicacione.AnfitrionId))
+        if (!await _context.Anfitriones.AnyAsync(a => a.Id == dto.AnfitrionId))
         {
-            return NotFound($"El anfitrion con id {publicacione.AnfitrionId} no existe.");
+            return NotFound($"El anfitrion con id {dto.AnfitrionId} no existe.");
         }
 
-        if (!await _context.Categorias.AnyAsync(c => c.Id == publicacione.CategoriaId))
+        if (!await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId))
         {
-            return NotFound($"La categoria con id {publicacione.CategoriaId} no existe.");
+            return NotFound($"La categoria con id {dto.CategoriaId} no existe.");
         }
 
-        if (publicacione.Tipo != "hospedaje" && publicacione.Tipo != "experiencia")
+        var publicacione = new PublicacioneEntity
         {
-            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
-        }
-
-        if (publicacione.PrecioPorNoche < 0)
-        {
-            return BadRequest("El precio por noche no puede ser negativo.");
-        }
+            AnfitrionId = dto.AnfitrionId,
+            CategoriaId = dto.CategoriaId,
+            Titulo = dto.Titulo,
+            Descripcion = dto.Descripcion,
+            PrecioPorNoche = dto.PrecioPorNoche,
+            CapacidadMaxima = dto.CapacidadMaxima,
+            Habitaciones = dto.Habitaciones,
+            Camas = dto.Camas,
+            Banos = dto.Banos,
+            DireccionExacta = dto.DireccionExacta,
+            Latitud = dto.Latitud,
+            Longitud = dto.Longitud,
+            Estado = "activo",
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.Publicaciones.Add(publicacione);
         await _context.SaveChangesAsync();
