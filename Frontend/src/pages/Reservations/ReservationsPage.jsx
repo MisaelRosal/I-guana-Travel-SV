@@ -154,7 +154,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
 
           {metodoPago === 'paypal' && (
             <div className="rounded-lg bg-blue-50 p-3 text-center text-sm text-blue-800">
-              Serás redirigido a PayPal para completar el pago (simulación).
+              Serás redirigido a PayPal para completar el pago.
             </div>
           )}
 
