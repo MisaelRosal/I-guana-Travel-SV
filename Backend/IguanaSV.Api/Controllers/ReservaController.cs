@@ -214,9 +214,9 @@ public class ReservaController : ControllerBase
 
         reserva.Estado = "confirmada";
         reserva.MetodoPago = dto.MetodoPago;
-        reserva.FechaPago = DateTime.UtcNow;
+        reserva.FechaPago = DateTime.Now;
         reserva.IdTransaccion = $"TXN-{Guid.NewGuid():N}".Substring(0, 20);
-        reserva.UpdatedAt = DateTime.UtcNow;
+        reserva.UpdatedAt = DateTime.Now;
 
         try
         {
