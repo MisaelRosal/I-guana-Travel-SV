@@ -67,7 +67,7 @@ export default function AuthPage() {
               <label htmlFor="password" className="mb-1 block text-sm font-semibold text-verde-bosque">
                 Contraseña
               </label>
-              <div className="relative">
+<div className="relative">
                 <input
                   id="password"
                   type={verPassword ? 'text' : 'password'}
