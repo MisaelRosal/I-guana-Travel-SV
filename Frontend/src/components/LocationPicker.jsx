@@ -180,6 +180,19 @@ export default function LocationPicker({
     [onLocationChange, reverseGeocode, disabled]
   )
 
+  const autoGeocodeKey = `${latitud},${longitud}`
+  const [autoGeocodeIntento, setAutoGeocodeIntento] = useState(null)
+
+  useEffect(() => {
+    if (disabled) return
+    if (!latitud || !longitud) return
+    if (departamentoId && municipioId) return
+    const key = `${latitud},${longitud}`
+    if (autoGeocodeIntento === key) return
+    setAutoGeocodeIntento(key)
+    reverseGeocode(L.latLng(parseFloat(latitud), parseFloat(longitud)))
+  }, [latitud, longitud, departamentoId, municipioId, disabled, reverseGeocode, autoGeocodeIntento])
+
   return (
     <div className="overflow-hidden rounded-xl border border-neutral-200">
       <SearchBar onSearch={handleMarkerMove} disabled={disabled} />

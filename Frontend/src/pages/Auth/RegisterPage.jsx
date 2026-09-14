@@ -54,8 +54,9 @@ export default function RegisterPage() {
         password,
       })
       sessionStorage.setItem('iguana_usuario', JSON.stringify(usuario))
+      window.dispatchEvent(new Event('auth-change'))
       setToast({ tipo: 'exito', mensaje: '¡Cuenta creada con éxito!' })
-      setTimeout(() => navigate('/panel'), 1500)
+      setTimeout(() => navigate('/'), 1500)
     } catch (err) {
       const mensajeError = err.mensaje || err.message || 'Error al crear la cuenta. Intentalo de nuevo.'
       setError(mensajeError)

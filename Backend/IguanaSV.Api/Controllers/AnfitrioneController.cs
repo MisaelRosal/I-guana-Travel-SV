@@ -1,6 +1,6 @@
-using AnfitrioneEntity = IguanaSV.Api.Entities.Anfitrione;
+using IguanaSV.Api.DTOs;
+using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
-using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,19 +18,21 @@ public class AnfitrioneController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<AnfitrioneEntity>>> GetAnfitriones()
+    public async Task<ActionResult<IEnumerable<Anfitrione>>> GetAnfitriones()
     {
         return await _context.Anfitriones
             .Include(a => a.Municipio)
+                .ThenInclude(m => m.Departamento)
             .Include(a => a.Publicaciones)
             .ToListAsync();
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<AnfitrioneEntity>> GetAnfitrione(int id)
+    public async Task<ActionResult<Anfitrione>> GetAnfitrione(int id)
     {
         var anfitrione = await _context.Anfitriones
             .Include(a => a.Municipio)
+                .ThenInclude(m => m.Departamento)
             .Include(a => a.Publicaciones)
             .FirstOrDefaultAsync(a => a.Id == id);
 
@@ -43,26 +45,24 @@ public class AnfitrioneController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutAnfitrione(int id, CreateAnfitrioneDto dto)
+    public async Task<IActionResult> PutAnfitrione(int id, Anfitrione anfitrione)
     {
-        var anfitrione = await _context.Anfitriones.FindAsync(id);
+        if (id != anfitrione.Id)
+        {
+            return BadRequest();
+        }
 
-        if (anfitrione == null)
+        var exists = await _context.Anfitriones.AnyAsync(a => a.Id == id);
+
+        if (!exists)
         {
             return NotFound();
         }
 
-        if (!await _context.Municipios.AnyAsync(m => m.Id == dto.MunicipioId))
+        if (!await _context.Municipios.AnyAsync(m => m.Id == anfitrione.MunicipioId))
         {
-            return NotFound($"El municipio con id {dto.MunicipioId} no existe.");
+            return NotFound($"El municipio con id {anfitrione.MunicipioId} no existe.");
         }
-
-        anfitrione.MunicipioId = dto.MunicipioId;
-        anfitrione.Nombre = dto.Nombre;
-        anfitrione.Email = dto.Email;
-        anfitrione.Telefono = dto.Telefono;
-        anfitrione.Direccion = dto.Direccion;
-        anfitrione.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(anfitrione).State = EntityState.Modified;
 
@@ -78,26 +78,87 @@ public class AnfitrioneController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost]
-    public async Task<ActionResult<AnfitrioneEntity>> PostAnfitrione(CreateAnfitrioneDto dto)
+    [HttpPut("{id}/verificacion")]
+    public async Task<IActionResult> PutVerificacion(int id, [FromBody] bool verificado)
     {
-        if (!await _context.Municipios.AnyAsync(m => m.Id == dto.MunicipioId))
+        var anfitrione = await _context.Anfitriones.FindAsync(id);
+
+        if (anfitrione == null)
         {
-            return NotFound($"El municipio con id {dto.MunicipioId} no existe.");
+            return NotFound();
         }
 
-        var anfitrione = new AnfitrioneEntity
+        anfitrione.Verificado = verificado;
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpPut("{id}/perfil")]
+    public async Task<IActionResult> PutPerfil(int id, ActualizarPerfilAnfitrionRequest request)
+    {
+        var anfitrione = await _context.Anfitriones.FindAsync(id);
+
+        if (anfitrione == null)
         {
-            MunicipioId = dto.MunicipioId,
-            Nombre = dto.Nombre,
-            Email = dto.Email,
-            Telefono = dto.Telefono,
-            Direccion = dto.Direccion,
+            return NotFound(new { mensaje = "El anfitrión no existe." });
+        }
+
+        anfitrione.Descripcion = request.Descripcion?.Trim();
+        await _context.SaveChangesAsync();
+
+        return Ok(anfitrione);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<Anfitrione>> PostAnfitrione(Anfitrione anfitrione)
+    {
+        if (!await _context.Municipios.AnyAsync(m => m.Id == anfitrione.MunicipioId))
+        {
+            return NotFound($"El municipio con id {anfitrione.MunicipioId} no existe.");
+        }
+
+        _context.Anfitriones.Add(anfitrione);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetAnfitrione), new { id = anfitrione.Id }, anfitrione);
+    }
+
+    [HttpPost("registrar")]
+    public async Task<ActionResult<Anfitrione>> RegistrarAnfitrion(RegistroAnfitrionRequest request)
+    {
+        var usuario = await _context.Usuarios.FindAsync(request.UsuarioId);
+        if (usuario == null)
+        {
+            return NotFound(new { mensaje = "El usuario no existe." });
+        }
+
+        if (!await _context.Municipios.AnyAsync(m => m.Id == request.MunicipioId))
+        {
+            return NotFound(new { mensaje = "El municipio no existe." });
+        }
+
+        var yaEsAnfitrion = await _context.Anfitriones.AnyAsync(a => a.UsuarioId == request.UsuarioId);
+        if (yaEsAnfitrion)
+        {
+            return Conflict(new { mensaje = "Este usuario ya es anfitrión." });
+        }
+
+        var anfitrione = new Anfitrione
+        {
+            UsuarioId = request.UsuarioId,
+            MunicipioId = request.MunicipioId,
+            Nombre = request.Nombre.Trim(),
+            Email = request.Email.Trim().ToLowerInvariant(),
+            Telefono = request.Telefono?.Trim(),
+            Direccion = request.Direccion?.Trim(),
+            Descripcion = request.Descripcion?.Trim(),
+            FotoPerfil = request.FotoPerfil,
             Verificado = false,
-            CreatedAt = DateTime.UtcNow
         };
 
         _context.Anfitriones.Add(anfitrione);
+        usuario.Rol = "anfitrion";
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetAnfitrione), new { id = anfitrione.Id }, anfitrione);

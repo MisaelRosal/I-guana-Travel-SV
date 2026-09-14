@@ -1,11 +1,16 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Logo from '../components/Logo.jsx'
 
-const explorar = [
-  { to: '/', label: 'Inicio' },
-  { to: '/reservas', label: 'Mis reservas' },
-  { to: '/panel', label: 'Panel operador' },
-]
+const SESION_KEY = 'iguana_usuario'
+
+function leerSesion() {
+  try {
+    return JSON.parse(sessionStorage.getItem(SESION_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
 
 const redes = [
   {
@@ -26,6 +31,31 @@ const redes = [
 ]
 
 export default function Footer() {
+  const [usuario, setUsuario] = useState(leerSesion)
+
+  useEffect(() => {
+    const actualizar = () => setUsuario(leerSesion())
+    window.addEventListener('auth-change', actualizar)
+    window.addEventListener('storage', actualizar)
+    return () => {
+      window.removeEventListener('auth-change', actualizar)
+      window.removeEventListener('storage', actualizar)
+    }
+  }, [])
+
+  const rol = usuario?.rol ?? ''
+  const explorar = [{ to: '/', label: 'Inicio' }]
+  if (rol !== 'anfitrion') {
+    explorar.push({ to: '/reservas', label: 'Mis reservas' })
+  }
+  if (rol === 'anfitrion' || rol === 'administrador') {
+    explorar.push({ to: '/panel', label: 'Panel operador' })
+  }
+  if (rol === 'administrador') {
+    explorar.push({ to: '/admin', label: 'Panel admin' })
+  }
+  explorar.push({ to: '/hacerse-anfitrion', label: 'Conviértete en anfitrión' })
+
   return (
     <footer className="bg-cafe-oscuro text-crema/75 mt-16">
       <div className="mx-auto max-w-7xl px-4 py-12 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 text-sm">
@@ -57,9 +87,12 @@ export default function Footer() {
           <h3 className="text-white font-semibold mb-3">Anfitriones</h3>
           <p className="leading-relaxed">
             ¿Quieres ofrecer tu experiencia?{' '}
-            <span className="cursor-pointer font-medium text-verde-hoja transition-colors hover:text-white">
+            <Link
+              to="/hacerse-anfitrion"
+              className="cursor-pointer font-medium text-verde-hoja transition-colors hover:text-white"
+            >
               Conviértete en anfitrión
-            </span>
+            </Link>
           </p>
         </div>
 

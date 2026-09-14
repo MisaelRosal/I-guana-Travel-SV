@@ -77,7 +77,7 @@ export default function CatalogPage() {
             </div>
             <button
               type="submit"
-              className="rounded-lg bg-terracota px-6 py-3 font-semibold text-white hover:bg-verde-hoja transition-colors"
+              className="rounded-lg bg-terracota px-6 py-3 font-semibold text-white hover:bg-verde-bosque transition-colors"
             >
               Buscar
             </button>
@@ -118,7 +118,7 @@ export default function CatalogPage() {
           </select>
           <button
             onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax('') }}
-            className="rounded-lg bg-azul px-4 py-2 text-sm font-semibold text-white hover:bg-azul-cielo transition-colors"
+            className="rounded-lg bg-terracota px-4 py-2 text-sm font-semibold text-white hover:bg-verde-bosque transition-colors"
           >
             Limpiar filtros
           </button>

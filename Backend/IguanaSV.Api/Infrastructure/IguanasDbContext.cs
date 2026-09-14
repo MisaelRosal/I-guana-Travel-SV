@@ -83,9 +83,11 @@ public class IguanasDbContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.Direccion).HasColumnName("direccion");
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
             entity.Property(e => e.Email)
                 .HasMaxLength(150)
                 .HasColumnName("email");
+            entity.Property(e => e.FotoPerfil).HasColumnName("foto_perfil");
             entity.Property(e => e.MunicipioId).HasColumnName("municipio_id");
             entity.Property(e => e.Nombre)
                 .HasMaxLength(100)
@@ -93,6 +95,7 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Telefono)
                 .HasMaxLength(20)
                 .HasColumnName("telefono");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
@@ -105,6 +108,11 @@ public class IguanasDbContext : DbContext
                 .HasForeignKey(d => d.MunicipioId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("anfitriones_municipio_id_fkey");
+
+            entity.HasOne(d => d.Usuario).WithMany()
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("anfitriones_usuario_id_fkey");
         });
 
         modelBuilder.Entity<Categoria>(entity =>
@@ -124,6 +132,10 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Nombre)
                 .HasMaxLength(50)
                 .HasColumnName("nombre");
+            entity.Property(e => e.Tipo)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'experiencia'::character varying")
+                .HasColumnName("tipo");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
@@ -345,6 +357,8 @@ public class IguanasDbContext : DbContext
 
             entity.HasIndex(e => e.Estado, "idx_publicaciones_estado");
 
+            entity.HasIndex(e => e.Tipo, "idx_publicaciones_tipo");
+
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.AnfitrionId).HasColumnName("anfitrion_id");
             entity.Property(e => e.Banos)
@@ -374,12 +388,17 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Longitud)
                 .HasPrecision(11, 8)
                 .HasColumnName("longitud");
+            entity.Property(e => e.MunicipioId).HasColumnName("municipio_id");
             entity.Property(e => e.PrecioPorNoche)
                 .HasPrecision(10, 2)
                 .HasColumnName("precio_por_noche");
             entity.Property(e => e.Titulo)
                 .HasMaxLength(200)
                 .HasColumnName("titulo");
+            entity.Property(e => e.Tipo)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'experiencia'::character varying")
+                .HasColumnName("tipo");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
@@ -393,6 +412,10 @@ public class IguanasDbContext : DbContext
                 .HasForeignKey(d => d.CategoriaId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("publicaciones_categoria_id_fkey");
+
+            entity.HasOne(d => d.Municipio).WithMany()
+                .HasForeignKey(d => d.MunicipioId)
+                .HasConstraintName("publicaciones_municipio_id_fkey");
         });
 
         modelBuilder.Entity<Reserva>(entity =>
@@ -489,6 +512,10 @@ public class IguanasDbContext : DbContext
                 .HasMaxLength(150)
                 .HasColumnName("email");
             entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
+            entity.Property(e => e.Rol)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'usuario'::character varying")
+                .HasColumnName("rol");
             entity.Property(e => e.Telefono)
                 .HasMaxLength(20)
                 .HasColumnName("telefono");

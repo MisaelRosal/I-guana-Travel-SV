@@ -79,6 +79,7 @@ public class AuthController : ControllerBase
             Apellido = u.Apellido,
             Telefono = u.Telefono,
             Email = u.Email,
+            Rol = u.Rol,
             CreatedAt = u.CreatedAt,
         };
     }
