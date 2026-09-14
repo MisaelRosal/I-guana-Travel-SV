@@ -179,6 +179,17 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState(null)
 
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const fechaInicio = new Date(reserva.fechaInicio + 'T00:00:00')
+  const yaEmpezada = fechaInicio <= hoy
+  const esCompletada = reserva.estado === 'completada'
+  const noSePuedeCancelar = yaEmpezada || esCompletada
+
+  const motivo = yaEmpezada
+    ? 'No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy.'
+    : 'No se puede cancelar una reserva que ya fue completada.'
+
   const handleCancelar = async () => {
     setProcesando(true)
     setError(null)
@@ -208,13 +219,19 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
         </div>
 
         <div className="mb-5 rounded-lg bg-red-50 p-4">
-          <p className="text-sm text-cafe">¿Estás seguro que deseas cancelar esta reserva?</p>
-          <p className="mt-2 text-sm font-semibold text-verde-bosque">
-            Reserva #{reserva.id} — {formatoPrecio.format(reserva.precioTotal)}
-          </p>
-          <p className="text-xs text-cafe mt-1">
-            Check-in: {formatoFecha.format(new Date(reserva.fechaInicio))}
-          </p>
+          {noSePuedeCancelar ? (
+            <p className="text-sm text-red-700 font-semibold">{motivo}</p>
+          ) : (
+            <>
+              <p className="text-sm text-cafe">¿Estás seguro que deseas cancelar esta reserva?</p>
+              <p className="mt-2 text-sm font-semibold text-verde-bosque">
+                Reserva #{reserva.id} — {formatoPrecio.format(reserva.precioTotal)}
+              </p>
+              <p className="text-xs text-cafe mt-1">
+                Check-in: {formatoFecha.format(new Date(reserva.fechaInicio))}
+              </p>
+            </>
+          )}
         </div>
 
         {error && (
@@ -222,21 +239,23 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
         )}
 
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={handleCancelar}
-            disabled={procesando}
-            className="flex-1 cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            {procesando ? 'Cancelando...' : 'Sí, cancelar reserva'}
-          </button>
+          {!noSePuedeCancelar && (
+            <button
+              type="button"
+              onClick={handleCancelar}
+              disabled={procesando}
+              className="flex-1 cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {procesando ? 'Cancelando...' : 'Sí, cancelar reserva'}
+            </button>
+          )}
           <button
             type="button"
             onClick={onCerrar}
             disabled={procesando}
             className="flex-1 cursor-pointer rounded-lg border border-neutral-300 px-4 py-3 font-semibold text-verde-bosque hover:bg-neutral-50 transition-colors disabled:opacity-50"
           >
-            No, mantener
+            {noSePuedeCancelar ? 'Cerrar' : 'No, mantener'}
           </button>
         </div>
       </div>
