@@ -1,5 +1,6 @@
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -194,6 +195,48 @@ public class ReservaController : ControllerBase
         }
 
         return Ok(new { mensaje = "Reserva confirmada exitosamente.", reserva });
+    }
+
+    [HttpPut("{id}/pagar")]
+    public async Task<IActionResult> PagarReserva(int id, [FromBody] PagarReservaDto dto)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (reserva.Estado != "pendiente")
+        {
+            return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden pagar reservas pendientes." });
+        }
+
+        reserva.Estado = "confirmada";
+        reserva.MetodoPago = dto.MetodoPago;
+        reserva.FechaPago = DateTime.UtcNow;
+        reserva.IdTransaccion = $"TXN-{Guid.NewGuid():N}".Substring(0, 20);
+        reserva.UpdatedAt = DateTime.UtcNow;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict();
+        }
+
+        return Ok(new
+        {
+            mensaje = "Pago simulado exitosamente. Reserva confirmada.",
+            reserva.Id,
+            reserva.Estado,
+            reserva.MetodoPago,
+            reserva.FechaPago,
+            reserva.IdTransaccion,
+            reserva.PrecioTotal,
+        });
     }
 
     [HttpDelete("{id}")]

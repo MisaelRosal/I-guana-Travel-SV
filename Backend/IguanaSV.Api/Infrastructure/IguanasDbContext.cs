@@ -455,6 +455,15 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.TelefonoHuesped)
                 .HasMaxLength(20)
                 .HasColumnName("telefono_huesped");
+            entity.Property(e => e.MetodoPago)
+                .HasMaxLength(30)
+                .HasColumnName("metodo_pago");
+            entity.Property(e => e.FechaPago)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("fecha_pago");
+            entity.Property(e => e.IdTransaccion)
+                .HasMaxLength(100)
+                .HasColumnName("id_transaccion");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")

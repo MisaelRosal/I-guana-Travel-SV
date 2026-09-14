@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { obtenerReservas, confirmarReserva } from '../../services/reservas.js'
+import { obtenerReservas, confirmarReserva, pagarReserva } from '../../services/reservas.js'
 import Toast from '../../components/Toast.jsx'
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
@@ -22,7 +22,160 @@ const ESTILOS_ESTADO = {
   cancelada: 'bg-red-100 text-red-800',
 }
 
-function TarjetaReserva({ reserva, onConfirmar }) {
+const METODOS_PAGO = [
+  { id: 'tarjeta_credito', label: 'Tarjeta de crédito' },
+  { id: 'tarjeta_debito', label: 'Tarjeta de débito' },
+  { id: 'paypal', label: 'PayPal' },
+]
+
+function ModalPago({ reserva, onCerrar, onExito }) {
+  const [metodoPago, setMetodoPago] = useState('')
+  const [numeroTarjeta, setNumeroTarjeta] = useState('')
+  const [nombreTitular, setNombreTitular] = useState('')
+  const [vencimiento, setVencimiento] = useState('')
+  const [procesando, setProcesando] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!metodoPago) {
+      setError('Seleccioná un método de pago')
+      return
+    }
+    if (metodoPago !== 'paypal' && !numeroTarjeta.trim()) {
+      setError('Ingresá el número de tarjeta')
+      return
+    }
+    if (metodoPago !== 'paypal' && !nombreTitular.trim()) {
+      setError('Ingresá el nombre del titular')
+      return
+    }
+
+    setProcesando(true)
+    setError(null)
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const resultado = await pagarReserva(reserva.id, metodoPago)
+      onExito(resultado)
+    } catch (err) {
+      setError(err.mensaje || err.message || 'Error al procesar el pago')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-verde-bosque">Simular pago</h2>
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="text-2xl leading-none text-cafe hover:text-terracota transition-colors"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-lg bg-neutral-50 p-4">
+          <p className="text-sm text-cafe">Reserva #{reserva.id}</p>
+          <p className="text-lg font-bold text-terracota">
+            {formatoPrecio.format(reserva.precioTotal)}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+              Método de pago
+            </label>
+            <div className="flex gap-2">
+              {METODOS_PAGO.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMetodoPago(m.id)}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    metodoPago === m.id
+                      ? 'border-terracota bg-terracota text-white'
+                      : 'border-neutral-300 text-verde-bosque hover:bg-neutral-50'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {metodoPago && metodoPago !== 'paypal' && (
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                  Número de tarjeta
+                </label>
+                <input
+                  type="text"
+                  value={numeroTarjeta}
+                  onChange={(e) => setNumeroTarjeta(e.target.value)}
+                  placeholder="**** **** **** ****"
+                  maxLength={19}
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                  Nombre del titular
+                </label>
+                <input
+                  type="text"
+                  value={nombreTitular}
+                  onChange={(e) => setNombreTitular(e.target.value)}
+                  placeholder="Como aparece en la tarjeta"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                  Vencimiento
+                </label>
+                <input
+                  type="text"
+                  value={vencimiento}
+                  onChange={(e) => setVencimiento(e.target.value)}
+                  placeholder="MM/AA"
+                  maxLength={5}
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
+                />
+              </div>
+            </>
+          )}
+
+          {metodoPago === 'paypal' && (
+            <div className="rounded-lg bg-blue-50 p-3 text-center text-sm text-blue-800">
+              Serás redirigido a PayPal para completar el pago (simulación).
+            </div>
+          )}
+
+          {error && (
+            <p className="rounded-lg bg-red-50 p-2 text-center text-sm text-red-700">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={procesando}
+            className="w-full cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+          >
+            {procesando ? 'Procesando pago...' : 'Confirmar pago'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function TarjetaReserva({ reserva, onPagar }) {
   const [confirmando, setConfirmando] = useState(false)
   const publicacion = reserva.publicacion
   const titulo = publicacion?.titulo ?? `Publicación #${reserva.publicacionId}`
@@ -30,7 +183,7 @@ function TarjetaReserva({ reserva, onConfirmar }) {
   const handlePagar = async () => {
     setConfirmando(true)
     try {
-      await onConfirmar(reserva.id)
+      await onPagar(reserva.id)
     } finally {
       setConfirmando(false)
     }
@@ -87,7 +240,7 @@ function TarjetaReserva({ reserva, onConfirmar }) {
             disabled={confirmando}
             className="flex-1 cursor-pointer rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
           >
-            {confirmando ? 'Procesando...' : 'Pagar'}
+            {confirmando ? 'Abriendo...' : 'Pagar'}
           </button>
           <Link
             to={`/experiencias/${reserva.publicacionId}`}
@@ -117,6 +270,7 @@ export default function ReservationsPage() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
+  const [reservaPagar, setReservaPagar] = useState(null)
 
   const usuario = JSON.parse(sessionStorage.getItem('iguana_usuario') || 'null')
 
@@ -139,16 +293,21 @@ export default function ReservationsPage() {
     return () => { activo = false }
   }, [])
 
-  const handleConfirmar = async (id) => {
-    try {
-      const resultado = await confirmarReserva(id)
-      setReservas((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, estado: 'confirmada' } : r))
+  const handleAbrirPago = (id) => {
+    const reserva = reservas.find((r) => r.id === id)
+    if (reserva) setReservaPagar(reserva)
+  }
+
+  const handleExitoPago = (resultado) => {
+    setReservas((prev) =>
+      prev.map((r) =>
+        r.id === resultado.id
+          ? { ...r, estado: 'confirmada' }
+          : r
       )
-      setToast({ tipo: 'exito', mensaje: resultado?.mensaje ?? 'Reserva confirmada exitosamente.' })
-    } catch (e) {
-      setToast({ tipo: 'error', mensaje: e.mensaje || e.message || 'No se pudo confirmar la reserva.' })
-    }
+    )
+    setReservaPagar(null)
+    setToast({ tipo: 'exito', mensaje: resultado?.mensaje ?? 'Pago realizado exitosamente.' })
   }
 
   if (!usuario) {
@@ -187,9 +346,17 @@ export default function ReservationsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {reservas.map((r) => (
-          <TarjetaReserva key={r.id} reserva={r} onConfirmar={handleConfirmar} />
+          <TarjetaReserva key={r.id} reserva={r} onPagar={handleAbrirPago} />
         ))}
       </div>
+
+      {reservaPagar && (
+        <ModalPago
+          reserva={reservaPagar}
+          onCerrar={() => setReservaPagar(null)}
+          onExito={handleExitoPago}
+        />
+      )}
 
       <Toast
         mensaje={toast?.mensaje || ''}

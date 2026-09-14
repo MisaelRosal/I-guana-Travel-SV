@@ -25,6 +25,12 @@ public partial class Reserva
 
     public string? Estado { get; set; }
 
+    public string? MetodoPago { get; set; }
+
+    public DateTime? FechaPago { get; set; }
+
+    public string? IdTransaccion { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }

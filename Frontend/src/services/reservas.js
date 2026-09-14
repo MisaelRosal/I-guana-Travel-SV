@@ -76,3 +76,16 @@ export async function crearReserva({ publicacionId, nombreHuesped, emailHuesped,
     estado: 'pendiente',
   })
 }
+
+export async function obtenerReservas() {
+  const todas = await api.get('/Reserva')
+  return Array.isArray(todas) ? todas : []
+}
+
+export async function confirmarReserva(id) {
+  return await api.put(`/Reserva/${id}/confirmar`, {})
+}
+
+export async function pagarReserva(id, metodoPago) {
+  return await api.put(`/Reserva/${id}/pagar`, { metodoPago })
+}
