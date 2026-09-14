@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using MunicipioEntity = IguanaSV.Api.Entities.Municipio;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class MunicipioController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Municipio>>> GetMunicipios()
+    public async Task<ActionResult<IEnumerable<MunicipioEntity>>> GetMunicipios()
     {
         return await _context.Municipios
             .Include(m => m.Departamento)
@@ -26,7 +27,7 @@ public class MunicipioController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Municipio>> GetMunicipio(int id)
+    public async Task<ActionResult<MunicipioEntity>> GetMunicipio(int id)
     {
         var municipio = await _context.Municipios
             .Include(m => m.Departamento)
@@ -42,24 +43,23 @@ public class MunicipioController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutMunicipio(int id, Municipio municipio)
+    public async Task<IActionResult> PutMunicipio(int id, CreateMunicipioDto dto)
     {
-        if (id != municipio.Id)
-        {
-            return BadRequest();
-        }
+        var municipio = await _context.Municipios.FindAsync(id);
 
-        var exists = await _context.Municipios.AnyAsync(m => m.Id == id);
-
-        if (!exists)
+        if (municipio == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Departamentos.AnyAsync(d => d.Id == municipio.DepartamentoId))
+        if (!await _context.Departamentos.AnyAsync(d => d.Id == dto.DepartamentoId))
         {
-            return NotFound($"El departamento con id {municipio.DepartamentoId} no existe.");
+            return NotFound($"El departamento con id {dto.DepartamentoId} no existe.");
         }
+
+        municipio.DepartamentoId = dto.DepartamentoId;
+        municipio.Nombre = dto.Nombre;
+        municipio.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(municipio).State = EntityState.Modified;
 
@@ -76,12 +76,19 @@ public class MunicipioController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Municipio>> PostMunicipio(Municipio municipio)
+    public async Task<ActionResult<MunicipioEntity>> PostMunicipio(CreateMunicipioDto dto)
     {
-        if (!await _context.Departamentos.AnyAsync(d => d.Id == municipio.DepartamentoId))
+        if (!await _context.Departamentos.AnyAsync(d => d.Id == dto.DepartamentoId))
         {
-            return NotFound($"El departamento con id {municipio.DepartamentoId} no existe.");
+            return NotFound($"El departamento con id {dto.DepartamentoId} no existe.");
         }
+
+        var municipio = new MunicipioEntity
+        {
+            DepartamentoId = dto.DepartamentoId,
+            Nombre = dto.Nombre,
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.Municipios.Add(municipio);
         await _context.SaveChangesAsync();

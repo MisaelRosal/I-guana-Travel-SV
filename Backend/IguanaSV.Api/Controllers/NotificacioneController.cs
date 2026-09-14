@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using NotificacioneEntity = IguanaSV.Api.Entities.Notificacione;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Notificacione>>> GetNotificaciones()
+    public async Task<ActionResult<IEnumerable<NotificacioneEntity>>> GetNotificaciones()
     {
         return await _context.Notificaciones
             .Include(n => n.Reserva)
@@ -25,7 +26,7 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Notificacione>> GetNotificacione(int id)
+    public async Task<ActionResult<NotificacioneEntity>> GetNotificacione(int id)
     {
         var notificacione = await _context.Notificaciones
             .Include(n => n.Reserva)
@@ -40,24 +41,25 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutNotificacione(int id, Notificacione notificacione)
+    public async Task<IActionResult> PutNotificacione(int id, CreateNotificacioneDto dto)
     {
-        if (id != notificacione.Id)
-        {
-            return BadRequest();
-        }
+        var notificacione = await _context.Notificaciones.FindAsync(id);
 
-        var exists = await _context.Notificaciones.AnyAsync(n => n.Id == id);
-
-        if (!exists)
+        if (notificacione == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Reservas.AnyAsync(r => r.Id == notificacione.ReservaId))
+        if (!await _context.Reservas.AnyAsync(r => r.Id == dto.ReservaId))
         {
-            return NotFound($"La reserva con id {notificacione.ReservaId} no existe.");
+            return NotFound($"La reserva con id {dto.ReservaId} no existe.");
         }
+
+        notificacione.ReservaId = dto.ReservaId;
+        notificacione.Tipo = dto.Tipo;
+        notificacione.Mensaje = dto.Mensaje;
+        notificacione.DestinatarioEmail = dto.DestinatarioEmail;
+        notificacione.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(notificacione).State = EntityState.Modified;
 
@@ -74,12 +76,22 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Notificacione>> PostNotificacione(Notificacione notificacione)
+    public async Task<ActionResult<NotificacioneEntity>> PostNotificacione(CreateNotificacioneDto dto)
     {
-        if (!await _context.Reservas.AnyAsync(r => r.Id == notificacione.ReservaId))
+        if (!await _context.Reservas.AnyAsync(r => r.Id == dto.ReservaId))
         {
-            return NotFound($"La reserva con id {notificacione.ReservaId} no existe.");
+            return NotFound($"La reserva con id {dto.ReservaId} no existe.");
         }
+
+        var notificacione = new NotificacioneEntity
+        {
+            ReservaId = dto.ReservaId,
+            Tipo = dto.Tipo,
+            Mensaje = dto.Mensaje,
+            Leida = false,
+            DestinatarioEmail = dto.DestinatarioEmail,
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.Notificaciones.Add(notificacione);
         await _context.SaveChangesAsync();

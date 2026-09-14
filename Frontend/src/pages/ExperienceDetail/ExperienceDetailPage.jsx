@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
 import { getExperienciaById } from '../../services/experiencias'
 import { getDisponibilidad } from '../../services/reservas'
 import FormularioReserva from '../../components/FormularioReserva'
+import Toast from '../../components/Toast.jsx'
 
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -584,11 +585,13 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 
 export default function ExperienceDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [experiencia, setExperiencia] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [pasoReserva, setPasoReserva] = useState('inicio')
   const [datosReserva, setDatosReserva] = useState(null)
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     let activo = true
@@ -609,6 +612,12 @@ export default function ExperienceDetailPage() {
     setDatosReserva(datos)
     setPasoReserva('formulario')
   }, [])
+
+  const manejarReservaCreada = () => {
+    setPasoReserva('inicio')
+    setToast({ tipo: 'exito', mensaje: 'Reserva creada exitosamente. Ve a "Mis reservas" para pagar.' })
+    setTimeout(() => navigate('/reservas'), 2000)
+  }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
@@ -690,9 +699,15 @@ export default function ExperienceDetailPage() {
           fechaFin={datosReserva.fechaFin}
           numPersonas={datosReserva.numPersonas}
           onCancelar={() => setPasoReserva('calendario')}
-          onReservada={() => setPasoReserva('inicio')}
+          onReservada={manejarReservaCreada}
         />
       )}
+
+      <Toast
+        mensaje={toast?.mensaje || ''}
+        tipo={toast?.tipo || 'exito'}
+        onCerrar={() => setToast(null)}
+      />
     </main>
   )
 }

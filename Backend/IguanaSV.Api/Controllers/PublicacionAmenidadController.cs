@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using PublicacionAmenidadEntity = IguanaSV.Api.Entities.PublicacionAmenidad;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class PublicacionAmenidadController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PublicacionAmenidad>>> GetPublicacionAmenidads()
+    public async Task<ActionResult<IEnumerable<PublicacionAmenidadEntity>>> GetPublicacionAmenidads()
     {
         return await _context.PublicacionAmenidads
             .Include(pa => pa.Publicacion)
@@ -26,7 +27,7 @@ public class PublicacionAmenidadController : ControllerBase
     }
 
     [HttpGet("{publicacionId}/{amenidadId}")]
-    public async Task<ActionResult<PublicacionAmenidad>> GetPublicacionAmenidad(int publicacionId, int amenidadId)
+    public async Task<ActionResult<PublicacionAmenidadEntity>> GetPublicacionAmenidad(int publicacionId, int amenidadId)
     {
         var publicacionAmenidad = await _context.PublicacionAmenidads
             .Include(pa => pa.Publicacion)
@@ -42,13 +43,8 @@ public class PublicacionAmenidadController : ControllerBase
     }
 
     [HttpPut("{publicacionId}/{amenidadId}")]
-    public async Task<IActionResult> PutPublicacionAmenidad(int publicacionId, int amenidadId, PublicacionAmenidad publicacionAmenidad)
+    public async Task<IActionResult> PutPublicacionAmenidad(int publicacionId, int amenidadId, CreatePublicacionAmenidadDto dto)
     {
-        if (publicacionId != publicacionAmenidad.PublicacionId || amenidadId != publicacionAmenidad.AmenidadId)
-        {
-            return BadRequest();
-        }
-
         var exists = await _context.PublicacionAmenidads
             .AnyAsync(pa => pa.PublicacionId == publicacionId && pa.AmenidadId == amenidadId);
 
@@ -57,42 +53,43 @@ public class PublicacionAmenidadController : ControllerBase
             return NotFound();
         }
 
-        _context.Entry(publicacionAmenidad).State = EntityState.Modified;
-
-        try
+        if (publicacionId != dto.PublicacionId || amenidadId != dto.AmenidadId)
         {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict();
+            return BadRequest("Los IDs del body no coinciden con los de la ruta.");
         }
 
         return NoContent();
     }
 
     [HttpPost]
-    public async Task<ActionResult<PublicacionAmenidad>> PostPublicacionAmenidad(PublicacionAmenidad publicacionAmenidad)
+    public async Task<ActionResult<PublicacionAmenidadEntity>> PostPublicacionAmenidad(CreatePublicacionAmenidadDto dto)
     {
-        var publicacionExists = await _context.Publicaciones.AnyAsync(p => p.Id == publicacionAmenidad.PublicacionId);
+        var publicacionExists = await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId);
         if (!publicacionExists)
         {
-            return NotFound($"La publicacion con id {publicacionAmenidad.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        var amenidadExists = await _context.Amenidades.AnyAsync(a => a.Id == publicacionAmenidad.AmenidadId);
+        var amenidadExists = await _context.Amenidades.AnyAsync(a => a.Id == dto.AmenidadId);
         if (!amenidadExists)
         {
-            return NotFound($"La amenidad con id {publicacionAmenidad.AmenidadId} no existe.");
+            return NotFound($"La amenidad con id {dto.AmenidadId} no existe.");
         }
 
         var alreadyExists = await _context.PublicacionAmenidads
-            .AnyAsync(pa => pa.PublicacionId == publicacionAmenidad.PublicacionId && pa.AmenidadId == publicacionAmenidad.AmenidadId);
+            .AnyAsync(pa => pa.PublicacionId == dto.PublicacionId && pa.AmenidadId == dto.AmenidadId);
 
         if (alreadyExists)
         {
             return Conflict("Esa relacion publicacion-amenidad ya existe.");
         }
+
+        var publicacionAmenidad = new PublicacionAmenidadEntity
+        {
+            PublicacionId = dto.PublicacionId,
+            AmenidadId = dto.AmenidadId,
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.PublicacionAmenidads.Add(publicacionAmenidad);
         await _context.SaveChangesAsync();

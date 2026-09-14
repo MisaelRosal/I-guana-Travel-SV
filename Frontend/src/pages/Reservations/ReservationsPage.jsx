@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { actualizarReserva, eliminarReserva, getMisReservas } from '../../services/reservas.js'
+import { actualizarReserva, eliminarReserva, getMisReservas, pagarReserva, cancelarReserva } from '../../services/reservas.js'
 import Toast from '../../components/Toast.jsx'
 
 const etiquetasEstado = {
   pendiente: 'Pendiente',
   confirmada: 'Confirmada',
   cancelada: 'Cancelada',
+  completada: 'Completada',
 }
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
@@ -14,6 +15,19 @@ const formatoPrecio = new Intl.NumberFormat('es-SV', {
   currency: 'USD',
   maximumFractionDigits: 0,
 })
+
+const ESTILOS_ESTADO = {
+  pendiente: 'bg-amber/10 text-amber',
+  confirmada: 'bg-verde-hoja/15 text-verde-bosque',
+  cancelada: 'bg-red-50 text-red-600',
+  completada: 'bg-neutral-100 text-neutral-600',
+}
+
+const METODOS_PAGO = [
+  { id: 'tarjeta_credito', label: 'Tarjeta de crédito' },
+  { id: 'tarjeta_debito', label: 'Tarjeta de débito' },
+  { id: 'paypal', label: 'PayPal' },
+]
 
 function formatearFecha(iso) {
   if (!iso) return ''
@@ -31,17 +45,11 @@ function fechaBloqueada(iso) {
   return diasRestantes <= 1
 }
 
-function TarjetaReserva({ reserva, onEditar, onEliminar }) {
+function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) {
   const multinoche = reserva.fechaFin && reserva.fechaFin !== reserva.fechaInicio
   const rango = multinoche
     ? `${formatearFecha(reserva.fechaInicio)} → ${formatearFecha(reserva.fechaFin)}`
     : formatearFecha(reserva.fechaInicio)
-
-  const coloresEstado = {
-    pendiente: 'bg-amber/10 text-amber',
-    confirmada: 'bg-verde-hoja/15 text-verde-bosque',
-    cancelada: 'bg-red-50 text-red-600',
-  }
 
   const cancelada = reserva.estado === 'cancelada'
   const bloqueada = fechaBloqueada(reserva.fechaInicio)
@@ -63,7 +71,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar }) {
             <h3 className="text-lg font-bold text-verde-bosque">{reserva.experienciaTitulo}</h3>
           </div>
           <span
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${coloresEstado[reserva.estado] || 'bg-neutral-100 text-neutral-600'}`}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${ESTILOS_ESTADO[reserva.estado] || 'bg-neutral-100 text-neutral-600'}`}
           >
             {etiquetasEstado[reserva.estado] || reserva.estado}
           </span>
@@ -110,7 +118,25 @@ function TarjetaReserva({ reserva, onEditar, onEliminar }) {
               </p>
             </div>
           ) : (
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {reserva.estado === 'pendiente' && onPagar && (
+                <button
+                  type="button"
+                  onClick={() => onPagar(reserva.id)}
+                  className="cursor-pointer rounded-lg bg-terracota px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
+                >
+                  Pagar
+                </button>
+              )}
+              {reserva.estado === 'confirmada' && onCancelar && (
+                <button
+                  type="button"
+                  onClick={() => onCancelar(reserva)}
+                  className="cursor-pointer rounded-lg border border-red-300 px-4 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+                >
+                  Cancelar
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => onEditar(reserva)}
@@ -378,12 +404,251 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
   )
 }
 
+function ModalPago({ reserva, onCerrar, onExito }) {
+  const [metodoPago, setMetodoPago] = useState('')
+  const [numeroTarjeta, setNumeroTarjeta] = useState('')
+  const [nombreTitular, setNombreTitular] = useState('')
+  const [vencimiento, setVencimiento] = useState('')
+  const [procesando, setProcesando] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!metodoPago) {
+      setError('Seleccioná un método de pago')
+      return
+    }
+    if (metodoPago !== 'paypal' && !numeroTarjeta.trim()) {
+      setError('Ingresá el número de tarjeta')
+      return
+    }
+    if (metodoPago !== 'paypal' && !nombreTitular.trim()) {
+      setError('Ingresá el nombre del titular')
+      return
+    }
+
+    setProcesando(true)
+    setError(null)
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const resultado = await pagarReserva(reserva.id, metodoPago)
+      onExito(resultado)
+    } catch (err) {
+      setError(err.mensaje || err.message || 'Error al procesar el pago')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  return (
+    <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+      <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-verde-bosque">Simular pago</h2>
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="text-2xl leading-none text-cafe hover:text-terracota transition-colors"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-lg bg-neutral-50 p-4">
+          <p className="text-sm text-cafe">Reserva #{reserva.id}</p>
+          <p className="text-lg font-bold text-terracota">
+            {formatoPrecio.format(reserva.precioTotal)}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+              Método de pago
+            </label>
+            <div className="flex gap-2">
+              {METODOS_PAGO.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMetodoPago(m.id)}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    metodoPago === m.id
+                      ? 'border-terracota bg-terracota text-white'
+                      : 'border-neutral-300 text-verde-bosque hover:bg-neutral-50'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {metodoPago && metodoPago !== 'paypal' && (
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                  Número de tarjeta
+                </label>
+                <input
+                  type="text"
+                  value={numeroTarjeta}
+                  onChange={(e) => setNumeroTarjeta(e.target.value)}
+                  placeholder="**** **** **** ****"
+                  maxLength={19}
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                  Nombre del titular
+                </label>
+                <input
+                  type="text"
+                  value={nombreTitular}
+                  onChange={(e) => setNombreTitular(e.target.value)}
+                  placeholder="Como aparece en la tarjeta"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                  Vencimiento
+                </label>
+                <input
+                  type="text"
+                  value={vencimiento}
+                  onChange={(e) => setVencimiento(e.target.value)}
+                  placeholder="MM/AA"
+                  maxLength={5}
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
+                />
+              </div>
+            </>
+          )}
+
+          {metodoPago === 'paypal' && (
+            <div className="rounded-lg bg-blue-50 p-3 text-center text-sm text-blue-800">
+              Serás redirigido a PayPal para completar el pago.
+            </div>
+          )}
+
+          {error && (
+            <p className="rounded-lg bg-red-50 p-2 text-center text-sm text-red-700">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={procesando}
+            className="w-full cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+          >
+            {procesando ? 'Procesando pago...' : 'Confirmar pago'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ModalCancelar({ reserva, onCerrar, onExito }) {
+  const [procesando, setProcesando] = useState(false)
+  const [error, setError] = useState(null)
+
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const fechaInicio = new Date(reserva.fechaInicio + 'T00:00:00')
+  const yaEmpezada = fechaInicio <= hoy
+  const esCompletada = reserva.estado === 'completada'
+  const noSePuedeCancelar = yaEmpezada || esCompletada
+
+  const motivo = yaEmpezada
+    ? 'No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy.'
+    : 'No se puede cancelar una reserva que ya fue completada.'
+
+  const handleCancelar = async () => {
+    setProcesando(true)
+    setError(null)
+
+    try {
+      await cancelarReserva(reserva.id)
+      onExito(reserva.id)
+    } catch (err) {
+      setError(err.mensaje || err.message || 'Error al cancelar la reserva')
+      setProcesando(false)
+    }
+  }
+
+  return (
+    <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+      <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-terracota">Cancelar reserva</h2>
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={procesando}
+            className="text-2xl leading-none text-cafe hover:text-terracota transition-colors"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-lg bg-red-50 p-4">
+          {noSePuedeCancelar ? (
+            <p className="text-sm text-red-700 font-semibold">{motivo}</p>
+          ) : (
+            <>
+              <p className="text-sm text-cafe">¿Estás seguro que deseas cancelar esta reserva?</p>
+              <p className="mt-2 text-sm font-semibold text-verde-bosque">
+                Reserva #{reserva.id} — {formatoPrecio.format(reserva.precioTotal)}
+              </p>
+              <p className="text-xs text-cafe mt-1">
+                Check-in: {formatearFecha(reserva.fechaInicio)}
+              </p>
+            </>
+          )}
+        </div>
+
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 p-2 text-center text-sm text-red-700">{error}</p>
+        )}
+
+        <div className="flex gap-3">
+          {!noSePuedeCancelar && (
+            <button
+              type="button"
+              onClick={handleCancelar}
+              disabled={procesando}
+              className="flex-1 cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {procesando ? 'Cancelando...' : 'Sí, cancelar reserva'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={procesando}
+            className="flex-1 cursor-pointer rounded-lg border border-neutral-300 px-4 py-3 font-semibold text-verde-bosque hover:bg-neutral-50 transition-colors disabled:opacity-50"
+          >
+            {noSePuedeCancelar ? 'Cerrar' : 'No, mantener'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ReservationsPage() {
   const [reservas, setReservas] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
+  const [toast, setToast] = useState(null)
   const [sesion, setSesion] = useState(null)
   const [reservaEditar, setReservaEditar] = useState(null)
   const [reservaEliminar, setReservaEliminar] = useState(null)
+  const [reservaPagar, setReservaPagar] = useState(null)
+  const [reservaCancelar, setReservaCancelar] = useState(null)
 
   const cargarReservas = async () => {
     try {
@@ -421,6 +686,50 @@ export default function ReservationsPage() {
     cargarReservas()
   }
 
+  const handleAbrirPago = (id) => {
+    const reserva = reservas.find((r) => r.id === id)
+    if (reserva) setReservaPagar(reserva)
+  }
+
+  const handleExitoPago = (resultado) => {
+    setReservas((prev) =>
+      prev.map((r) =>
+        r.id === resultado.id
+          ? { ...r, estado: 'confirmada' }
+          : r
+      )
+    )
+    setReservaPagar(null)
+    setToast({ tipo: 'exito', mensaje: resultado?.mensaje ?? 'Pago realizado exitosamente.' })
+  }
+
+  const handleExitoCancelacion = (id) => {
+    setReservas((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? { ...r, estado: 'cancelada' }
+          : r
+      )
+    )
+    setReservaCancelar(null)
+    setToast({ tipo: 'exito', mensaje: 'Reserva cancelada exitosamente.' })
+  }
+
+  if (!cargando && !sesion) {
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        <h1 className="text-3xl font-bold text-verde-bosque">Mis reservas</h1>
+        <p className="mt-1 text-cafe">Debes iniciar sesión para ver tus reservas.</p>
+        <Link
+          to="/login"
+          className="mt-5 inline-block cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
+        >
+          Iniciar sesión
+        </Link>
+      </main>
+    )
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="text-3xl font-bold text-verde-bosque">Mis reservas</h1>
@@ -428,21 +737,8 @@ export default function ReservationsPage() {
 
       {cargando ? (
         <p className="mt-8 text-cafe">Cargando tus reservas…</p>
-      ) : !sesion ? (
-        <div className="mt-8 rounded-xl border border-dashed border-cafe-claro bg-white p-10 text-center">
-          <p className="text-lg font-semibold text-verde-bosque">
-            Inicia sesión para ver tus reservas
-          </p>
-          <p className="mt-1 text-sm text-cafe">
-            Necesitás una cuenta para consultar y gestionar tus reservas.
-          </p>
-          <Link
-            to="/login"
-            className="mt-5 inline-block cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
-          >
-            Iniciar sesión
-          </Link>
-        </div>
+      ) : error ? (
+        <p className="mt-8 text-terracota">Error: {error}</p>
       ) : reservas.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-cafe-claro bg-white p-10 text-center">
           <p className="text-lg font-semibold text-verde-bosque">Todavía no tenés reservas</p>
@@ -464,6 +760,8 @@ export default function ReservationsPage() {
               reserva={reserva}
               onEditar={setReservaEditar}
               onEliminar={setReservaEliminar}
+              onPagar={handleAbrirPago}
+              onCancelar={setReservaCancelar}
             />
           ))}
         </div>
@@ -483,6 +781,28 @@ export default function ReservationsPage() {
           onEliminado={confirmarEliminacion}
         />
       )}
+
+      {reservaPagar && (
+        <ModalPago
+          reserva={reservaPagar}
+          onCerrar={() => setReservaPagar(null)}
+          onExito={handleExitoPago}
+        />
+      )}
+
+      {reservaCancelar && (
+        <ModalCancelar
+          reserva={reservaCancelar}
+          onCerrar={() => setReservaCancelar(null)}
+          onExito={handleExitoCancelacion}
+        />
+      )}
+
+      <Toast
+        mensaje={toast?.mensaje || ''}
+        tipo={toast?.tipo || 'exito'}
+        onCerrar={() => setToast(null)}
+      />
     </main>
   )
 }

@@ -1,9 +1,15 @@
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationClientsideAdapters();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddControllers(options =>
 {

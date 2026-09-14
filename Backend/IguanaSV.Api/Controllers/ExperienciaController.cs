@@ -1,5 +1,6 @@
-using IguanaSV.Api.Entities;
+using ExperienciaEntity = IguanaSV.Api.Entities.Experiencia;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public class ExperienciaController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Experiencia>>> GetExperiencias()
+    public async Task<ActionResult<IEnumerable<ExperienciaEntity>>> GetExperiencias()
     {
         return await _context.Experiencias
             .Include(e => e.Publicacion)
@@ -25,7 +26,7 @@ public class ExperienciaController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Experiencia>> GetExperiencia(int id)
+    public async Task<ActionResult<ExperienciaEntity>> GetExperiencia(int id)
     {
         var experiencia = await _context.Experiencias
             .Include(e => e.Publicacion)
@@ -40,34 +41,26 @@ public class ExperienciaController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutExperiencia(int id, Experiencia experiencia)
+    public async Task<IActionResult> PutExperiencia(int id, CreateExperienciaDto dto)
     {
-        if (id != experiencia.Id)
-        {
-            return BadRequest();
-        }
+        var experiencia = await _context.Experiencias.FindAsync(id);
 
-        var exists = await _context.Experiencias.AnyAsync(e => e.Id == id);
-
-        if (!exists)
+        if (experiencia == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == experiencia.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {experiencia.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        if (experiencia.DuracionHoras.HasValue && experiencia.DuracionHoras <= 0)
-        {
-            return BadRequest("La duracion en horas debe ser mayor a 0.");
-        }
-
-        if (experiencia.PrecioAdicional.HasValue && experiencia.PrecioAdicional < 0)
-        {
-            return BadRequest("El precio adicional no puede ser negativo.");
-        }
+        experiencia.PublicacionId = dto.PublicacionId;
+        experiencia.Nombre = dto.Nombre;
+        experiencia.Descripcion = dto.Descripcion;
+        experiencia.DuracionHoras = dto.DuracionHoras;
+        experiencia.PrecioAdicional = dto.PrecioAdicional;
+        experiencia.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(experiencia).State = EntityState.Modified;
 
@@ -84,22 +77,22 @@ public class ExperienciaController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Experiencia>> PostExperiencia(Experiencia experiencia)
+    public async Task<ActionResult<ExperienciaEntity>> PostExperiencia(CreateExperienciaDto dto)
     {
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == experiencia.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {experiencia.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        if (experiencia.DuracionHoras.HasValue && experiencia.DuracionHoras <= 0)
+        var experiencia = new ExperienciaEntity
         {
-            return BadRequest("La duracion en horas debe ser mayor a 0.");
-        }
-
-        if (experiencia.PrecioAdicional.HasValue && experiencia.PrecioAdicional < 0)
-        {
-            return BadRequest("El precio adicional no puede ser negativo.");
-        }
+            PublicacionId = dto.PublicacionId,
+            Nombre = dto.Nombre,
+            Descripcion = dto.Descripcion,
+            DuracionHoras = dto.DuracionHoras,
+            PrecioAdicional = dto.PrecioAdicional,
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.Experiencias.Add(experiencia);
         await _context.SaveChangesAsync();
