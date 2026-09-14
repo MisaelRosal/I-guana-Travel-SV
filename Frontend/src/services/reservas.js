@@ -89,3 +89,7 @@ export async function confirmarReserva(id) {
 export async function pagarReserva(id, metodoPago) {
   return await api.put(`/Reserva/${id}/pagar`, { metodoPago })
 }
+
+export async function cancelarReserva(id) {
+  return await api.put(`/Reserva/${id}/cancelar`, {})
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { obtenerReservas, confirmarReserva, pagarReserva } from '../../services/reservas.js'
+import { obtenerReservas, confirmarReserva, pagarReserva, cancelarReserva } from '../../services/reservas.js'
 import Toast from '../../components/Toast.jsx'
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
@@ -175,7 +175,76 @@ function ModalPago({ reserva, onCerrar, onExito }) {
   )
 }
 
-function TarjetaReserva({ reserva, onPagar }) {
+function ModalCancelar({ reserva, onCerrar, onExito }) {
+  const [procesando, setProcesando] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleCancelar = async () => {
+    setProcesando(true)
+    setError(null)
+
+    try {
+      await cancelarReserva(reserva.id)
+      onExito(reserva.id)
+    } catch (err) {
+      setError(err.mensaje || err.message || 'Error al cancelar la reserva')
+      setProcesando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-terracota">Cancelar reserva</h2>
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={procesando}
+            className="text-2xl leading-none text-cafe hover:text-terracota transition-colors"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-lg bg-red-50 p-4">
+          <p className="text-sm text-cafe">¿Estás seguro que deseas cancelar esta reserva?</p>
+          <p className="mt-2 text-sm font-semibold text-verde-bosque">
+            Reserva #{reserva.id} — {formatoPrecio.format(reserva.precioTotal)}
+          </p>
+          <p className="text-xs text-cafe mt-1">
+            Check-in: {formatoFecha.format(new Date(reserva.fechaInicio))}
+          </p>
+        </div>
+
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 p-2 text-center text-sm text-red-700">{error}</p>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleCancelar}
+            disabled={procesando}
+            className="flex-1 cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            {procesando ? 'Cancelando...' : 'Sí, cancelar reserva'}
+          </button>
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={procesando}
+            className="flex-1 cursor-pointer rounded-lg border border-neutral-300 px-4 py-3 font-semibold text-verde-bosque hover:bg-neutral-50 transition-colors disabled:opacity-50"
+          >
+            No, mantener
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TarjetaReserva({ reserva, onPagar, onCancelar }) {
   const [confirmando, setConfirmando] = useState(false)
   const publicacion = reserva.publicacion
   const titulo = publicacion?.titulo ?? `Publicación #${reserva.publicacionId}`
@@ -252,13 +321,20 @@ function TarjetaReserva({ reserva, onPagar }) {
       )}
 
       {reserva.estado === 'confirmada' && (
-        <div className="mt-4">
+        <div className="mt-4 flex gap-3">
           <Link
             to={`/experiencias/${reserva.publicacionId}`}
-            className="block w-full rounded-lg border border-neutral-300 px-4 py-2.5 text-center text-sm font-semibold text-verde-bosque hover:bg-neutral-50 transition-colors"
+            className="flex-1 rounded-lg border border-neutral-300 px-4 py-2.5 text-center text-sm font-semibold text-verde-bosque hover:bg-neutral-50 transition-colors"
           >
             Ver experiencia
           </Link>
+          <button
+            type="button"
+            onClick={() => onCancelar(reserva)}
+            className="cursor-pointer rounded-lg border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+          >
+            Cancelar
+          </button>
         </div>
       )}
     </div>
@@ -271,6 +347,7 @@ export default function ReservationsPage() {
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
   const [reservaPagar, setReservaPagar] = useState(null)
+  const [reservaCancelar, setReservaCancelar] = useState(null)
 
   const usuario = JSON.parse(sessionStorage.getItem('iguana_usuario') || 'null')
 
@@ -310,6 +387,18 @@ export default function ReservationsPage() {
     setToast({ tipo: 'exito', mensaje: resultado?.mensaje ?? 'Pago realizado exitosamente.' })
   }
 
+  const handleExitoCancelacion = (id) => {
+    setReservas((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? { ...r, estado: 'cancelada' }
+          : r
+      )
+    )
+    setReservaCancelar(null)
+    setToast({ tipo: 'exito', mensaje: 'Reserva cancelada exitosamente.' })
+  }
+
   if (!usuario) {
     return (
       <main className="max-w-7xl mx-auto px-4 py-8">
@@ -346,7 +435,12 @@ export default function ReservationsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {reservas.map((r) => (
-          <TarjetaReserva key={r.id} reserva={r} onPagar={handleAbrirPago} />
+          <TarjetaReserva
+            key={r.id}
+            reserva={r}
+            onPagar={handleAbrirPago}
+            onCancelar={setReservaCancelar}
+          />
         ))}
       </div>
 
@@ -355,6 +449,14 @@ export default function ReservationsPage() {
           reserva={reservaPagar}
           onCerrar={() => setReservaPagar(null)}
           onExito={handleExitoPago}
+        />
+      )}
+
+      {reservaCancelar && (
+        <ModalCancelar
+          reserva={reservaCancelar}
+          onCerrar={() => setReservaCancelar(null)}
+          onExito={handleExitoCancelacion}
         />
       )}
 

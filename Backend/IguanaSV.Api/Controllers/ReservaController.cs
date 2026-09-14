@@ -239,6 +239,46 @@ public class ReservaController : ControllerBase
         });
     }
 
+    [HttpPut("{id}/cancelar")]
+    public async Task<IActionResult> CancelarReserva(int id)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (reserva.Estado == "cancelada")
+        {
+            return BadRequest(new { mensaje = "La reserva ya está cancelada." });
+        }
+
+        if (reserva.Estado == "completada")
+        {
+            return BadRequest(new { mensaje = "No se puede cancelar una reserva ya completada." });
+        }
+
+        if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today))
+        {
+            return BadRequest(new { mensaje = "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy." });
+        }
+
+        reserva.Estado = "cancelada";
+        reserva.UpdatedAt = DateTime.Now;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict();
+        }
+
+        return Ok(new { mensaje = "Reserva cancelada exitosamente.", reserva });
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteReserva(int id)
     {
