@@ -55,7 +55,7 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
 
   return (
     <div
-      className="animate-modal-backdrop fixed inset-x-0 top-20 z-[70] flex justify-center px-4"
+      className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
       aria-modal="true"
       aria-label="Formulario de reserva"
@@ -121,7 +121,7 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
             <p className="mt-1 text-sm text-cafe">
               Iniciá sesión o creá una cuenta para poder confirmar tu reserva.
             </p>
-            <div className="mt-4 flex justify-center gap-3">
+            <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
                 to="/login"
                 className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"

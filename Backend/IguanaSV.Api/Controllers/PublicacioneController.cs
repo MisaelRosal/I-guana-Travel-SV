@@ -22,6 +22,7 @@ public class PublicacioneController : ControllerBase
     public async Task<ActionResult<IEnumerable<PublicacioneEntity>>> GetPublicaciones()
     {
         return await _context.Publicaciones
+            .AsNoTracking()
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)
@@ -33,7 +34,6 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.ImagenesPublicacions)
             .Include(p => p.PublicacionAmenidads)
                 .ThenInclude(pa => pa.Amenidad)
-            .Include(p => p.Reservas)
             .ToListAsync();
     }
 
@@ -41,6 +41,7 @@ public class PublicacioneController : ControllerBase
     public async Task<ActionResult<PublicacioneEntity>> GetPublicacione(int id)
     {
         var publicacione = await _context.Publicaciones
+            .AsNoTracking()
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)
@@ -52,7 +53,6 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.ImagenesPublicacions)
             .Include(p => p.PublicacionAmenidads)
                 .ThenInclude(pa => pa.Amenidad)
-            .Include(p => p.Reservas)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (publicacione == null)
@@ -67,6 +67,7 @@ public class PublicacioneController : ControllerBase
     public async Task<ActionResult<IEnumerable<Publicacione>>> GetPublicacionesByAnfitrion(int anfitrionId)
     {
         return await _context.Publicaciones
+            .AsNoTracking()
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
                     .ThenInclude(m => m.Departamento)

@@ -439,7 +439,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 
   return (
     <div
-      className="animate-modal-backdrop fixed inset-x-0 top-20 z-[70] flex justify-center px-4"
+      className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
       aria-modal="true"
       aria-label="Elegir fecha de reserva"
@@ -597,7 +597,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
           </p>
         )}
 
-        <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-4">
+        <div className="mt-5 flex flex-col gap-3 border-t border-neutral-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-neutral-600">
             {textoSeleccion()}
           </p>

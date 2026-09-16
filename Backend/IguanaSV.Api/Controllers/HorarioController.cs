@@ -1,4 +1,4 @@
-using HorarioEntity = IguanaSV.Api.Entities.Horario;
+﻿using HorarioEntity = IguanaSV.Api.Entities.Horario;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -61,7 +61,7 @@ public class HorarioController : ControllerBase
         horario.DiaSemana = dto.DiaSemana;
         horario.HoraInicio = dto.HoraInicio;
         horario.HoraFin = dto.HoraFin;
-        horario.UpdatedAt = DateTime.UtcNow;
+        horario.UpdatedAt = DateTime.Now;
 
         _context.Entry(horario).State = EntityState.Modified;
 
@@ -92,7 +92,7 @@ public class HorarioController : ControllerBase
             HoraInicio = dto.HoraInicio,
             HoraFin = dto.HoraFin,
             Disponible = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.Horarios.Add(horario);

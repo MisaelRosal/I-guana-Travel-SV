@@ -298,7 +298,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
 
   return (
     <div
-      className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4"
+      className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
       aria-modal="true"
       aria-label="Editar reserva"
@@ -534,7 +534,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
   }
 
   return (
-    <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+    <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8">
       <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-verde-bosque">Simular pago</h2>
@@ -559,13 +559,13 @@ function ModalPago({ reserva, onCerrar, onExito }) {
             <label className="mb-1 block text-sm font-semibold text-verde-bosque">
               Método de pago
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               {METODOS_PAGO.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => setMetodoPago(m.id)}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors sm:flex-1 ${
                     metodoPago === m.id
                       ? 'border-terracota bg-terracota text-white'
                       : 'border-neutral-300 text-verde-bosque hover:bg-neutral-50'

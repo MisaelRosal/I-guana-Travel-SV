@@ -1,4 +1,4 @@
-using AmenidadeEntity = IguanaSV.Api.Entities.Amenidade;
+﻿using AmenidadeEntity = IguanaSV.Api.Entities.Amenidade;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -52,7 +52,7 @@ public class AmenidadeController : ControllerBase
 
         amenidade.Nombre = dto.Nombre;
         amenidade.Icono = dto.Icono;
-        amenidade.UpdatedAt = DateTime.UtcNow;
+        amenidade.UpdatedAt = DateTime.Now;
 
         _context.Entry(amenidade).State = EntityState.Modified;
 
@@ -75,7 +75,7 @@ public class AmenidadeController : ControllerBase
         {
             Nombre = dto.Nombre,
             Icono = dto.Icono,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.Amenidades.Add(amenidade);

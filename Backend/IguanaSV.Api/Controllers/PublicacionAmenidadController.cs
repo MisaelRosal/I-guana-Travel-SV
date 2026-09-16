@@ -1,4 +1,4 @@
-using PublicacionAmenidadEntity = IguanaSV.Api.Entities.PublicacionAmenidad;
+﻿using PublicacionAmenidadEntity = IguanaSV.Api.Entities.PublicacionAmenidad;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -88,7 +88,7 @@ public class PublicacionAmenidadController : ControllerBase
         {
             PublicacionId = dto.PublicacionId,
             AmenidadId = dto.AmenidadId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.PublicacionAmenidads.Add(publicacionAmenidad);

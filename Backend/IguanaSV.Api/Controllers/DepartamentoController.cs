@@ -1,4 +1,4 @@
-using DepartamentoEntity = IguanaSV.Api.Entities.Departamento;
+﻿using DepartamentoEntity = IguanaSV.Api.Entities.Departamento;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -51,7 +51,7 @@ public class DepartamentoController : ControllerBase
         }
 
         departamento.Nombre = dto.Nombre;
-        departamento.UpdatedAt = DateTime.UtcNow;
+        departamento.UpdatedAt = DateTime.Now;
 
         _context.Entry(departamento).State = EntityState.Modified;
 
@@ -73,7 +73,7 @@ public class DepartamentoController : ControllerBase
         var departamento = new DepartamentoEntity
         {
             Nombre = dto.Nombre,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.Departamentos.Add(departamento);

@@ -63,7 +63,7 @@ export default function PerfilAnfitrionPage() {
 
       {anfitrion && (
         <>
-          <div className="rounded-xl border border-cafe-claro/60 bg-white p-8 shadow-md">
+          <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
               <Avatar anfitrion={anfitrion} grande />
               <div className="flex-1">

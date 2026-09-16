@@ -1,4 +1,4 @@
-using NotificacioneEntity = IguanaSV.Api.Entities.Notificacione;
+﻿using NotificacioneEntity = IguanaSV.Api.Entities.Notificacione;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -59,7 +59,7 @@ public class NotificacioneController : ControllerBase
         notificacione.Tipo = dto.Tipo;
         notificacione.Mensaje = dto.Mensaje;
         notificacione.DestinatarioEmail = dto.DestinatarioEmail;
-        notificacione.UpdatedAt = DateTime.UtcNow;
+        notificacione.UpdatedAt = DateTime.Now;
 
         _context.Entry(notificacione).State = EntityState.Modified;
 
@@ -90,7 +90,7 @@ public class NotificacioneController : ControllerBase
             Mensaje = dto.Mensaje,
             Leida = false,
             DestinatarioEmail = dto.DestinatarioEmail,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.Notificaciones.Add(notificacione);

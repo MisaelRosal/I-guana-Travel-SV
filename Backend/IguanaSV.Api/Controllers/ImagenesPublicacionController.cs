@@ -1,4 +1,4 @@
-using ImagenesPublicacionEntity = IguanaSV.Api.Entities.ImagenesPublicacion;
+﻿using ImagenesPublicacionEntity = IguanaSV.Api.Entities.ImagenesPublicacion;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -59,7 +59,7 @@ public class ImagenesPublicacionController : ControllerBase
         imagenesPublicacion.Url = dto.Url;
         imagenesPublicacion.EsPrincipal = dto.EsPrincipal;
         imagenesPublicacion.Orden = dto.Orden;
-        imagenesPublicacion.UpdatedAt = DateTime.UtcNow;
+        imagenesPublicacion.UpdatedAt = DateTime.Now;
 
         _context.Entry(imagenesPublicacion).State = EntityState.Modified;
 
@@ -89,7 +89,7 @@ public class ImagenesPublicacionController : ControllerBase
             Url = dto.Url,
             EsPrincipal = dto.EsPrincipal,
             Orden = dto.Orden,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.ImagenesPublicacions.Add(imagenesPublicacion);

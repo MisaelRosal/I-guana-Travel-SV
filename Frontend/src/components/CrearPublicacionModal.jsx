@@ -305,7 +305,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       <div
         className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-crema shadow-2xl"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cafe-claro/30 bg-crema px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cafe-claro/30 bg-crema px-4 py-4 sm:px-6">
           <h2 className="text-xl font-bold text-verde-bosque">{esEdicion ? 'Editar publicación' : 'Crear publicación'}</h2>
           <button
             type="button"
@@ -318,7 +318,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
           {error && (
             <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
               {error}
@@ -328,7 +328,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           {/* Tipo de publicación */}
           <fieldset className="mb-6">
             <legend className="mb-3 text-lg font-bold text-verde-bosque">¿Qué querés publicar?</legend>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all ${
                 esEdicion ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
               } ${
@@ -617,7 +617,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           )}
 
           {/* Botones */}
-          <div className="flex justify-end gap-3 border-t border-cafe-claro/30 pt-4">
+          <div className="flex flex-col-reverse gap-3 border-t border-cafe-claro/30 pt-4 sm:flex-row sm:justify-end">
             <button type="button" onClick={handleCerrar} className="cursor-pointer rounded-lg border border-cafe-claro bg-white px-5 py-2.5 text-sm font-semibold text-cafe-oscuro transition-colors hover:bg-neutral-50">
               Cancelar
             </button>

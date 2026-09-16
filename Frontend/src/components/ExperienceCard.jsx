@@ -6,7 +6,13 @@ const formatoPrecio = new Intl.NumberFormat('es-SV', {
   maximumFractionDigits: 0,
 })
 
-export default function ExperienceCard({ experiencia }) {
+const formatoFecha = new Intl.DateTimeFormat('es-SV', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
+export default function ExperienceCard({ experiencia, proximaFecha }) {
   const esHospedaje = experiencia.tipo === 'hospedaje'
   const unidad = esHospedaje ? 'noche' : 'persona'
   const detalle = esHospedaje
@@ -20,7 +26,7 @@ export default function ExperienceCard({ experiencia }) {
     >
       <div className="relative h-52 overflow-hidden">
         <img
-          src={experiencia.imagenes[0]}
+          src={(experiencia.imagenes && experiencia.imagenes[0]) || '/logo.png'}
           alt={experiencia.titulo}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -28,7 +34,12 @@ export default function ExperienceCard({ experiencia }) {
         <span className="absolute top-3 left-3 rounded-full bg-verde-bosque/90 px-3 py-1 text-xs font-semibold text-white">
           {experiencia.categoria}
         </span>
-        {experiencia.popular && (
+        {proximaFecha && (
+          <span className="absolute top-3 right-3 rounded-full bg-terracota px-3 py-1 text-xs font-semibold text-white">
+            {formatoFecha.format(new Date(`${proximaFecha}T00:00:00`))}
+          </span>
+        )}
+        {!proximaFecha && experiencia.popular && (
           <span className="absolute top-3 right-3 rounded-full bg-terracota px-3 py-1 text-xs font-semibold text-white">
             Popular
           </span>

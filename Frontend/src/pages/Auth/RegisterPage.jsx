@@ -107,12 +107,12 @@ export default function RegisterPage() {
   return (
     <main className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="rounded-xl border border-cafe-claro/60 bg-white p-8 shadow-md">
+        <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
           <h1 className="text-2xl font-bold text-verde-bosque">Regístrate</h1>
           <p className="mt-1 text-sm text-cafe">Crea tu cuenta en I Guana Travel SV</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="nombre" className="mb-1 block text-sm font-semibold text-verde-bosque">
                   Nombre *

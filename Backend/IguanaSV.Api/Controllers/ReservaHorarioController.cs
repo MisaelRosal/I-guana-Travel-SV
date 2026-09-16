@@ -1,4 +1,4 @@
-using ReservaHorarioEntity = IguanaSV.Api.Entities.ReservaHorario;
+﻿using ReservaHorarioEntity = IguanaSV.Api.Entities.ReservaHorario;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -88,7 +88,7 @@ public class ReservaHorarioController : ControllerBase
         {
             ReservaId = dto.ReservaId,
             HorarioId = dto.HorarioId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.ReservaHorarios.Add(reservaHorario);

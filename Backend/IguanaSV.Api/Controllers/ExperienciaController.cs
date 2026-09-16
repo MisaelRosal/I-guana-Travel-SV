@@ -1,4 +1,4 @@
-using ExperienciaEntity = IguanaSV.Api.Entities.Experiencia;
+﻿using ExperienciaEntity = IguanaSV.Api.Entities.Experiencia;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -60,7 +60,7 @@ public class ExperienciaController : ControllerBase
         experiencia.Descripcion = dto.Descripcion;
         experiencia.DuracionHoras = dto.DuracionHoras;
         experiencia.PrecioAdicional = dto.PrecioAdicional;
-        experiencia.UpdatedAt = DateTime.UtcNow;
+        experiencia.UpdatedAt = DateTime.Now;
 
         _context.Entry(experiencia).State = EntityState.Modified;
 
@@ -91,7 +91,7 @@ public class ExperienciaController : ControllerBase
             Descripcion = dto.Descripcion,
             DuracionHoras = dto.DuracionHoras,
             PrecioAdicional = dto.PrecioAdicional,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.Experiencias.Add(experiencia);

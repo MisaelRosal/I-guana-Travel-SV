@@ -43,7 +43,7 @@ export default function AuthPage() {
   return (
     <main className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="rounded-xl border border-cafe-claro/60 bg-white p-8 shadow-md">
+        <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
           <h1 className="text-2xl font-bold text-verde-bosque">Iniciar sesión</h1>
           <p className="mt-1 text-sm text-cafe">Bienvenido de nuevo a I Guana Travel SV</p>
 

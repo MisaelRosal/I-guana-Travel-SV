@@ -1,4 +1,4 @@
-using MunicipioEntity = IguanaSV.Api.Entities.Municipio;
+﻿using MunicipioEntity = IguanaSV.Api.Entities.Municipio;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -59,7 +59,7 @@ public class MunicipioController : ControllerBase
 
         municipio.DepartamentoId = dto.DepartamentoId;
         municipio.Nombre = dto.Nombre;
-        municipio.UpdatedAt = DateTime.UtcNow;
+        municipio.UpdatedAt = DateTime.Now;
 
         _context.Entry(municipio).State = EntityState.Modified;
 
@@ -87,7 +87,7 @@ public class MunicipioController : ControllerBase
         {
             DepartamentoId = dto.DepartamentoId,
             Nombre = dto.Nombre,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         _context.Municipios.Add(municipio);
