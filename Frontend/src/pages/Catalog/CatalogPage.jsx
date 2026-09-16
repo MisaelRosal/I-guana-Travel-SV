@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getCategorias, getDepartamentos, getExperiencias, getProximasExperiencias } from '../../services/experiencias.js'
 import ExperienceCard from '../../components/ExperienceCard.jsx'
 import LoadingIguana from '../../components/LoadingIguana.jsx'
@@ -22,6 +22,9 @@ export default function CatalogPage() {
   const [experiencias, setExperiencias] = useState([])
   const [proximasExperiencias, setProximasExperiencias] = useState([])
   const [cargando, setCargando] = useState(true)
+  // La pantalla de carga completa solo se muestra la primera vez que se entra.
+  // Al cambiar filtros o escribir en el buscador la lista se actualiza sin tapar la pantalla.
+  const primeraCarga = useRef(true)
 
   const [busqueda, setBusqueda] = useState('')
   const [categoria, setCategoria] = useState('')
@@ -35,11 +38,20 @@ export default function CatalogPage() {
   }, [])
 
   useEffect(() => {
-    setCargando(true)
+    let activo = true
+    if (primeraCarga.current) setCargando(true)
+
     getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax })
-      .then(setExperiencias)
-      .catch(() => setExperiencias([]))
-      .finally(() => setCargando(false))
+      .then((datos) => { if (activo) setExperiencias(datos) })
+      .catch(() => { if (activo) setExperiencias([]) })
+      .finally(() => {
+        if (activo && primeraCarga.current) {
+          primeraCarga.current = false
+          setCargando(false)
+        }
+      })
+
+    return () => { activo = false }
   }, [busqueda, categoria, zona, tipo, precioMax])
 
   useEffect(() => {
@@ -161,7 +173,7 @@ export default function CatalogPage() {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {visibles.map((e) => (
-              <ExperienceCard key={e.id} experiencia={e} />
+              <ExperienceCard key={e.id} experiencia={e} proximaFecha={e.proximaFecha} />
             ))}
           </div>
         )}

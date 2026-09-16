@@ -71,7 +71,17 @@ function mapearPublicacion(p) {
     fechasDisponibles: (p.horarios ?? [])
       .filter(Boolean)
       .filter((h) => h.fecha)
-      .map((h) => h.fecha),
+      .map((h) => String(h.fecha).slice(0, 10)),
+    proximaFecha: (() => {
+      const hoy = new Date()
+      const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+      return (p.horarios ?? [])
+        .filter(Boolean)
+        .map((h) => (h.fecha ? String(h.fecha).slice(0, 10) : null))
+        .filter((f) => f && f >= hoyStr)
+        .sort()
+        .shift() ?? null
+    })(),
     horaEntrada: horarioEntradaSalida?.horaInicio || '',
     horaSalida: horarioEntradaSalida?.horaFin || '',
     popular: false,
