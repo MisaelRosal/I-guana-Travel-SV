@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
 import { getExperienciaById } from '../../services/experiencias'
 import { getDisponibilidad } from '../../services/reservas'
 import FormularioReserva from '../../components/FormularioReserva'
+import Toast from '../../components/Toast.jsx'
 
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -234,13 +235,41 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
 
 function Horarios({ horarios }) {
   if (!horarios.length) return null
-  const dias = [...new Set(horarios.map((h) => h.diaSemana))].sort()
+  const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+  const conFecha = horarios.filter((h) => h.fecha).slice().sort((a, b) => a.fecha.localeCompare(b.fecha))
+  const porDiaSemana = horarios.filter((h) => !h.fecha && h.diaSemana != null)
+
+  const formatearFecha = (fecha) => {
+    const [, m, d] = fecha.split('-')
+    return `${parseInt(d, 10)} ${MESES_CORTOS[parseInt(m, 10) - 1]}`
+  }
+
+  if (conFecha.length > 0) {
+    const rango = (h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`
+    return (
+      <section className="mt-10">
+        <h3 className="text-2xl font-bold text-verde-bosque">Fechas disponibles</h3>
+        <p className="mt-1 text-sm text-cafe">Solo se pueden reservar las fechas marcadas por el anfitrión.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {conFecha.map((h, i) => (
+            <div key={i} className="rounded-xl border border-neutral-200 bg-white px-4 py-2 shadow-sm">
+              <p className="text-sm font-bold capitalize text-verde-bosque">{formatearFecha(h.fecha)}</p>
+              <p className="text-xs font-medium text-cafe">{rango(h)}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  const dias = [...new Set(porDiaSemana.map((h) => h.diaSemana))].sort()
   return (
     <section className="mt-10">
       <h3 className="text-2xl font-bold text-verde-bosque">Horarios disponibles</h3>
       <div className="mt-4 flex flex-wrap gap-3">
         {dias.map((dia) => {
-          const hs = horarios.filter((h) => h.diaSemana === dia)
+          const hs = porDiaSemana.filter((h) => h.diaSemana === dia)
           return (
             <div key={dia} className="rounded-xl border border-neutral-200 bg-white px-5 py-3 shadow-sm">
               <p className="text-base font-bold text-verde-bosque">{DIAS[dia]}</p>
@@ -336,8 +365,13 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
     return fechasOcupadas.some((r) => fStr >= r.inicio && fStr <= r.fin)
   }
 
+  // Fechas que el anfitrion marco como disponibles (solo experiencias)
+  const fechasDisponibles = experiencia.fechasDisponibles ?? []
+  const aplicaFechas = !esHospedaje && fechasDisponibles.length > 0
+  const estaDisponible = (dia) => !aplicaFechas || fechasDisponibles.includes(fechaStr(dia))
+
   const seleccionarDia = (dia) => {
-    if (estaOcupado(dia)) return
+    if (estaOcupado(dia) || !estaDisponible(dia)) return
     const fecha = new Date(anio, mes, dia)
     if (!esHospedaje) {
       setFechaInicio(fecha)
@@ -405,7 +439,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 
   return (
     <div
-      className="animate-modal-backdrop fixed inset-x-0 top-20 z-[70] flex justify-center px-4"
+      className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
       aria-modal="true"
       aria-label="Elegir fecha de reserva"
@@ -520,6 +554,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             const dia = i + 1
             const pasado = esPasado(dia)
             const ocupado = !pasado && estaOcupado(dia)
+            const noDisponible = !pasado && !ocupado && !estaDisponible(dia)
             const esHoyDia = esHoy(dia)
             const enRango = estaEnRango(dia)
             const esInicio = esExtremoInicio(dia)
@@ -530,6 +565,8 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
               clases += 'cursor-not-allowed text-neutral-300'
             } else if (ocupado) {
               clases += 'cursor-not-allowed bg-red-100 text-red-400 line-through'
+            } else if (noDisponible) {
+              clases += 'cursor-not-allowed bg-neutral-100 text-neutral-400'
             } else if (enRango) {
               clases += 'bg-terracota/20 font-semibold text-verde-bosque hover:bg-terracota/30'
             } else if (esInicio || esFin) {
@@ -543,10 +580,10 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
               <button
                 key={dia}
                 type="button"
-                disabled={pasado || ocupado}
+                disabled={pasado || ocupado || noDisponible}
                 onClick={() => seleccionarDia(dia)}
                 className={clases}
-                title={ocupado ? 'Fecha no disponible' : ''}
+                title={ocupado ? 'Fecha ya reservada' : noDisponible ? 'El anfitrión no ofrece esta fecha' : ''}
               >
                 {dia}
               </button>
@@ -560,7 +597,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
           </p>
         )}
 
-        <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-4">
+        <div className="mt-5 flex flex-col gap-3 border-t border-neutral-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-neutral-600">
             {textoSeleccion()}
           </p>
@@ -584,11 +621,13 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 
 export default function ExperienceDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [experiencia, setExperiencia] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [pasoReserva, setPasoReserva] = useState('inicio')
   const [datosReserva, setDatosReserva] = useState(null)
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     let activo = true
@@ -609,6 +648,12 @@ export default function ExperienceDetailPage() {
     setDatosReserva(datos)
     setPasoReserva('formulario')
   }, [])
+
+  const manejarReservaCreada = () => {
+    setPasoReserva('inicio')
+    setToast({ tipo: 'exito', mensaje: 'Reserva creada exitosamente. Ve a "Mis reservas" para pagar.' })
+    setTimeout(() => navigate('/reservas'), 2000)
+  }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
@@ -690,9 +735,15 @@ export default function ExperienceDetailPage() {
           fechaFin={datosReserva.fechaFin}
           numPersonas={datosReserva.numPersonas}
           onCancelar={() => setPasoReserva('calendario')}
-          onReservada={() => setPasoReserva('inicio')}
+          onReservada={manejarReservaCreada}
         />
       )}
+
+      <Toast
+        mensaje={toast?.mensaje || ''}
+        tipo={toast?.tipo || 'exito'}
+        onCerrar={() => setToast(null)}
+      />
     </main>
   )
 }

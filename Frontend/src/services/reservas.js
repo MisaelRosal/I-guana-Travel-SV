@@ -30,6 +30,9 @@ export async function getMisReservas() {
       tipo: r.publicacion?.tipo ?? 'experiencia',
       precioPorNoche: r.publicacion?.precioPorNoche ?? 0,
       capacidadMaxima: r.publicacion?.capacidadMaxima ?? 1,
+      fechasDisponibles: (r.publicacion?.horarios ?? [])
+        .filter((h) => h.fecha)
+        .map((h) => String(h.fecha).slice(0, 10)),
       fechaInicio: formatearFecha(r.fechaInicio),
       fechaFin: formatearFecha(r.fechaFin),
       personas: r.numeroHuespedes ?? 1,
@@ -75,4 +78,21 @@ export async function crearReserva({ publicacionId, nombreHuesped, emailHuesped,
     precioTotal,
     estado: 'pendiente',
   })
+}
+
+export async function obtenerReservas() {
+  const todas = await api.get('/Reserva')
+  return Array.isArray(todas) ? todas : []
+}
+
+export async function confirmarReserva(id) {
+  return await api.put(`/Reserva/${id}/confirmar`, {})
+}
+
+export async function pagarReserva(id, metodoPago) {
+  return await api.put(`/Reserva/${id}/pagar`, { metodoPago })
+}
+
+export async function cancelarReserva(id) {
+  return await api.put(`/Reserva/${id}/cancelar`, {})
 }

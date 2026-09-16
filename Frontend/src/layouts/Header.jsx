@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo.jsx'
 import { api } from '../services/api.js'
+import { esAdmin } from '../services/anfitriones.js'
 
 const SESION_KEY = 'iguana_usuario'
 
@@ -23,6 +24,7 @@ export default function Header() {
   const [usuario, setUsuario] = useState(leerSesion)
   const [fotoPerfil, setFotoPerfil] = useState('')
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -41,10 +43,14 @@ export default function Header() {
 
   useEffect(() => {
     const cerrarConEscape = (e) => {
-      if (e.key === 'Escape') setMenuAbierto(false)
+      if (e.key === 'Escape') {
+        setMenuAbierto(false)
+        setMenuMovilAbierto(false)
+      }
     }
     const cerrarConClickFuera = (e) => {
       if (menuAbierto && !e.target.closest('[data-menu-usuario]')) setMenuAbierto(false)
+      if (menuMovilAbierto && !e.target.closest('[data-menu-movil]')) setMenuMovilAbierto(false)
     }
     window.addEventListener('keydown', cerrarConEscape)
     window.addEventListener('click', cerrarConClickFuera)
@@ -52,7 +58,7 @@ export default function Header() {
       window.removeEventListener('keydown', cerrarConEscape)
       window.removeEventListener('click', cerrarConClickFuera)
     }
-  }, [menuAbierto])
+  }, [menuAbierto, menuMovilAbierto])
 
   useEffect(() => {
     let activo = true
@@ -79,40 +85,42 @@ export default function Header() {
   const links = [
     { to: '/', label: 'Inicio' },
   ]
-  if (rol !== 'anfitrion') {
-    links.push({ to: '/reservas', label: 'Mis reservas' })
-  }
+  links.push({ to: '/reservas', label: 'Mis reservas' })
   if (rol === 'anfitrion') {
     links.push({ to: '/panel', label: 'Panel operador' })
   }
-  if (rol === 'administrador') {
+  if (esAdmin(rol)) {
     links.push({ to: '/admin', label: 'Panel admin' })
   }
 
   const cerrarSesion = () => {
     sessionStorage.removeItem(SESION_KEY)
     setUsuario(null)
+    setMenuAbierto(false)
+    setMenuMovilAbierto(false)
     navigate('/')
   }
 
+  const claseNavLink = ({ isActive }) =>
+    `text-sm px-3 py-2 rounded-md transition-colors ${
+      isActive
+        ? 'bg-white/15 text-white'
+        : 'text-crema/85 hover:text-white hover:bg-white/10'
+    }`
+
   return (
     <header className="bg-verde-bosque text-white sticky top-0 z-20 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-        <Link to="/">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4" data-menu-movil>
+        <Link to="/" aria-label="I Guana Travel SV">
           <Logo />
         </Link>
-        <nav className="flex items-center gap-4">
+
+        <nav className="hidden md:flex items-center gap-4" aria-label="Navegación principal">
           {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
-              className={({ isActive }) =>
-                `text-sm px-3 py-2 rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-white/15 text-white'
-                    : 'text-crema/85 hover:text-white hover:bg-white/10'
-                }`
-              }
+              className={claseNavLink}
             >
               {link.label}
             </NavLink>
@@ -130,7 +138,7 @@ export default function Header() {
                   className="h-9 w-9 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white shadow-sm"
                   title={usuario.nombre + ' ' + (usuario.apellido || '')}
                 >
-                  {rol === 'administrador' ? (
+                  {esAdmin(rol) ? (
                     <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
                   ) : rol === 'anfitrion' && fotoPerfil ? (
                     <img src={fotoPerfil} alt="Foto de perfil" className="h-full w-full object-cover" />
@@ -182,7 +190,96 @@ export default function Header() {
             </Link>
           )}
         </nav>
+
+        <button
+          type="button"
+          onClick={() => setMenuMovilAbierto((v) => !v)}
+          aria-expanded={menuMovilAbierto}
+          aria-controls="menu-movil"
+          aria-label={menuMovilAbierto ? 'Cerrar menú' : 'Abrir menú'}
+          className="md:hidden flex cursor-pointer items-center justify-center rounded-lg p-2 text-white/90 transition-colors hover:bg-white/10"
+        >
+          {menuMovilAbierto ? (
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
       </div>
+
+      {menuMovilAbierto && (
+        <nav
+          id="menu-movil"
+          aria-label="Menú móvil"
+          className="md:hidden border-t border-white/10 bg-verde-bosque px-4 pb-4 pt-3 shadow-lg"
+        >
+          <div className="flex flex-col gap-1">
+            {links.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.to === '/'}
+                onClick={() => setMenuMovilAbierto(false)}
+                className={claseNavLink}
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </div>
+
+          <div className="mt-3 border-t border-white/10 pt-3">
+            {usuario ? (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <span
+                    className="h-10 w-10 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white shadow-sm"
+                    title={usuario.nombre + ' ' + (usuario.apellido || '')}
+                  >
+                    {esAdmin(rol) ? (
+                      <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
+                    ) : rol === 'anfitrion' && fotoPerfil ? (
+                      <img src={fotoPerfil} alt="Foto de perfil" className="h-full w-full object-cover" />
+                    ) : (
+                      iniciales(usuario.nombre, usuario.apellido)
+                    )}
+                  </span>
+                  <span className="text-sm font-medium text-white/90">
+                    {usuario.nombre} {usuario.apellido}
+                  </span>
+                </div>
+                {rol === 'anfitrion' && (
+                  <Link
+                    to="/mi-perfil"
+                    onClick={() => setMenuMovilAbierto(false)}
+                    className="text-sm px-3 py-2 rounded-md text-crema/85 hover:text-white hover:bg-white/10"
+                  >
+                    Mi perfil
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={cerrarSesion}
+                  className="cursor-pointer text-sm px-3 py-2 rounded-md text-left text-crema/85 hover:text-white hover:bg-white/10"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setMenuMovilAbierto(false)}
+                className="block cursor-pointer text-center text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold transition-colors"
+              >
+                Iniciar sesión
+              </Link>
+            )}
+          </div>
+        </nav>
+      )}
     </header>
   )
 }

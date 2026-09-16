@@ -62,4 +62,18 @@ public class ImagenesController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpGet("{bucket}/{fileName}")]
+    public async Task<IActionResult> GetImage(string bucket, string fileName)
+    {
+        try
+        {
+            var (stream, contentType) = await _storage.GetAsync(fileName);
+            return File(stream, contentType);
+        }
+        catch
+        {
+            return NotFound();
+        }
+    }
 }

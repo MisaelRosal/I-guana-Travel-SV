@@ -23,7 +23,7 @@ function mapearPublicacion(p) {
   const esHospedaje = (p.tipo || (experiencias.length === 0 ? 'hospedaje' : 'experiencia')) === 'hospedaje'
   const horariosPub = p.horarios ?? []
   const horarioEntradaSalida = esHospedaje
-    ? horariosPub.find((h) => h.diaSemana === 0)
+    ? horariosPub.filter(Boolean).find((h) => h.diaSemana === 0)
     : null
   return {
     id: p.id,
@@ -44,6 +44,7 @@ function mapearPublicacion(p) {
     longitud: p.longitud,
     estado: p.estado ?? '',
     imagenes: (p.imagenesPublicacions ?? [])
+      .filter(Boolean)
       .slice()
       .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
       .map((i) => i.url),
@@ -51,20 +52,36 @@ function mapearPublicacion(p) {
     habitaciones: p.habitaciones ?? 0,
     camas: p.camas ?? 0,
     banos: p.banos ?? 0,
-    amenidades: (p.publicacionAmenidads ?? []).map((pa) => pa.amenidad?.nombre).filter(Boolean),
-    experiencias: experiencias.map((e) => ({
+    amenidades: (p.publicacionAmenidads ?? []).filter(Boolean).map((pa) => pa.amenidad?.nombre).filter(Boolean),
+    experiencias: experiencias.filter(Boolean).map((e) => ({
       nombre: e.nombre,
       descripcion: e.descripcion ?? '',
       duracionHoras: e.duracionHoras ?? null,
       precioAdicional: e.precioAdicional ?? null,
     })),
     horarios: (p.horarios ?? [])
+      .filter(Boolean)
       .filter((h) => h.diaSemana !== 0)
       .map((h) => ({
-        diaSemana: h.diaSemana,
+        diaSemana: h.diaSemana ?? null,
+        fecha: h.fecha ?? null,
         horaInicio: h.horaInicio,
         horaFin: h.horaFin,
       })),
+    fechasDisponibles: (p.horarios ?? [])
+      .filter(Boolean)
+      .filter((h) => h.fecha)
+      .map((h) => String(h.fecha).slice(0, 10)),
+    proximaFecha: (() => {
+      const hoy = new Date()
+      const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+      return (p.horarios ?? [])
+        .filter(Boolean)
+        .map((h) => (h.fecha ? String(h.fecha).slice(0, 10) : null))
+        .filter((f) => f && f >= hoyStr)
+        .sort()
+        .shift() ?? null
+    })(),
     horaEntrada: horarioEntradaSalida?.horaInicio || '',
     horaSalida: horarioEntradaSalida?.horaFin || '',
     popular: false,
@@ -113,4 +130,26 @@ export async function getDepartamentos() {
 export async function getCategorias() {
   const categorias = await api.get('/Categoria')
   return categorias.map((c) => c.nombre)
+}
+
+export async function getProximasExperiencias(limite = 3) {
+  const publicaciones = await api.get('/Publicacione')
+  const hoy = new Date()
+  const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(
+    hoy.getDate(),
+  ).padStart(2, '0')}`
+
+  return publicaciones
+    .map(mapearPublicacion)
+    .filter((e) => e.tipo === 'experiencia' && (e.fechasDisponibles ?? []).length > 0)
+    .map((e) => {
+      const proxima = (e.fechasDisponibles ?? [])
+        .filter((f) => f >= hoyStr)
+        .sort()
+        .shift()
+      return { ...e, proximaFecha: proxima || null }
+    })
+    .filter((e) => e.proximaFecha)
+    .sort((a, b) => a.proximaFecha.localeCompare(b.proximaFecha))
+    .slice(0, limite)
 }

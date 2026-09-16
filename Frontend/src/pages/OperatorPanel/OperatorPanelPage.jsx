@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
-import { obtenerSesion } from '../../services/anfitriones.js'
+import { obtenerSesion, esAdmin } from '../../services/anfitriones.js'
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
   style: 'currency',
@@ -23,7 +23,7 @@ export default function OperatorPanelPage() {
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
-      if (usuario?.rol === 'administrador') {
+      if (esAdmin(usuario?.rol)) {
         setPublicaciones(await api.get('/Publicacione'))
       } else {
         const anfitriones = await api.get('/Anfitrione')

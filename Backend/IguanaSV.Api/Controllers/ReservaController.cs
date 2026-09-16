@@ -1,5 +1,6 @@
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,6 +25,8 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.ImagenesPublicacions)
             .Include(r => r.Publicacion)
                 .ThenInclude(p => p.Categoria)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
             .ToListAsync();
@@ -37,6 +40,8 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.ImagenesPublicacions)
             .Include(r => r.Publicacion)
                 .ThenInclude(p => p.Categoria)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
             .FirstOrDefaultAsync(r => r.Id == id);
@@ -164,6 +169,118 @@ public class ReservaController : ControllerBase
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);
+    }
+
+    [HttpPut("{id}/confirmar")]
+    public async Task<IActionResult> ConfirmarReserva(int id)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (reserva.Estado != "pendiente")
+        {
+            return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden confirmar reservas pendientes." });
+        }
+
+        reserva.Estado = "confirmada";
+        reserva.UpdatedAt = DateTime.Now;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict();
+        }
+
+        return Ok(new { mensaje = "Reserva confirmada exitosamente.", reserva });
+    }
+
+    [HttpPut("{id}/pagar")]
+    public async Task<IActionResult> PagarReserva(int id, [FromBody] PagarReservaDto dto)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (reserva.Estado != "pendiente")
+        {
+            return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden pagar reservas pendientes." });
+        }
+
+        reserva.Estado = "confirmada";
+        reserva.MetodoPago = dto.MetodoPago;
+        reserva.FechaPago = DateTime.Now;
+        reserva.IdTransaccion = $"TXN-{Guid.NewGuid():N}".Substring(0, 20);
+        reserva.UpdatedAt = DateTime.Now;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict();
+        }
+
+        return Ok(new
+        {
+            mensaje = "Pago simulado exitosamente. Reserva confirmada.",
+            reserva.Id,
+            reserva.Estado,
+            reserva.MetodoPago,
+            reserva.FechaPago,
+            reserva.IdTransaccion,
+            reserva.PrecioTotal,
+        });
+    }
+
+    [HttpPut("{id}/cancelar")]
+    public async Task<IActionResult> CancelarReserva(int id)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (reserva.Estado == "cancelada")
+        {
+            return BadRequest(new { mensaje = "La reserva ya está cancelada." });
+        }
+
+        if (reserva.Estado == "completada")
+        {
+            return BadRequest(new { mensaje = "No se puede cancelar una reserva ya completada." });
+        }
+
+        if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today))
+        {
+            return BadRequest(new { mensaje = "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy." });
+        }
+
+        reserva.Estado = "cancelada";
+        reserva.UpdatedAt = DateTime.Now;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict();
+        }
+
+        return Ok(new { mensaje = "Reserva cancelada exitosamente.", reserva });
     }
 
     [HttpDelete("{id}")]

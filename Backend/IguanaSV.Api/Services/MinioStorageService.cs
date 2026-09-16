@@ -69,10 +69,34 @@ public class MinioStorageService : IMinioStorageService
 
         return $"{_publicEndpoint}/{_bucket}/{fileName}";
     }
-
     public async Task DeleteAsync(string fileName, CancellationToken cancellationToken = default)
     {
         await _minio.RemoveObjectAsync(
-            new RemoveObjectArgs().WithBucket(_bucket).WithObject(fileName), cancellationToken);
+            new RemoveObjectArgs().WithBucket(_bucket).WithObject(fileName),
+            cancellationToken);
+    }
+
+    public async Task<(Stream stream, string contentType)> GetAsync(string fileName, CancellationToken cancellationToken = default)
+    {
+        var ms = new MemoryStream();
+
+        await _minio.GetObjectAsync(
+            new GetObjectArgs()
+                .WithBucket(_bucket)
+                .WithObject(fileName)
+                .WithCallbackStream(async (stream) =>
+                {
+                    await stream.CopyToAsync(ms, cancellationToken);
+                }),
+            cancellationToken);
+
+        ms.Position = 0;
+
+        var statArgs = new StatObjectArgs()
+            .WithBucket(_bucket)
+            .WithObject(fileName);
+        var stat = await _minio.StatObjectAsync(statArgs, cancellationToken);
+
+        return (ms, stat.ContentType ?? "application/octet-stream");
     }
 }
