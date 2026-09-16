@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Logo from '../components/Logo.jsx'
+import { esAdmin } from '../services/anfitriones.js'
 
 const SESION_KEY = 'iguana_usuario'
 
@@ -51,7 +52,7 @@ export default function Footer() {
   if (rol === 'anfitrion' || rol === 'administrador') {
     explorar.push({ to: '/panel', label: 'Panel operador' })
   }
-  if (rol === 'administrador') {
+  if (esAdmin(rol)) {
     explorar.push({ to: '/admin', label: 'Panel admin' })
   }
   explorar.push({ to: '/hacerse-anfitrion', label: 'Conviértete en anfitrión' })

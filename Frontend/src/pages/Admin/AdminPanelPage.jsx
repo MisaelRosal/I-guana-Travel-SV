@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../services/api.js'
+import { esAdmin } from '../../services/anfitriones.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
@@ -52,7 +53,7 @@ export default function AdminPanelPage() {
   }, [])
 
   useEffect(() => {
-    if (usuario?.rol === 'administrador') cargar()
+    if (esAdmin(usuario?.rol)) cargar()
   }, [usuario?.rol, cargar])
 
   const alEliminarAnfitrion = async (a) => {
@@ -90,7 +91,7 @@ export default function AdminPanelPage() {
     }
   }
 
-  if (!usuario || usuario.rol !== 'administrador') {
+  if (!usuario || !esAdmin(usuario.rol)) {
     return (
       <main className="flex justify-center px-4 py-20">
         <div className="w-full max-w-md text-center">

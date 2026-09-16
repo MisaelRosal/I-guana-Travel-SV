@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCategorias, getDepartamentos, getExperiencias } from '../../services/experiencias.js'
 import ExperienceCard from '../../components/ExperienceCard.jsx'
+import LoadingIguana from '../../components/LoadingIguana.jsx'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
 
 const clasesSelect =
@@ -125,9 +126,7 @@ export default function CatalogPage() {
         </div>
 
         {cargando ? (
-          <div className="flex h-72 items-center justify-center rounded-xl border-2 border-dashed border-cafe-claro bg-white/60">
-            <p className="text-cafe">Cargando publicaciones…</p>
-          </div>
+          <LoadingIguana fullscreen message="Cargando publicaciones…" />
         ) : experiencias.length === 0 ? (
           <div className="flex h-72 items-center justify-center rounded-xl border-2 border-dashed border-cafe-claro bg-white/60 text-cafe">
             <p className="px-6 text-center">

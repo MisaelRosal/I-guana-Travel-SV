@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo.jsx'
 import { api } from '../services/api.js'
+import { esAdmin } from '../services/anfitriones.js'
 
 const SESION_KEY = 'iguana_usuario'
 
@@ -85,7 +86,7 @@ export default function Header() {
   if (rol === 'anfitrion') {
     links.push({ to: '/panel', label: 'Panel operador' })
   }
-  if (rol === 'administrador') {
+  if (esAdmin(rol)) {
     links.push({ to: '/admin', label: 'Panel admin' })
   }
 
@@ -130,7 +131,7 @@ export default function Header() {
                   className="h-9 w-9 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white shadow-sm"
                   title={usuario.nombre + ' ' + (usuario.apellido || '')}
                 >
-                  {rol === 'administrador' ? (
+                  {esAdmin(rol) ? (
                     <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
                   ) : rol === 'anfitrion' && fotoPerfil ? (
                     <img src={fotoPerfil} alt="Foto de perfil" className="h-full w-full object-cover" />

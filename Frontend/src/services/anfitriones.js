@@ -41,3 +41,5 @@ export const guardarSesion = (usuario) => {
   sessionStorage.setItem('iguana_usuario', JSON.stringify(usuario))
   window.dispatchEvent(new Event('auth-change'))
 }
+
+export const esAdmin = (rol) => rol === 'admin' || rol === 'administrador'

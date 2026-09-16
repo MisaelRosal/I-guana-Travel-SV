@@ -11,7 +11,7 @@ export default function ExperienceCard({ experiencia }) {
   const unidad = esHospedaje ? 'noche' : 'persona'
   const detalle = esHospedaje
     ? `${experiencia.habitaciones ?? 1} hab · ${experiencia.capacidad} huéspedes`
-    : `${experiencia.duracionHoras ?? 0} h · ${experiencia.capacidad} cupos`
+    : `${experiencia.capacidad} cupos`
 
   return (
     <Link
