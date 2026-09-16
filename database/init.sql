@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS categorias (
   id SERIAL PRIMARY KEY,
   nombre VARCHAR(50) NOT NULL UNIQUE,
   descripcion TEXT,
+  tipo VARCHAR(20) DEFAULT 'experiencia',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -38,13 +39,28 @@ CREATE TABLE IF NOT EXISTS amenidades (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS usuarios (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  apellido VARCHAR(100) NOT NULL,
+  telefono VARCHAR(20),
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  rol VARCHAR(20) NOT NULL DEFAULT 'usuario',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS anfitriones (
   id SERIAL PRIMARY KEY,
   municipio_id INT NOT NULL REFERENCES municipios(id) ON DELETE RESTRICT,
+  usuario_id INT REFERENCES usuarios(id) ON DELETE RESTRICT,
   nombre VARCHAR(100) NOT NULL,
   email VARCHAR(150) NOT NULL UNIQUE,
   telefono VARCHAR(20),
   direccion TEXT,
+  descripcion TEXT,
+  foto_perfil TEXT,
   verificado BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -64,6 +80,8 @@ CREATE TABLE IF NOT EXISTS publicaciones (
   direccion_exacta TEXT,
   latitud NUMERIC(10,8),
   longitud NUMERIC(11,8),
+  municipio_id INT REFERENCES municipios(id) ON DELETE SET NULL,
+  tipo VARCHAR(20) DEFAULT 'experiencia',
   estado VARCHAR(20) DEFAULT 'activo',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -83,7 +101,8 @@ CREATE TABLE IF NOT EXISTS experiencias (
 CREATE TABLE IF NOT EXISTS horarios (
   id SERIAL PRIMARY KEY,
   publicacion_id INT NOT NULL REFERENCES publicaciones(id) ON DELETE CASCADE,
-  dia_semana INT NOT NULL,
+  dia_semana INT,
+  fecha DATE,
   hora_inicio TIME NOT NULL,
   hora_fin TIME NOT NULL,
   disponible BOOLEAN DEFAULT true,
@@ -119,6 +138,9 @@ CREATE TABLE IF NOT EXISTS reservas (
   numero_huespedes INT NOT NULL,
   precio_total NUMERIC(10,2) NOT NULL,
   estado VARCHAR(20) DEFAULT 'pendiente',
+  metodo_pago VARCHAR(30),
+  fecha_pago TIMESTAMP,
+  id_transaccion VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

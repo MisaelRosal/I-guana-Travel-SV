@@ -36,6 +36,9 @@ services:
       retries: 10
 
   backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
     image: i-guana-travel-sv-backend:latest
     container_name: rutasv-backend
     ports:
@@ -67,6 +70,9 @@ services:
         condition: service_healthy
 
   frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
     image: i-guana-travel-sv-frontend:latest
     container_name: rutasv-frontend
     ports:
