@@ -235,13 +235,41 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
 
 function Horarios({ horarios }) {
   if (!horarios.length) return null
-  const dias = [...new Set(horarios.map((h) => h.diaSemana))].sort()
+  const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+  const conFecha = horarios.filter((h) => h.fecha).slice().sort((a, b) => a.fecha.localeCompare(b.fecha))
+  const porDiaSemana = horarios.filter((h) => !h.fecha && h.diaSemana != null)
+
+  const formatearFecha = (fecha) => {
+    const [, m, d] = fecha.split('-')
+    return `${parseInt(d, 10)} ${MESES_CORTOS[parseInt(m, 10) - 1]}`
+  }
+
+  if (conFecha.length > 0) {
+    const rango = (h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`
+    return (
+      <section className="mt-10">
+        <h3 className="text-2xl font-bold text-verde-bosque">Fechas disponibles</h3>
+        <p className="mt-1 text-sm text-cafe">Solo se pueden reservar las fechas marcadas por el anfitrión.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {conFecha.map((h, i) => (
+            <div key={i} className="rounded-xl border border-neutral-200 bg-white px-4 py-2 shadow-sm">
+              <p className="text-sm font-bold capitalize text-verde-bosque">{formatearFecha(h.fecha)}</p>
+              <p className="text-xs font-medium text-cafe">{rango(h)}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  const dias = [...new Set(porDiaSemana.map((h) => h.diaSemana))].sort()
   return (
     <section className="mt-10">
       <h3 className="text-2xl font-bold text-verde-bosque">Horarios disponibles</h3>
       <div className="mt-4 flex flex-wrap gap-3">
         {dias.map((dia) => {
-          const hs = horarios.filter((h) => h.diaSemana === dia)
+          const hs = porDiaSemana.filter((h) => h.diaSemana === dia)
           return (
             <div key={dia} className="rounded-xl border border-neutral-200 bg-white px-5 py-3 shadow-sm">
               <p className="text-base font-bold text-verde-bosque">{DIAS[dia]}</p>
@@ -337,8 +365,13 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
     return fechasOcupadas.some((r) => fStr >= r.inicio && fStr <= r.fin)
   }
 
+  // Fechas que el anfitrion marco como disponibles (solo experiencias)
+  const fechasDisponibles = experiencia.fechasDisponibles ?? []
+  const aplicaFechas = !esHospedaje && fechasDisponibles.length > 0
+  const estaDisponible = (dia) => !aplicaFechas || fechasDisponibles.includes(fechaStr(dia))
+
   const seleccionarDia = (dia) => {
-    if (estaOcupado(dia)) return
+    if (estaOcupado(dia) || !estaDisponible(dia)) return
     const fecha = new Date(anio, mes, dia)
     if (!esHospedaje) {
       setFechaInicio(fecha)
@@ -521,6 +554,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             const dia = i + 1
             const pasado = esPasado(dia)
             const ocupado = !pasado && estaOcupado(dia)
+            const noDisponible = !pasado && !ocupado && !estaDisponible(dia)
             const esHoyDia = esHoy(dia)
             const enRango = estaEnRango(dia)
             const esInicio = esExtremoInicio(dia)
@@ -531,6 +565,8 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
               clases += 'cursor-not-allowed text-neutral-300'
             } else if (ocupado) {
               clases += 'cursor-not-allowed bg-red-100 text-red-400 line-through'
+            } else if (noDisponible) {
+              clases += 'cursor-not-allowed bg-neutral-100 text-neutral-400'
             } else if (enRango) {
               clases += 'bg-terracota/20 font-semibold text-verde-bosque hover:bg-terracota/30'
             } else if (esInicio || esFin) {
@@ -544,10 +580,10 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
               <button
                 key={dia}
                 type="button"
-                disabled={pasado || ocupado}
+                disabled={pasado || ocupado || noDisponible}
                 onClick={() => seleccionarDia(dia)}
                 className={clases}
-                title={ocupado ? 'Fecha no disponible' : ''}
+                title={ocupado ? 'Fecha ya reservada' : noDisponible ? 'El anfitrión no ofrece esta fecha' : ''}
               >
                 {dia}
               </button>

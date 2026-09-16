@@ -25,6 +25,8 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.ImagenesPublicacions)
             .Include(r => r.Publicacion)
                 .ThenInclude(p => p.Categoria)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
             .ToListAsync();
@@ -38,6 +40,8 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.ImagenesPublicacions)
             .Include(r => r.Publicacion)
                 .ThenInclude(p => p.Categoria)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
             .FirstOrDefaultAsync(r => r.Id == id);

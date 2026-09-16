@@ -164,8 +164,88 @@ function todayISO() {
   return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
 }
 
+function CalendarioFechas({ fechasDisponibles, seleccionada, onSeleccionar }) {
+  const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+  const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+  const inicial = seleccionada || fechasDisponibles[0] || null
+  const [mes, setMes] = useState(() => inicial ? parseInt(inicial.slice(5, 7), 10) - 1 : new Date().getMonth())
+  const [anio, setAnio] = useState(() => inicial ? parseInt(inicial.slice(0, 4), 10) : new Date().getFullYear())
+
+  const cambiarMes = (delta) => {
+    let m = mes + delta
+    let a = anio
+    if (m < 0) { m = 11; a -= 1 }
+    else if (m > 11) { m = 0; a += 1 }
+    setMes(m)
+    setAnio(a)
+  }
+
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const primerDia = new Date(anio, mes, 1)
+  const diasEnMes = new Date(anio, mes + 1, 0).getDate()
+  const offset = (primerDia.getDay() + 6) % 7
+
+  const fechaISO = (d) => `${anio}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+
+  const celdas = []
+  for (let i = 0; i < offset; i++) celdas.push(null)
+  for (let d = 1; d <= diasEnMes; d++) celdas.push(d)
+
+  return (
+    <div className="rounded-xl border border-cafe-claro bg-white p-3">
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={() => cambiarMes(-1)} aria-label="Mes anterior" className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <p className="text-sm font-bold text-verde-bosque">{MESES[mes]} {anio}</p>
+        <button type="button" onClick={() => cambiarMes(1)} aria-label="Mes siguiente" className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-7 gap-1">
+        {DIAS_CORTOS.map((d) => (
+          <span key={d} className="py-1 text-center text-[10px] font-semibold uppercase text-cafe">{d}</span>
+        ))}
+        {celdas.map((dia, i) => {
+          if (!dia) return <span key={`v-${i}`} className="block h-8" />
+          const f = fechaISO(dia)
+          const disponible = fechasDisponibles.includes(f)
+          const esSeleccionada = f === seleccionada
+          const pasado = new Date(anio, mes, dia).getTime() < hoy.getTime()
+          const habilitado = disponible && !pasado
+          return (
+            <button
+              key={dia}
+              type="button"
+              disabled={!habilitado}
+              onClick={() => onSeleccionar(f)}
+              className={`h-8 w-full rounded-lg text-xs font-semibold transition-colors ${
+                esSeleccionada
+                  ? 'bg-terracota text-white'
+                  : habilitado
+                    ? 'cursor-pointer text-neutral-700 hover:bg-terracota/10'
+                    : 'cursor-not-allowed bg-neutral-100 text-neutral-400'
+              }`}
+            >
+              {dia}
+            </button>
+          )
+        })}
+      </div>
+
+      <p className="mt-2 text-center text-[11px] text-cafe">
+        Solo se pueden elegir las fechas que ofrece el anfitrión.
+      </p>
+    </div>
+  )
+}
+
 function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
   const esHospedaje = reserva.tipo === 'hospedaje'
+  const fechasDisponibles = reserva.fechasDisponibles ?? []
   const [fechaInicio, setFechaInicio] = useState(reserva.fechaInicio)
   const [fechaFin, setFechaFin] = useState(reserva.fechaFin || reserva.fechaInicio)
   const maxPersonas = reserva.capacidadMaxima || 1
@@ -247,24 +327,22 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-sm font-semibold text-cafe">
-                {esHospedaje ? 'Entrada' : 'Fecha'}
-              </span>
-              <input
-                type="date"
-                required
-                min={todayISO()}
-                value={fechaInicio}
-                onChange={(e) => {
-                  setFechaInicio(e.target.value)
-                  if (esHospedaje && fechaFin && e.target.value > fechaFin) setFechaFin(e.target.value)
-                }}
-                className="mt-1 w-full cursor-pointer rounded-lg border border-cafe-claro px-3 py-2 text-sm text-neutral-800 focus:border-terracota focus:outline-none"
-              />
-            </label>
-            {esHospedaje ? (
+          {esHospedaje ? (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-sm font-semibold text-cafe">Entrada</span>
+                <input
+                  type="date"
+                  required
+                  min={todayISO()}
+                  value={fechaInicio}
+                  onChange={(e) => {
+                    setFechaInicio(e.target.value)
+                    if (fechaFin && e.target.value > fechaFin) setFechaFin(e.target.value)
+                  }}
+                  className="mt-1 w-full cursor-pointer rounded-lg border border-cafe-claro px-3 py-2 text-sm text-neutral-800 focus:border-terracota focus:outline-none"
+                />
+              </label>
               <label className="block">
                 <span className="text-sm font-semibold text-cafe">Salida</span>
                 <input
@@ -276,12 +354,26 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
                   className="mt-1 w-full cursor-pointer rounded-lg border border-cafe-claro px-3 py-2 text-sm text-neutral-800 focus:border-terracota focus:outline-none"
                 />
               </label>
-            ) : (
-              <div className="flex flex-col justify-end pb-1">
-                <p className="text-xs text-neutral-500">Experiencia de un día</p>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div>
+              <span className="text-sm font-semibold text-cafe">Fecha</span>
+              <p className="mb-2 mt-0.5 text-xs text-neutral-500">
+                Fecha actual: {formatearFecha(reserva.fechaInicio)}
+              </p>
+              {fechasDisponibles.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-cafe-claro bg-neutral-50 px-3 py-4 text-center text-xs text-cafe">
+                  Esta experiencia todavía no tiene fechas disponibles.
+                </p>
+              ) : (
+                <CalendarioFechas
+                  fechasDisponibles={fechasDisponibles}
+                  seleccionada={fechaInicio}
+                  onSeleccionar={setFechaInicio}
+                />
+              )}
+            </div>
+          )}
 
           {errorFecha && <p className="text-sm font-medium text-red-600">{errorFecha}</p>}
 
@@ -717,7 +809,7 @@ export default function ReservationsPage() {
 
   if (!cargando && !sesion) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main className="mx-auto max-w-5xl px-4 py-20 text-center">
         <h1 className="text-3xl font-bold text-verde-bosque">Mis reservas</h1>
         <p className="mt-1 text-cafe">Debes iniciar sesión para ver tus reservas.</p>
         <Link

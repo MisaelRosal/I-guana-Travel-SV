@@ -17,4 +17,8 @@ public class CreatePublicacioneDto
     public string? Tipo { get; set; }
     public int? MunicipioId { get; set; }
     public string? Estado { get; set; }
+
+    public List<CreateHorarioDto>? Horarios { get; set; }
+    public List<CreateExperienciaDto>? Experiencia { get; set; }
+    public List<CreatePublicacionAmenidadDto>? PublicacionAmenidads { get; set; }
 }

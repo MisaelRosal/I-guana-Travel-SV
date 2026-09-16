@@ -80,9 +80,7 @@ export default function Header() {
   const links = [
     { to: '/', label: 'Inicio' },
   ]
-  if (rol !== 'anfitrion') {
-    links.push({ to: '/reservas', label: 'Mis reservas' })
-  }
+  links.push({ to: '/reservas', label: 'Mis reservas' })
   if (rol === 'anfitrion') {
     links.push({ to: '/panel', label: 'Panel operador' })
   }

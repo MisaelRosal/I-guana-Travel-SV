@@ -9,7 +9,9 @@ public partial class Horario
 
     public int PublicacionId { get; set; }
 
-    public int DiaSemana { get; set; }
+    public int? DiaSemana { get; set; }
+
+    public DateOnly? Fecha { get; set; }
 
     public TimeOnly HoraInicio { get; set; }
 

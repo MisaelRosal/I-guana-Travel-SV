@@ -30,6 +30,9 @@ export async function getMisReservas() {
       tipo: r.publicacion?.tipo ?? 'experiencia',
       precioPorNoche: r.publicacion?.precioPorNoche ?? 0,
       capacidadMaxima: r.publicacion?.capacidadMaxima ?? 1,
+      fechasDisponibles: (r.publicacion?.horarios ?? [])
+        .filter((h) => h.fecha)
+        .map((h) => String(h.fecha).slice(0, 10)),
       fechaInicio: formatearFecha(r.fechaInicio),
       fechaFin: formatearFecha(r.fechaFin),
       personas: r.numeroHuespedes ?? 1,

@@ -3,6 +3,8 @@ import { api } from '../services/api.js'
 import LocationPicker from './LocationPicker.jsx'
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
 const labelCls = 'block text-sm font-semibold text-cafe-oscuro mb-1'
@@ -36,7 +38,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const [longitud, setLongitud] = useState('')
   const [amenidadIds, setAmenidadIds] = useState([])
   const [archivos, setArchivos] = useState([])
-  const [horarios, setHorarios] = useState([{ diaSemana: 1, horaInicio: '08:00', horaFin: '17:00' }])
+  const [fechasSeleccionadas, setFechasSeleccionadas] = useState([])
+  const [horaInicioExp, setHoraInicioExp] = useState('08:00')
+  const [horaFinExp, setHoraFinExp] = useState('17:00')
+  const [mesCal, setMesCal] = useState(() => new Date().getMonth())
+  const [anioCal, setAnioCal] = useState(() => new Date().getFullYear())
 
   useEffect(() => {
     if (!abierto) return
@@ -75,15 +81,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setLongitud(pubExistente.longitud != null ? String(pubExistente.longitud) : '')
       setAmenidadIds((pubExistente.publicacionAmenidads || []).map((pa) => pa.amenidadId))
       setArchivos([])
-      setHorarios(
-        (pubExistente.horarios || []).length > 0
-          ? pubExistente.horarios.map((h) => ({
-              diaSemana: h.diaSemana,
-              horaInicio: h.horaInicio,
-              horaFin: h.horaFin,
-            }))
-          : [{ diaSemana: 1, horaInicio: '08:00', horaFin: '17:00' }]
-      )
+      const horariosPub = pubExistente.horarios || []
+      const conFecha = horariosPub.filter((h) => h.fecha)
+      setFechasSeleccionadas(conFecha.map((h) => h.fecha))
+      setHoraInicioExp(conFecha[0]?.horaInicio?.slice(0, 5) || '08:00')
+      setHoraFinExp(conFecha[0]?.horaFin?.slice(0, 5) || '17:00')
       setError(null)
       return
     }
@@ -105,7 +107,9 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setLongitud('')
     setAmenidadIds([])
     setArchivos([])
-    setHorarios([{ diaSemana: 1, horaInicio: '08:00', horaFin: '17:00' }])
+    setFechasSeleccionadas([])
+    setHoraInicioExp('08:00')
+    setHoraFinExp('17:00')
     setError(null)
   }, [abierto, esEdicion, pubExistente])
 
@@ -139,8 +143,47 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     return urls
   }
 
-  const actualizarHorario = (i, campo, valor) => {
-    setHorarios((prev) => prev.map((h, idx) => idx === i ? { ...h, [campo]: valor } : h))
+  const cambiarMesCal = (delta) => {
+    let m = mesCal + delta
+    let a = anioCal
+    if (m < 0) { m = 11; a -= 1 }
+    else if (m > 11) { m = 0; a += 1 }
+    setMesCal(m)
+    setAnioCal(a)
+  }
+
+  const fechaISO = (anio, mes, dia) =>
+    `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+
+  const toggleFecha = (fecha) => {
+    setFechasSeleccionadas((prev) =>
+      prev.includes(fecha) ? prev.filter((f) => f !== fecha) : [...prev, fecha]
+    )
+  }
+
+  const formatearFechaChip = (fecha) => {
+    const [a, m, d] = fecha.split('-')
+    return `${parseInt(d, 10)} ${MESES[parseInt(m, 10) - 1].slice(0, 3).toLowerCase()}`
+  }
+
+  const celdasCalendario = () => {
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    const primerDia = new Date(anioCal, mesCal, 1)
+    const diasEnMes = new Date(anioCal, mesCal + 1, 0).getDate()
+    const offset = (primerDia.getDay() + 6) % 7
+    const celdas = []
+    for (let i = 0; i < offset; i++) celdas.push({ dia: null })
+    for (let d = 1; d <= diasEnMes; d++) {
+      const fecha = fechaISO(anioCal, mesCal, d)
+      celdas.push({
+        dia: d,
+        fecha,
+        pasado: new Date(anioCal, mesCal, d).getTime() < hoy.getTime(),
+        seleccionado: fechasSeleccionadas.includes(fecha),
+      })
+    }
+    return celdas
   }
 
   const handleSubmit = async (e) => {
@@ -148,6 +191,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setError(null)
     if (!latitud || !longitud) {
       setError('Por favor seleccioná una ubicación en el mapa')
+      setEnviando(false)
+      return
+    }
+    if (tipo === 'experiencia' && fechasSeleccionadas.length === 0) {
+      setError('Elegí al menos una fecha disponible en el calendario')
       setEnviando(false)
       return
     }
@@ -181,10 +229,10 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         publicacion.banos = null
         publicacion.amenidadIds = []
         publicacion.experiencia = [{ nombre: titulo, duracionHoras: null, precioAdicional: null }]
-        publicacion.horarios = horarios.map((h) => ({
-          diaSemana: parseInt(h.diaSemana),
-          horaInicio: h.horaInicio,
-          horaFin: h.horaFin,
+        publicacion.horarios = fechasSeleccionadas.map((fecha) => ({
+          fecha,
+          horaInicio: horaInicioExp,
+          horaFin: horaFinExp,
         }))
       }
 
@@ -234,7 +282,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     return titulo || descripcion || anfitrionId || categoriaId || precio || capacidad ||
       habitaciones || camas || banos || horaEntrada || horaSalida || departamentoId || municipioId ||
       latitud || longitud || amenidadIds.length > 0 || archivos.length > 0 ||
-      horarios.length > 1 || (horarios[0] && (horarios[0].horaInicio !== '08:00' || horarios[0].horaFin !== '17:00'))
+      fechasSeleccionadas.length > 0
   }
 
   const handleCerrar = () => {
@@ -485,43 +533,86 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
             )}
           </fieldset>
 
-          {/* Horarios - solo experiencia */}
+          {/* Disponibilidad - solo experiencia */}
           {tipo === 'experiencia' && (
             <fieldset className="mb-6">
-              <legend className="mb-3 text-lg font-bold text-verde-bosque">Horarios disponibles</legend>
-              <p className="mb-3 text-sm text-cafe">Definí los días y horarios en que esta experiencia está disponible.</p>
-              <div className="space-y-3">
-                {horarios.map((h, i) => (
-                  <div key={i} className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-3">
-                    <div className="flex-1 min-w-[140px]">
-                      <label className={labelCls}>Día</label>
-                      <select value={h.diaSemana} onChange={(e) => actualizarHorario(i, 'diaSemana', e.target.value)} className={inputCls}>
-                        {DIAS.map((d, idx) => <option key={idx} value={idx}>{d}</option>)}
-                      </select>
+              <legend className="mb-3 text-lg font-bold text-verde-bosque">Fechas disponibles</legend>
+              <p className="mb-3 text-sm text-cafe">
+                Elegí en el calendario los días en que se puede reservar esta experiencia.
+              </p>
+
+              <div className="rounded-xl border border-neutral-200 bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <button type="button" onClick={() => cambiarMesCal(-1)} aria-label="Mes anterior" className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                  </button>
+                  <p className="text-sm font-bold text-verde-bosque">{MESES[mesCal]} {anioCal}</p>
+                  <button type="button" onClick={() => cambiarMesCal(1)} aria-label="Mes siguiente" className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                  </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-7 gap-1">
+                  {DIAS_CORTOS.map((d) => (
+                    <span key={d} className="py-1 text-center text-[11px] font-semibold uppercase text-cafe">{d}</span>
+                  ))}
+                  {celdasCalendario().map((celda, i) => (
+                    <div key={i}>
+                      {celda.dia ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleFecha(celda.fecha)}
+                          disabled={celda.pasado}
+                          className={`h-9 w-full rounded-lg text-sm font-semibold transition-colors ${
+                            celda.pasado
+                              ? 'cursor-not-allowed text-neutral-300'
+                              : celda.seleccionado
+                                ? 'bg-verde-bosque text-white'
+                                : 'cursor-pointer text-neutral-700 hover:bg-verde-hoja/20'
+                          }`}
+                        >
+                          {celda.dia}
+                        </button>
+                      ) : (
+                        <span className="block h-9" />
+                      )}
                     </div>
-                    <div className="flex-1 min-w-[120px]">
-                      <label className={labelCls}>Hora inicio</label>
-                      <input type="time" value={h.horaInicio} onChange={(e) => actualizarHorario(i, 'horaInicio', e.target.value)} className={inputCls} />
-                    </div>
-                    <div className="flex-1 min-w-[120px]">
-                      <label className={labelCls}>Hora fin</label>
-                      <input type="time" value={h.horaFin} onChange={(e) => actualizarHorario(i, 'horaFin', e.target.value)} className={inputCls} />
-                    </div>
-                    {horarios.length > 1 && (
-                      <button type="button" onClick={() => setHorarios((prev) => prev.filter((_, j) => j !== i))} className="cursor-pointer rounded-lg bg-red-50 p-2 text-red-500 hover:bg-red-100" title="Eliminar horario">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setHorarios((prev) => [...prev, { diaSemana: 1, horaInicio: '08:00', horaFin: '17:00' }])}
-                className="mt-3 cursor-pointer text-sm font-semibold text-terracota hover:text-terracota/80"
-              >
-                + Agregar otro horario
-              </button>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls}>Hora de inicio</label>
+                  <input type="time" value={horaInicioExp} onChange={(e) => setHoraInicioExp(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Hora de fin</label>
+                  <input type="time" value={horaFinExp} onChange={(e) => setHoraFinExp(e.target.value)} className={inputCls} />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-semibold text-cafe-oscuro">
+                  Fechas elegidas ({fechasSeleccionadas.length})
+                </p>
+                {fechasSeleccionadas.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-cafe-claro bg-white px-3 py-4 text-center text-sm text-cafe">
+                    Todavía no elegiste ninguna fecha
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {[...fechasSeleccionadas].sort().map((f) => (
+                      <span key={f} className="flex items-center gap-1.5 rounded-full bg-verde-bosque/10 px-3 py-1 text-xs font-semibold text-verde-bosque">
+                        {formatearFechaChip(f)}
+                        <button type="button" onClick={() => toggleFecha(f)} aria-label="Quitar fecha" className="cursor-pointer rounded-full p-0.5 hover:bg-verde-bosque/20">
+                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </fieldset>
           )}
 

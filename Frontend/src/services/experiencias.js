@@ -61,10 +61,14 @@ function mapearPublicacion(p) {
     horarios: (p.horarios ?? [])
       .filter((h) => h.diaSemana !== 0)
       .map((h) => ({
-        diaSemana: h.diaSemana,
+        diaSemana: h.diaSemana ?? null,
+        fecha: h.fecha ?? null,
         horaInicio: h.horaInicio,
         horaFin: h.horaFin,
       })),
+    fechasDisponibles: (p.horarios ?? [])
+      .filter((h) => h.fecha)
+      .map((h) => h.fecha),
     horaEntrada: horarioEntradaSalida?.horaInicio || '',
     horaSalida: horarioEntradaSalida?.horaFin || '',
     popular: false,

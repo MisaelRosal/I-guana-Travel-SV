@@ -46,9 +46,7 @@ export default function Footer() {
 
   const rol = usuario?.rol ?? ''
   const explorar = [{ to: '/', label: 'Inicio' }]
-  if (rol !== 'anfitrion') {
-    explorar.push({ to: '/reservas', label: 'Mis reservas' })
-  }
+  explorar.push({ to: '/reservas', label: 'Mis reservas' })
   if (rol === 'anfitrion' || rol === 'administrador') {
     explorar.push({ to: '/panel', label: 'Panel operador' })
   }

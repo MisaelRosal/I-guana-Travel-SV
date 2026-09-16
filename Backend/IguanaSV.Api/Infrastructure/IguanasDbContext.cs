@@ -211,6 +211,9 @@ public class IguanasDbContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.DiaSemana).HasColumnName("dia_semana");
+            entity.Property(e => e.Fecha)
+                .HasColumnType("date")
+                .HasColumnName("fecha");
             entity.Property(e => e.Disponible)
                 .HasDefaultValue(true)
                 .HasColumnName("disponible");

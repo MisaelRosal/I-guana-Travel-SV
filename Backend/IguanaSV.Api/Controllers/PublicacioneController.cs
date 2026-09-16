@@ -155,7 +155,7 @@ public class PublicacioneController : ControllerBase
         existente.MunicipioId = publicacione.MunicipioId;
         existente.Estado = publicacione.Estado;
 
-        var idsSolicitados = (publicacione.PublicacionAmenidads ?? new List<PublicacionAmenidad>())
+        var idsSolicitados = (dto.PublicacionAmenidads ?? new List<CreatePublicacionAmenidadDto>())
             .Where(pa => pa.AmenidadId != 0)
             .Select(pa => pa.AmenidadId)
             .ToHashSet();
@@ -176,6 +176,42 @@ public class PublicacioneController : ControllerBase
                     AmenidadId = amenidadId,
                 });
             }
+        }
+
+        // Horarios: el frontend manda la lista completa, se reemplazan
+        var horariosActuales = await _context.Horarios
+            .Where(h => h.PublicacionId == id)
+            .ToListAsync();
+        _context.Horarios.RemoveRange(horariosActuales);
+
+        foreach (var h in dto.Horarios ?? new List<CreateHorarioDto>())
+        {
+            _context.Horarios.Add(new Horario
+            {
+                PublicacionId = id,
+                DiaSemana = h.DiaSemana,
+                Fecha = h.Fecha,
+                HoraInicio = h.HoraInicio,
+                HoraFin = h.HoraFin,
+            });
+        }
+
+        // Experiencia: mismo criterio, se reemplaza
+        var experienciasActuales = await _context.Experiencias
+            .Where(e => e.PublicacionId == id)
+            .ToListAsync();
+        _context.Experiencias.RemoveRange(experienciasActuales);
+
+        foreach (var e in dto.Experiencia ?? new List<CreateExperienciaDto>())
+        {
+            _context.Experiencias.Add(new Experiencia
+            {
+                PublicacionId = id,
+                Nombre = e.Nombre,
+                Descripcion = e.Descripcion,
+                DuracionHoras = e.DuracionHoras,
+                PrecioAdicional = e.PrecioAdicional,
+            });
         }
 
         try
@@ -231,7 +267,29 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
             MunicipioId = dto.MunicipioId,
             Estado = dto.Estado ?? "activo",
             CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now
+            UpdatedAt = DateTime.Now,
+            Horarios = (dto.Horarios ?? new List<CreateHorarioDto>())
+                .Select(h => new Horario
+                {
+                    DiaSemana = h.DiaSemana,
+                    Fecha = h.Fecha,
+                    HoraInicio = h.HoraInicio,
+                    HoraFin = h.HoraFin,
+                })
+                .ToList(),
+            Experiencia = (dto.Experiencia ?? new List<CreateExperienciaDto>())
+                .Select(e => new Experiencia
+                {
+                    Nombre = e.Nombre,
+                    Descripcion = e.Descripcion,
+                    DuracionHoras = e.DuracionHoras,
+                    PrecioAdicional = e.PrecioAdicional,
+                })
+                .ToList(),
+            PublicacionAmenidads = (dto.PublicacionAmenidads ?? new List<CreatePublicacionAmenidadDto>())
+                .Where(pa => pa.AmenidadId != 0)
+                .Select(pa => new PublicacionAmenidad { AmenidadId = pa.AmenidadId })
+                .ToList()
         };
 
         _context.Publicaciones.Add(publicacione);
