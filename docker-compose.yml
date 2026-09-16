@@ -18,7 +18,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio
+    image: quay.io/minio/minio:latest
     container_name: rutasv-minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
