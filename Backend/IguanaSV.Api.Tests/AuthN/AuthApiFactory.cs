@@ -56,6 +56,13 @@ public sealed class AuthApiFixture : IAsyncLifetime
 
     public bool DockerAvailable => _postgres is not null;
 
+    /// <summary>
+    /// Connection string of the ephemeral database. Exposed so later vertical
+    /// slices (W3b+) can seed rows and assert DB state directly through
+    /// <c>IguanasDbContext</c>, without weakening the HTTP-side fixtures.
+    /// </summary>
+    public string? ConnectionString { get; private set; }
+
     public AuthApiFactory Factory { get; private set; } = null!;
 
     public async Task InitializeAsync()
@@ -67,6 +74,7 @@ public sealed class AuthApiFixture : IAsyncLifetime
 
         await _postgres.StartAsync();
         var connectionString = _postgres.GetConnectionString();
+        ConnectionString = connectionString;
 
         // Bring the container to the current schema with the shipped migrations.
         var options = new DbContextOptionsBuilder<IguanasDbContext>()

@@ -92,7 +92,6 @@ export default function SerAnfitrionPage() {
     try {
       const url = fotoUrl || (await subirFoto())
       const anfitrion = await registrarAnfitrion({
-        usuarioId: usuario.id,
         municipioId,
         nombre: nombre.trim(),
         email: email.trim(),

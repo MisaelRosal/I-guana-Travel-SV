@@ -1,6 +1,7 @@
-﻿using PublicacionAmenidadEntity = IguanaSV.Api.Entities.PublicacionAmenidad;
+using PublicacionAmenidadEntity = IguanaSV.Api.Entities.PublicacionAmenidad;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,6 +43,7 @@ public class PublicacionAmenidadController : ControllerBase
         return publicacionAmenidad;
     }
 
+    [Authorize]
     [HttpPut("{publicacionId}/{amenidadId}")]
     public async Task<IActionResult> PutPublicacionAmenidad(int publicacionId, int amenidadId, CreatePublicacionAmenidadDto dto)
     {
@@ -61,6 +63,7 @@ public class PublicacionAmenidadController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<PublicacionAmenidadEntity>> PostPublicacionAmenidad(CreatePublicacionAmenidadDto dto)
     {
@@ -97,6 +100,7 @@ public class PublicacionAmenidadController : ControllerBase
         return CreatedAtAction(nameof(GetPublicacionAmenidad), new { publicacionId = publicacionAmenidad.PublicacionId, amenidadId = publicacionAmenidad.AmenidadId }, publicacionAmenidad);
     }
 
+    [Authorize]
     [HttpDelete("{publicacionId}/{amenidadId}")]
     public async Task<IActionResult> DeletePublicacionAmenidad(int publicacionId, int amenidadId)
     {

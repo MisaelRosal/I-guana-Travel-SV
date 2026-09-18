@@ -1,6 +1,8 @@
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +19,10 @@ public class ReservaController : ControllerBase
         _context = context;
     }
 
+    // Authenticated from W3b. Fine owner scoping (sub filter, orphan-NULL
+    // hiding) lands with W4; admin already sees everything.
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<Reserva>>> GetReservas()
     {
         return await _context.Reservas
@@ -32,7 +37,10 @@ public class ReservaController : ControllerBase
             .ToListAsync();
     }
 
+    // Reservation detail is PII: authenticated. The per-row owner check (IDOR
+    // closure) lands with W4; until then the list is also authenticated-only.
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<Reserva>> GetReserva(int id)
     {
         var reserva = await _context.Reservas
@@ -54,6 +62,8 @@ public class ReservaController : ControllerBase
         return reserva;
     }
 
+    // Public availability windows (dates only, no guest data) stay anonymous:
+    // the experience detail page renders them before any login.
     [HttpGet("disponibilidad/{publicacionId}")]
     public async Task<IActionResult> GetDisponibilidad(int publicacionId)
     {
@@ -68,6 +78,7 @@ public class ReservaController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> PutReserva(int id, Reserva reserva)
     {
         if (id != reserva.Id)
@@ -82,6 +93,11 @@ public class ReservaController : ControllerBase
         if (existente == null)
         {
             return NotFound();
+        }
+
+        if (!CallerCanMutateReserva(existente))
+        {
+            return Forbid();
         }
 
         if (existente.FechaInicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
@@ -135,7 +151,11 @@ public class ReservaController : ControllerBase
         return NoContent();
     }
 
+    // Authenticated from W3b. DTO binding (UsuarioId from sub, server-recomputed
+    // price) is the W4 scope; the entity route stays open to its current body
+    // shape until then.
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<Reserva>> PostReserva(Reserva reserva)
     {
         var publicacion = await _context.Publicaciones.FirstOrDefaultAsync(p => p.Id == reserva.PublicacionId);
@@ -172,6 +192,7 @@ public class ReservaController : ControllerBase
     }
 
     [HttpPut("{id}/confirmar")]
+    [Authorize]
     public async Task<IActionResult> ConfirmarReserva(int id)
     {
         var reserva = await _context.Reservas.FindAsync(id);
@@ -179,6 +200,11 @@ public class ReservaController : ControllerBase
         if (reserva == null)
         {
             return NotFound();
+        }
+
+        if (!CallerCanMutateReserva(reserva))
+        {
+            return Forbid();
         }
 
         if (reserva.Estado != "pendiente")
@@ -202,6 +228,7 @@ public class ReservaController : ControllerBase
     }
 
     [HttpPut("{id}/pagar")]
+    [Authorize]
     public async Task<IActionResult> PagarReserva(int id, [FromBody] PagarReservaDto dto)
     {
         var reserva = await _context.Reservas.FindAsync(id);
@@ -209,6 +236,11 @@ public class ReservaController : ControllerBase
         if (reserva == null)
         {
             return NotFound();
+        }
+
+        if (!CallerCanMutateReserva(reserva))
+        {
+            return Forbid();
         }
 
         if (reserva.Estado != "pendiente")
@@ -244,6 +276,7 @@ public class ReservaController : ControllerBase
     }
 
     [HttpPut("{id}/cancelar")]
+    [Authorize]
     public async Task<IActionResult> CancelarReserva(int id)
     {
         var reserva = await _context.Reservas.FindAsync(id);
@@ -251,6 +284,11 @@ public class ReservaController : ControllerBase
         if (reserva == null)
         {
             return NotFound();
+        }
+
+        if (!CallerCanMutateReserva(reserva))
+        {
+            return Forbid();
         }
 
         if (reserva.Estado == "cancelada")
@@ -284,6 +322,7 @@ public class ReservaController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> DeleteReserva(int id)
     {
         var reserva = await _context.Reservas.FindAsync(id);
@@ -291,6 +330,11 @@ public class ReservaController : ControllerBase
         if (reserva == null)
         {
             return NotFound();
+        }
+
+        if (!CallerCanMutateReserva(reserva))
+        {
+            return Forbid();
         }
 
         if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
@@ -302,5 +346,22 @@ public class ReservaController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Owner-or-admin gate for reservation mutations. Owner means the token
+    /// subject equals <c>reservas.usuario_id</c>; rows with a NULL owner (legacy
+    /// reservations the W2 backfill could not match) are admin-only. Fine list
+    /// scoping and DTO binding are W4 follow-ups.
+    /// </summary>
+    private bool CallerCanMutateReserva(Reserva reserva)
+    {
+        if (User.IsInRole(AuthConstants.AdminRole))
+        {
+            return true;
+        }
+
+        var sub = User.GetSubjectId();
+        return reserva.UsuarioId.HasValue && sub.HasValue && reserva.UsuarioId.Value == sub.Value;
     }
 }

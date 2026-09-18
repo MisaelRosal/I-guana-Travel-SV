@@ -16,9 +16,10 @@ export async function actualizarPerfilAnfitrion(id, datos) {
   return api.put(`/Anfitrione/${id}/perfil`, datos)
 }
 
-export async function registrarAnfitrion({ usuarioId, municipioId, nombre, email, telefono, direccion, descripcion, fotoPerfil }) {
+// W3b: no `usuarioId` in the payload — the server binds the new host to the
+// authenticated session subject (token `sub`), never to a client-supplied id.
+export async function registrarAnfitrion({ municipioId, nombre, email, telefono, direccion, descripcion, fotoPerfil }) {
   return api.post('/Anfitrione/registrar', {
-    usuarioId,
     municipioId: parseInt(municipioId),
     nombre,
     email,

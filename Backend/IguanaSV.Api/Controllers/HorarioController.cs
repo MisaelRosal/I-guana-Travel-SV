@@ -1,6 +1,7 @@
-﻿using HorarioEntity = IguanaSV.Api.Entities.Horario;
+using HorarioEntity = IguanaSV.Api.Entities.Horario;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,6 +43,7 @@ public class HorarioController : ControllerBase
         return horario;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutHorario(int id, CreateHorarioDto dto)
     {
@@ -77,6 +79,7 @@ public class HorarioController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<HorarioEntity>> PostHorario(CreateHorarioDto dto)
     {
@@ -101,6 +104,7 @@ public class HorarioController : ControllerBase
         return CreatedAtAction(nameof(GetHorario), new { id = horario.Id }, horario);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteHorario(int id)
     {

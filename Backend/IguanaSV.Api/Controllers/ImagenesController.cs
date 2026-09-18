@@ -1,4 +1,5 @@
 using IguanaSV.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IguanaSV.Api.Controllers;
@@ -14,7 +15,10 @@ public class ImagenesController : ControllerBase
         _storage = storage;
     }
 
+    // Spec: upload and delete are mutating routes and require a session
+    // (magic-byte/size hardening of the handler itself is W6).
     [HttpPost("upload")]
+    [Authorize]
     public async Task<IActionResult> Upload()
     {
         var files = Request.Form.Files;
@@ -55,6 +59,7 @@ public class ImagenesController : ControllerBase
     }
 
     [HttpDelete("{fileName}")]
+    [Authorize]
     public async Task<IActionResult> Delete(string fileName)
     {
         await _storage.EnsureBucketExistsAsync();
@@ -63,6 +68,8 @@ public class ImagenesController : ControllerBase
         return NoContent();
     }
 
+    // Public media read stays anonymous (the bucket is public-read by design;
+    // Content-Disposition and the fate of this route are W6/OD-3).
     [HttpGet("{bucket}/{fileName}")]
     public async Task<IActionResult> GetImage(string bucket, string fileName)
     {

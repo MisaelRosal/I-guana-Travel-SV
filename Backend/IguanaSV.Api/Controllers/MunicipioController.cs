@@ -1,6 +1,7 @@
-﻿using MunicipioEntity = IguanaSV.Api.Entities.Municipio;
+using MunicipioEntity = IguanaSV.Api.Entities.Municipio;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,6 +43,7 @@ public class MunicipioController : ControllerBase
         return municipio;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutMunicipio(int id, CreateMunicipioDto dto)
     {
@@ -75,6 +77,7 @@ public class MunicipioController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<MunicipioEntity>> PostMunicipio(CreateMunicipioDto dto)
     {
@@ -96,6 +99,7 @@ public class MunicipioController : ControllerBase
         return CreatedAtAction(nameof(GetMunicipio), new { id = municipio.Id }, municipio);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteMunicipio(int id)
     {

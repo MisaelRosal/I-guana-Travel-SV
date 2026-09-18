@@ -25,4 +25,11 @@ public static class AuthConstants
 
     /// <summary>JWT claim for the user role (mapped to <c>RoleClaimType</c>).</summary>
     public const string RolClaim = "rol";
+
+    /// <summary>
+    /// The only role allowed on admin gates (<c>[Authorize(Roles = AdminRole)]</c>
+    /// and the admin branch of owner-or-admin checks). Matches the value stored
+    /// in <c>usuarios.rol</c> by the seed and the W2/W3 schema.
+    /// </summary>
+    public const string AdminRole = "admin";
 }
