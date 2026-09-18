@@ -27,13 +27,10 @@ jobs:
       - name: Compilar solución
         run: dotnet build IguanaSV.Api.sln -c Release --no-restore
 
-      - name: Ejecutar pruebas (si existen)
-        run: |
-          if find . -name "*Tests.csproj" | grep -q .; then
-            dotnet test -c Release --no-build --verbosity normal
-          else
-            echo "Sin proyecto de pruebas (*Tests.csproj); se omite."
-          fi
+      - name: Ejecutar pruebas (xUnit)
+        # La solucion ya declara el proyecto de pruebas, asi que un fallo
+        # o una suite ausente deben romper el job (sin rama "se omite").
+        run: dotnet test IguanaSV.Api.sln -c Release --no-build --verbosity normal
 
   frontend:
     name: Frontend - build (React + Vite)
