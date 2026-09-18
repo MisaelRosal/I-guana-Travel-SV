@@ -8,9 +8,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
+    # No initdb.d mount: EF migrations are the single schema source and the
+    # `migrator` service applies them, then loads database/seed.sql.
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -35,6 +36,32 @@ services:
       timeout: 3s
       retries: 10
 
+  # One-shot migrator: applies `dotnet ef database update` (populates
+  # __EFMigrationsHistory) and then loads the idempotent seed with psql.
+  # NOTE for existing dev databases that were created by the retired init.sql
+  # (no __EFMigrationsHistory): they must be reset once with
+  # `docker compose down -v` (or the history stamped manually) so migrations
+  # can take over the schema.
+  migrator:
+    build:
+      context: ./Backend
+      dockerfile: Migrator.Dockerfile
+    image: i-guana-travel-sv-migrator:local
+    container_name: rutasv-migrator
+    restart: "no"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGDATABASE=${POSTGRES_DB}
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./database:/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   backend:
     build:
       context: ./Backend
@@ -55,6 +82,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
 
   pgadmin:
     image: dpage/pgadmin4

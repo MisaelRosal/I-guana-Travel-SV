@@ -3,6 +3,7 @@ using System;
 using IguanaSV.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IguanaSV.Api.Migrations
 {
     [DbContext(typeof(IguanasDbContext))]
-    partial class IguanasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260918172612_AbsorbPendingSchemaDrift")]
+    partial class AbsorbPendingSchemaDrift
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -703,10 +706,6 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("integer")
-                        .HasColumnName("usuario_id");
-
                     b.HasKey("Id")
                         .HasName("reservas_pkey");
 
@@ -715,8 +714,6 @@ namespace IguanaSV.Api.Migrations
                     b.HasIndex(new[] { "FechaInicio", "FechaFin" }, "idx_reservas_fechas");
 
                     b.HasIndex(new[] { "PublicacionId" }, "idx_reservas_publicacion");
-
-                    b.HasIndex(new[] { "UsuarioId" }, "idx_reservas_usuario");
 
                     b.ToTable("reservas", (string)null);
                 });
@@ -951,15 +948,7 @@ namespace IguanaSV.Api.Migrations
                         .IsRequired()
                         .HasConstraintName("reservas_publicacion_id_fkey");
 
-                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("reservas_usuario_id_fkey");
-
                     b.Navigation("Publicacion");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.ReservaHorario", b =>
