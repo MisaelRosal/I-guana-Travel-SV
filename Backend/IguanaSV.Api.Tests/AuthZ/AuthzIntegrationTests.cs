@@ -340,8 +340,13 @@ public sealed class AuthzIntegrationTests
     public async Task ReservaCancel_OwnerAllowed_StrangerForbidden()
     {
         var owner = await RegisterUserAsync();
+        // SeedPublicationOwnedByUserAsync already creates one pending reservation
+        // owned by <paramref name="owner"/> on seed.PublicacionId. The W5 EXCLUDE
+        // (reservas_no_overlap_lodging) forbids a second, fully-overlapping active
+        // row on the same publication, so reuse the seeded one instead of adding a
+        // duplicate — the owner/stranger assertions are unchanged.
         var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
-        var reservaId = await SeedReservaAsync(seed.PublicacionId, owner.UserId);
+        var reservaId = seed.ReservaId;
 
         var stranger = await RegisterUserAsync();
         var strangerRes = await AuthedClient(stranger).PutAsync($"/api/Reserva/{reservaId}/cancelar", content: null);
@@ -355,8 +360,12 @@ public sealed class AuthzIntegrationTests
     [Trait("Category", "AuthZ")]
     public async Task ReservaOrphan_NullOwner_AdminOnly()
     {
+        // SeedPublicationOwnedByRandomHostAsync already seeds a NULL-owner
+        // (orphan) pending reservation on the fresh publication; reuse it. The W5
+        // EXCLUDE forbids a second, fully-overlapping active row on the same
+        // publication, so we must not seed a duplicate on the same dates.
         var seed = await SeedPublicationOwnedByRandomHostAsync();
-        var reservaId = await SeedReservaAsync(seed.PublicacionId, usuarioId: null);
+        var reservaId = seed.ReservaId;
 
         var stranger = await RegisterUserAsync();
         var strangerRes = await AuthedClient(stranger).PutAsync($"/api/Reserva/{reservaId}/cancelar", content: null);

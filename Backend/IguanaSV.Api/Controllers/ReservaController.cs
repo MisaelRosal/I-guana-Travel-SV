@@ -5,6 +5,7 @@ using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace IguanaSV.Api.Controllers;
 
@@ -143,24 +144,35 @@ public class ReservaController : ControllerBase
             return BadRequest($"La capacidad máxima de esta publicación es de {publicacion.CapacidadMaxima} personas.");
         }
 
+        // Effective dates honor the half-open [check-in, check-out) rule (TD2); an
+        // experience collapses to a single day so it self-exempts from the lodging
+        // exclusion and is governed by per-slot capacity instead (TD3).
+        var (inicio, fin) = EffectiveDates(publicacion, dto);
+
+        // Strict half-open overlap predicate: two ranges overlap iff
+        // a.inicio < b.fin AND b.inicio < a.fin. This replaces the racy inclusive
+        // (<= / >=) check that wrongly flagged the checkout==checkin adjacency.
+        // The DB EXCLUDE constraint is the authoritative guard for the concurrent
+        // case; this pre-check only produces a friendly message for the common,
+        // non-contended case.
         var hayConflicto = await _context.Reservas
             .AnyAsync(r => r.Id != id
                 && r.PublicacionId == existente.PublicacionId
                 && r.Estado != "cancelada"
-                && r.FechaInicio <= dto.FechaFin
-                && r.FechaFin >= dto.FechaInicio);
+                && r.FechaInicio < fin
+                && inicio < r.FechaFin);
 
         if (hayConflicto)
         {
-            return Conflict(new { mensaje = "Las fechas seleccionadas no están disponibles. Alguien ya reservó en ese rango de fechas." });
+            return Conflict(OverlapConflict());
         }
 
-        existente.FechaInicio = dto.FechaInicio;
-        existente.FechaFin = dto.FechaFin;
+        existente.FechaInicio = inicio;
+        existente.FechaFin = fin;
         existente.NumeroHuespedes = dto.NumeroHuespedes;
         existente.PrecioTotal = CalcularPrecioTotal(
             publicacion, await GetPrecioAdicionalExperienciaAsync(publicacion),
-            dto.FechaInicio, dto.FechaFin, dto.NumeroHuespedes);
+            inicio, fin, dto.NumeroHuespedes);
         existente.UpdatedAt = DateTime.Now;
 
         try
@@ -170,6 +182,12 @@ public class ReservaController : ControllerBase
         catch (DbUpdateConcurrencyException)
         {
             return Conflict();
+        }
+        catch (DbUpdateException ex) when (IsExclusionViolation(ex))
+        {
+            // Lost the concurrency race against another committed edit whose range
+            // now overlaps ours; the EXCLUDE rejected the update.
+            return Conflict(OverlapConflict());
         }
 
         return NoContent();
@@ -199,15 +217,25 @@ public class ReservaController : ControllerBase
             return BadRequest($"La capacidad máxima de esta publicación es de {publicacion.CapacidadMaxima} personas.");
         }
 
+        // Effective dates: lodging keeps the caller's [check-in, check-out) range;
+        // an experience is a single point in time, so it self-exempts from the
+        // lodging EXCLUDE and its double-booking is prevented by per-slot capacity
+        // (design TD2/TD3). This also keeps new rows consistent with M3's pre-clean.
+        var (inicio, fin) = EffectiveDates(publicacion, dto);
+
+        // Strict half-open overlap predicate (see the PUT comment above). The DB
+        // EXCLUDE constraint is what actually guarantees correctness under
+        // concurrency; this read only yields a friendly message when there is no
+        // race.
         var hayConflicto = await _context.Reservas
             .AnyAsync(r => r.PublicacionId == dto.PublicacionId
                 && r.Estado != "cancelada"
-                && r.FechaInicio <= dto.FechaFin
-                && r.FechaFin >= dto.FechaInicio);
+                && r.FechaInicio < fin
+                && inicio < r.FechaFin);
 
         if (hayConflicto)
         {
-            return Conflict(new { mensaje = "Las fechas seleccionadas no están disponibles. Alguien ya reservó en ese rango de fechas." });
+            return Conflict(OverlapConflict());
         }
 
         var reserva = new Reserva
@@ -217,17 +245,29 @@ public class ReservaController : ControllerBase
             NombreHuesped = dto.NombreHuesped,
             EmailHuesped = dto.EmailHuesped,
             TelefonoHuesped = dto.TelefonoHuesped,
-            FechaInicio = dto.FechaInicio,
-            FechaFin = dto.FechaFin,
+            FechaInicio = inicio,
+            FechaFin = fin,
             NumeroHuespedes = dto.NumeroHuespedes,
             PrecioTotal = CalcularPrecioTotal(
                 publicacion, await GetPrecioAdicionalExperienciaAsync(publicacion),
-                dto.FechaInicio, dto.FechaFin, dto.NumeroHuespedes),
+                inicio, fin, dto.NumeroHuespedes),
             Estado = "pendiente",
         };
 
         _context.Reservas.Add(reserva);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsExclusionViolation(ex))
+        {
+            // The pre-check is inherently racy: two concurrent POSTs for the same
+            // publication and overlapping dates both read "no conflict" and both
+            // attempt the insert. The EXCLUDE is the tie-breaker, so the loser is
+            // rejected by the database and surfaces here as a 409 (not a 500).
+            return Conflict(OverlapConflict());
+        }
 
         return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);
     }
@@ -419,6 +459,42 @@ public class ReservaController : ControllerBase
 
         return (publicacion.PrecioPorNoche + (precioAdicional ?? 0m)) * numeroHuespedes;
     }
+
+    /// <summary>
+    /// Half-open effective range for a reservation, given the publication type.
+    /// Lodging stores the caller's <c>[check-in, check-out)</c> as-is; an
+    /// experience is booked to a single day, so <c>fecha_fin</c> is forced equal
+    /// to <c>fecha_inicio</c>. That makes <c>daterange(fecha_inicio, fecha_fin,
+    /// '[)')</c> the EMPTY range, which never overlaps anything and so
+    /// self-exempts the experience from the lodging <c>EXCLUDE</c> (design TD3);
+    /// its double-booking is instead bounded by per-slot capacity. This keeps new
+    /// rows consistent with the M3 pre-clean.
+    /// </summary>
+    private static (DateOnly Inicio, DateOnly Fin) EffectiveDates(Publicacione publicacion, CreateReservaDto dto)
+    {
+        if (string.Equals(publicacion.Tipo, "experiencia", StringComparison.OrdinalIgnoreCase))
+        {
+            return (dto.FechaInicio, dto.FechaInicio);
+        }
+
+        return (dto.FechaInicio, dto.FechaFin);
+    }
+
+    /// <summary>
+    /// The single 409 payload for an overlap/slot conflict (spec "Overlap
+    /// surfaces as HTTP 409", design "409 body { mensaje }").
+    /// </summary>
+    private static object OverlapConflict() =>
+        new { mensaje = "Las fechas seleccionadas no están disponibles. Alguien ya reservó en ese rango de fechas." };
+
+    /// <summary>
+    /// True when a failed <c>SaveChanges</c> was rejected by the PostgreSQL
+    /// exclusion constraint (SQLSTATE 23P01). The Npgsql/EF provider wraps the
+    /// <see cref="PostgresException"/> inside a <see cref="DbUpdateException"/>,
+    /// so the SQLSTATE has to be read from the inner exception.
+    /// </summary>
+    private static bool IsExclusionViolation(DbUpdateException ex) =>
+        ex.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.ExclusionViolation;
 
     /// <summary>
     /// Loads the add-on price for experience publications from the authoritative

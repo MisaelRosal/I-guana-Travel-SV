@@ -82,11 +82,11 @@ Chain strategy: pending
 
 ## Wave 5 (W5): no-double-booking — PR #6 (~240)
 
-- [ ] 6.1 M3 `ReplaceRacyIndexesWithExclusions` raw SQL: pre-clean experiencia `SET fecha_fin=fecha_inicio`, drop both fake GiST indexes, ADD `reservas_no_overlap_lodging` EXCLUDE `daterange '[)'` WHERE estado distinct 'cancelada' + btree `horarios` unique
-- [ ] 6.2 Map `23P01` exclusion violation → 409 `{ mensaje:"Fechas no disponibles" }`
-- [ ] 6.3 Advisory-lock capacity: `pg_advisory_xact_lock(horario_id)`, `SUM(numero_huespedes)` active + new ≤ `capacidad_maxima` else 409; drop racy `AnyAsync`, fix inclusive `<=`/`>=` to `[)`
-- [ ] 6.4 RED integration: concurrent two POSTs `Task.WhenAll` → exactly one 201 + one 409; adjacent ranges→201; slot over max→409
-- [ ] 6.5 RED: M3 `Down` via `ef database update <M2>` restores prior indexes
+- [x] 6.1 M3 `ReplaceRacyIndexesWithExclusions` raw SQL: pre-clean experiencia `SET fecha_fin=fecha_inicio`, drop both fake GiST indexes (IF EXISTS — M1 already dropped them), ADD `reservas_no_overlap_lodging` EXCLUDE `daterange '[)'` WHERE estado distinct 'cancelada' + btree `horarios` slot-hygiene index (non-unique per design TD3)
+- [x] 6.2 Map `23P01` exclusion violation → 409 `{ mensaje: ... }` (POST + PUT `Reserva` catch `DbUpdateException` whose inner `PostgresException.SqlState == 23P01`)
+- [x] 6.3 Advisory-lock capacity: `pg_advisory_xact_lock(horario_id)` in `ReservaHorarioController.PostReservaHorario` transaction, `SUM(numero_huespedes)` active + new ≤ `capacidad_maxima` else 409; dropped the racy `AnyAsync`, fixed inclusive `<=`/`>=` to strict `[)` and normalized experience `fecha_fin := fecha_inicio`
+- [x] 6.4 RED integration: concurrent POSTs → exactly one 201 + the rest 409; adjacent ranges→201/201; slot over max→409 — `Backend/IguanaSV.Api.Tests/Overlap/` (`Category=Overlap`, 7 facts incl. deterministic 23P01→409 not-500 on the shared AuthN fixture)
+- [x] 6.5 RED: M3 `Down` via `ef database update <M2>` drops the EXCLUDE + hygiene index (history 7→6) — `M3ExclusionMigrationTests` (`Category=Overlap`)
 
 ## Wave 6 (W6): upload-hardening — PR #7 (~280)
 
@@ -105,6 +105,6 @@ Chain strategy: pending
 
 ## Open Decisions (non-blocking, from design)
 
-- [ ] OD-1: Audit prod-shaped seed — confirm no `experiencia` reservation has `fecha_fin > fecha_inicio` beyond the documented M3 pre-clean (W5)
+- [x] OD-1: Audit prod-shaped seed — CONFIRMED in W5. The seed (`database/seed.sql`) never inserts two reservations that overlap on the same publication (pub4 rows `[today-10,today-7)` and `[today+5,today+8)` are disjoint; pub5 has one), so M3's `EXCLUDE` accepts the seed after `ef database update`. Seed publications omit `tipo` so they default to `'experiencia'`, but their reservations are inserted AFTER the M3 pre-clean runs (during migration, on an empty table), so they keep `fecha_fin > fecha_inicio`; that is harmless because the constraint is range-based and no two of them overlap. New API experience reservations are normalized to same-day by the controller (`EffectiveDates`), matching TD3.
 - [x] OD-2: Fix exact JWT TTL (proposal: 60 min `Jwt:ExpiresInMinutes`) — set in W3a 3.1
 - [ ] OD-3: Decide fate of legacy `GET /api/imagenes/{bucket}/{fileName}` (ignores `bucket`): keep shape + disposition or deprecate (W6)
