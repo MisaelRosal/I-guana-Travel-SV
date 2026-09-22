@@ -1,0 +1,34 @@
+# Normalize line endings so executable/config files never ship CRLF to
+# Linux containers (a `bash\r` shebang line breaks migrate-and-seed.sh and
+# Postgres rejects stray \r in .sql during migrations/seed).
+* text=auto
+
+# Shell scripts and SQL MUST be LF in the working tree everywhere.
+*.sh text eol=lf
+*.sql text eol=lf
+
+# CI/compose configs are consumed by Linux tooling (and yaml/bash parsers);
+# keep them LF for the same reason.
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+*.env.example text eol=lf
+
+# Windows-only artifacts keep CRLF for the tools that expect it.
+*.sln text eol=crlf
+*.csproj text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Never touch binary payloads.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.dll binary
+*.exe binary
+*.pdb binary

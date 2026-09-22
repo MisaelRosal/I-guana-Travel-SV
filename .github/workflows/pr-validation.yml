@@ -28,8 +28,12 @@ jobs:
         run: dotnet build IguanaSV.Api.sln -c Release --no-restore
 
       - name: Ejecutar pruebas (xUnit)
-        # La solucion ya declara el proyecto de pruebas, asi que un fallo
-        # o una suite ausente deben romper el job (sin rama "se omite").
+        # The solution always declares the test project, so an absent or
+        # failing suite is a hard job failure (no skip branch). No filter:
+        # every category runs (Guard, Schema, Authn, AuthZ, Reserva,
+        # Overlap, Upload). The schema-drift guard (`has-pending-model-changes`
+        # equivalent via Database.HasPendingModelChanges) is Category=Schema
+        # and fails the build here when the model drifts from the migrations.
         run: dotnet test IguanaSV.Api.sln -c Release --no-build --verbosity normal
 
   frontend:
@@ -54,6 +58,13 @@ jobs:
 
       - name: Compilar
         run: npm run build
+
+      - name: Ejecutar pruebas unitarias (Vitest)
+        # W7: the frontend suite is mandatory. Unit-tests the W3a service
+        # layer (CSRF double-submit in api.js, /me rehydration gate in
+        # session.js) under jsdom with a stubbed fetch. A missing or
+        # failing suite fails the job.
+        run: npm test
 
   docker:
     name: Integración - Docker Compose
@@ -87,11 +98,18 @@ jobs:
           echo "Frontend OK"
 
           echo "Verificando backend (.NET API)..."
-          # Acepta cualquier respuesta HTTP (200 o error controlado);
-          # lo importante es que Kestrel esté atendiendo peticiones.
-          curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
-            --silent --output /dev/null http://localhost:5000/api/departamento
-          echo "Backend OK"
+          # W7: assert a concrete success status (200) on the public read
+          # endpoint instead of accepting any HTTP code. --retry-all-errors
+          # retries non-2xx responses too, so a transient 5xx during startup
+          # does not flake; the final code MUST be exactly 200.
+          code=$(curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
+            --silent --output /dev/null --write-out '%{http_code}' \
+            http://localhost:5000/api/departamento)
+          if [ "$code" != "200" ]; then
+            echo "Backend smoke failed: HTTP $code (expected 200)" >&2
+            exit 1
+          fi
+          echo "Backend OK (HTTP 200)"
 
       - name: Diagnóstico en caso de fallo
         if: failure()

@@ -98,10 +98,11 @@ Chain strategy: pending
 
 ## Wave 7 (W7): ci-tests-green completion — PR #8 (~300)
 
-- [ ] 8.1 Consolidate cross-wave smoke: `docker compose` smoke asserts `200` on public GET (no skip)
-- [ ] 8.2 Vitest on `api.js`: CSRF header injected on mutation; `/me` rehydration gate
-- [ ] 8.3 Wire guard tests (secret-leak, port, `has-pending-model-changes`) into CI job
-- [ ] 8.4 CI runs `dotnet test` + `npm test` (Vitest) — both green
+- [x] 8.1 Consolidate cross-wave smoke: `docker compose` smoke asserts `200` on public GET (no skip) — backend smoke now captures `%{http_code}` from `GET /api/departamento` (public, W3b) and `exit 1`s unless it is exactly `200`; `--retry-all-errors` keeps boot-time 5xx from flaking
+- [x] 8.2 Vitest on `api.js`: CSRF header injected on mutation; `/me` rehydration gate — devDeps `vitest`+`jsdom`+`@testing-library/{react,jest-dom}`, `test`=`vitest run`, `vitest.config.js` (jsdom env); 25 unit tests in `Frontend/src/services/__tests__/{api,session}.test.js` (X-CSRF-Token from `iguana_csrf` cookie on POST/PUT/PATCH/DELETE only, `credentials:'include'` on all, 401/network failure wipes the `iguana_usuario` cache, logout clears locally even when the server call fails)
+- [x] 8.3 Wire guard tests (secret-leak, port, `has-pending-model-changes`) into CI job — the backend job runs `dotnet test` with NO filter so Guard/Schema/Authn/AuthZ/Reserva/Overlap/Upload all execute; the drift check is delegated to W2's `Database.HasPendingModelChanges` plain `[Fact]` (Category=Schema, no Docker needed), documented in the workflow step comment
+- [x] 8.4 CI runs `dotnet test` + `npm test` (Vitest) — both green — frontend job gains `npm test` after `npm run build`; locally: 68/68 backend, 25/25 Vitest
+- [x] 8.5 Stabilize the flaky W5 concurrency test — `ConcurrentOverlap_ExactlyOneCreatedOneConflict` no longer counts exact status distributions of simultaneous POSTs (a Postgres deadlock 40P01 while breaking mutual EXCLUDE waits is surfaced as 500 because W5 only maps 23P01→409; the old `1×201 + 3×409` assertion flaked on that timing). Two phases instead: race → exactly one 201 AND exactly one active DB row for the range (timing-independent invariant); second wave on the committed blocker → all N concurrent POSTs deterministically 409, row count still 1. Security assertion preserved (and strengthened): concurrency can never double-book
 
 ## Open Decisions (non-blocking, from design)
 

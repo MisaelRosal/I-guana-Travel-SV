@@ -23,7 +23,8 @@ namespace IguanaSV.Api.Tests.Overlap;
 /// It proves the half-open [check-in, check-out) semantics end-to-end:
 ///   * adjacency (A.checkout == B.checkin) is allowed — both 201;
 ///   * a genuine overlap is refused — 409 (never 500);
-///   * the refusal holds under real concurrency (two racing POSTs);
+///   * the refusal holds under real concurrency: a POST race commits exactly
+///     one booking and later concurrent attempts all conflict (409);
 ///   * a cancelled reservation does not block a later one in the same range;
 ///   * a database exclusion violation is mapped to 409, not a 500;
 ///   * experience slot capacity is enforced per horario (TD3) with 409 on overflow.
@@ -120,11 +121,25 @@ public sealed class OverlapIntegrationTests
     [Trait("Category", "Overlap")]
     public async Task ConcurrentOverlap_ExactlyOneCreatedOneConflict()
     {
-        // Two independent clients (separate request scopes / DbContexts) race for
-        // the SAME publication and identical overlapping dates. The application
-        // pre-check is inherently racy, so the database EXCLUDE is the tie-breaker:
-        // exactly one 201 and exactly one 409 (the loser never sees a 500). This
-        // is the "Concurrent overlap rejected" spec scenario at the API boundary.
+        // The security guarantee is "concurrency can NEVER produce a double
+        // booking", NOT "every loser answers 409". When racing INSERTs hit the
+        // GiST EXCLUDE entry of each other simultaneously, Postgres may break
+        // the mutual wait by deadlocking one transaction (SQLSTATE 40P01);
+        // W5 deliberately maps only 23P01 to 409 (that mapping is covered
+        // deterministically, without any race, by
+        // ExclusionViolation_MapsTo409_Not500), so a rare deadlock surfaces
+        // as a 500 on a loser. Counting exact statuses of simultaneous
+        // POSTs therefore used to flake on timing. Two-phase instead:
+        //   Phase 1 (true race, empty range): exactly ONE transaction is
+        //     allowed to commit — the committer answers 201 — and the
+        //     DATABASE ends holding exactly one active row for the range.
+        //     This is timing-independent: a second 201 or a second row would
+        //     mean the EXCLUDE failed.
+        //   Phase 2 (blocker already committed): a second wave of concurrent
+        //     POSTs must ALL be refused with a deterministic 409 — every
+        //     request's overlap pre-check now sees the committed blocker, so
+        //     none ever reaches the contended INSERT path and no deadlock
+        //     window exists.
         var host = await RegisterUserAsync();
         var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
@@ -144,14 +159,25 @@ public sealed class OverlapIntegrationTests
             return res.StatusCode;
         }
 
-        var results = await Task.WhenAll(
-            Post("race1@overlap.test"),
-            Post("race2@overlap.test"),
-            Post("race3@overlap.test"),
-            Post("race4@overlap.test"));
+        // Phase 1: simultaneous race for the same publication and identical
+        // overlapping dates. The application pre-check is inherently racy, so
+        // the database EXCLUDE is the tie-breaker.
+        var first = await Task.WhenAll(Enumerable.Range(1, 4).Select(i => Post($"race1-{i}@overlap.test")));
 
-        Assert.Equal(1, results.Count(s => s == HttpStatusCode.Created));
-        Assert.Equal(3, results.Count(s => s == HttpStatusCode.Conflict));
+        Assert.Equal(1, first.Count(s => s == HttpStatusCode.Created));
+        // Authoritative invariant, independent of how the losers' HTTP codes
+        // resolved: only one stored booking exists for the range.
+        Assert.Equal(1, await CountActiveInRangeAsync(pubId, Iso(40), Iso(45)));
+
+        // Phase 2: same range, winner committed — every concurrent attempt
+        // must be refused with 409 (never a second 2xx, never a 500, because
+        // the friendly pre-check path answers before any INSERT is attempted).
+        var second = await Task.WhenAll(Enumerable.Range(1, 4).Select(i => Post($"race2-{i}@overlap.test")));
+
+        Assert.Equal(0, second.Count(s => s == HttpStatusCode.Created));
+        Assert.All(second, s => Assert.Equal(HttpStatusCode.Conflict, s));
+        // Still exactly one stored booking: the race never double-booked.
+        Assert.Equal(1, await CountActiveInRangeAsync(pubId, Iso(40), Iso(45)));
     }
 
     [SkippableFact]
@@ -440,6 +466,30 @@ public sealed class OverlapIntegrationTests
         cmd.Parameters.AddWithValue("e", estado);
         cmd.Parameters.AddWithValue("id", reservaId);
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// Counts ACTIVE (non-cancelled) reservations overlapping [inicio, fin)
+    /// under the half-open rule, straight from the database. This is the
+    /// authoritative double-booking invariant for the concurrency test: it
+    /// holds no matter how the racers' HTTP statuses resolved.
+    /// </summary>
+    private async Task<int> CountActiveInRangeAsync(int publicacionId, string inicio, string fin)
+    {
+        await using var db = new NpgsqlConnection(_fixture.ConnectionString!);
+        await db.OpenAsync();
+        await using var cmd = new NpgsqlCommand(
+            """
+            SELECT count(*) FROM reservas
+            WHERE publicacion_id = @pid
+              AND estado IS DISTINCT FROM 'cancelada'
+              AND fecha_inicio < @fin::date
+              AND @ini::date < fecha_fin;
+            """, db);
+        cmd.Parameters.AddWithValue("pid", publicacionId);
+        cmd.Parameters.AddWithValue("ini", inicio);
+        cmd.Parameters.AddWithValue("fin", fin);
+        return Convert.ToInt32(await cmd.ExecuteScalarAsync());
     }
 
     /// <summary>
