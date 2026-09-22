@@ -19,13 +19,15 @@ public class ReservaController : ControllerBase
         _context = context;
     }
 
-    // Authenticated from W3b. Fine owner scoping (sub filter, orphan-NULL
-    // hiding) lands with W4; admin already sees everything.
+    // Owner-scoped list (W4): a plain user sees only their own reservations;
+    // an admin sees every row. Reservations with a NULL owner (legacy rows the
+    // W2 backfill could not match) are hidden from non-admins, so the guest-PII
+    // leak of returning all rows is closed.
     [HttpGet]
     [Authorize]
     public async Task<ActionResult<IEnumerable<Reserva>>> GetReservas()
     {
-        return await _context.Reservas
+        var query = _context.Reservas
             .Include(r => r.Publicacion)
                 .ThenInclude(p => p.ImagenesPublicacions)
             .Include(r => r.Publicacion)
@@ -34,11 +36,21 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            var sub = User.GetSubjectId();
+            query = query.Where(r => r.UsuarioId.HasValue && r.UsuarioId == sub);
+        }
+
+        return await query.ToListAsync();
     }
 
-    // Reservation detail is PII: authenticated. The per-row owner check (IDOR
-    // closure) lands with W4; until then the list is also authenticated-only.
+    // Single reservation detail is PII (W4): owner-or-admin only. A non-owner
+    // gets 404 rather than 403 so the existence of someone else's row is not
+    // leaked through the status code. Orphan-NULL rows are never owned, so they
+    // resolve to 404 for any non-admin subject.
     [HttpGet("{id}")]
     [Authorize]
     public async Task<ActionResult<Reserva>> GetReserva(int id)
@@ -59,6 +71,15 @@ public class ReservaController : ControllerBase
             return NotFound();
         }
 
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            var sub = User.GetSubjectId();
+            if (!reserva.UsuarioId.HasValue || reserva.UsuarioId.Value != sub)
+            {
+                return NotFound();
+            }
+        }
+
         return reserva;
     }
 
@@ -77,15 +98,14 @@ public class ReservaController : ControllerBase
         return Ok(reservasOcupadas);
     }
 
+    // Edit (W4): binds CreateReservaDto, so the validator runs and only the
+    // legitimate guest fields (dates, guests) change. PrecioTotal is recomputed
+    // server-side; UsuarioId, Estado and the owning publication are never read
+    // from the body. The W3b owner-or-admin gate still authorizes the mutation.
     [HttpPut("{id}")]
     [Authorize]
-    public async Task<IActionResult> PutReserva(int id, Reserva reserva)
+    public async Task<IActionResult> PutReserva(int id, CreateReservaDto dto)
     {
-        if (id != reserva.Id)
-        {
-            return BadRequest();
-        }
-
         var existente = await _context.Reservas
             .Include(r => r.ReservaHorarios)
             .FirstOrDefaultAsync(r => r.Id == id);
@@ -105,38 +125,42 @@ public class ReservaController : ControllerBase
             return BadRequest("No es posible editar una reserva cuando falta un día o menos para la fecha de entrada.");
         }
 
-        if (reserva.FechaFin < reserva.FechaInicio)
+        if (dto.FechaFin < dto.FechaInicio)
         {
             return BadRequest("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
         }
 
-        var publicacion = await _context.Publicaciones.FirstOrDefaultAsync(p => p.Id == reserva.PublicacionId);
+        // The reservation stays bound to its original publication; the client
+        // cannot reparent it onto another host's listing.
+        var publicacion = await _context.Publicaciones.FirstOrDefaultAsync(p => p.Id == existente.PublicacionId);
         if (publicacion == null)
         {
-            return NotFound($"La publicacion con id {reserva.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {existente.PublicacionId} no existe.");
         }
 
-        if (reserva.NumeroHuespedes > publicacion.CapacidadMaxima)
+        if (dto.NumeroHuespedes > publicacion.CapacidadMaxima)
         {
             return BadRequest($"La capacidad máxima de esta publicación es de {publicacion.CapacidadMaxima} personas.");
         }
 
         var hayConflicto = await _context.Reservas
             .AnyAsync(r => r.Id != id
-                && r.PublicacionId == reserva.PublicacionId
+                && r.PublicacionId == existente.PublicacionId
                 && r.Estado != "cancelada"
-                && r.FechaInicio <= reserva.FechaFin
-                && r.FechaFin >= reserva.FechaInicio);
+                && r.FechaInicio <= dto.FechaFin
+                && r.FechaFin >= dto.FechaInicio);
 
         if (hayConflicto)
         {
             return Conflict(new { mensaje = "Las fechas seleccionadas no están disponibles. Alguien ya reservó en ese rango de fechas." });
         }
 
-        existente.FechaInicio = reserva.FechaInicio;
-        existente.FechaFin = reserva.FechaFin;
-        existente.NumeroHuespedes = reserva.NumeroHuespedes;
-        existente.PrecioTotal = reserva.PrecioTotal;
+        existente.FechaInicio = dto.FechaInicio;
+        existente.FechaFin = dto.FechaFin;
+        existente.NumeroHuespedes = dto.NumeroHuespedes;
+        existente.PrecioTotal = CalcularPrecioTotal(
+            publicacion, await GetPrecioAdicionalExperienciaAsync(publicacion),
+            dto.FechaInicio, dto.FechaFin, dto.NumeroHuespedes);
         existente.UpdatedAt = DateTime.Now;
 
         try
@@ -151,39 +175,56 @@ public class ReservaController : ControllerBase
         return NoContent();
     }
 
-    // Authenticated from W3b. DTO binding (UsuarioId from sub, server-recomputed
-    // price) is the W4 scope; the entity route stays open to its current body
-    // shape until then.
+    // Create (W4): binds CreateReservaDto (validator finally runs), derives
+    // UsuarioId from the token subject, recomputes PrecioTotal from the
+    // authoritative publication, and pins Estado to "pendiente". The client's
+    // own UsuarioId/PrecioTotal/Estado (if any) are never read.
     [HttpPost]
     [Authorize]
-    public async Task<ActionResult<Reserva>> PostReserva(Reserva reserva)
+    public async Task<ActionResult<Reserva>> PostReserva(CreateReservaDto dto)
     {
-        var publicacion = await _context.Publicaciones.FirstOrDefaultAsync(p => p.Id == reserva.PublicacionId);
+        var publicacion = await _context.Publicaciones.FirstOrDefaultAsync(p => p.Id == dto.PublicacionId);
         if (publicacion == null)
         {
-            return NotFound($"La publicacion con id {reserva.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        if (reserva.FechaFin < reserva.FechaInicio)
+        if (dto.FechaFin < dto.FechaInicio)
         {
             return BadRequest("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
         }
 
-        if (reserva.NumeroHuespedes > publicacion.CapacidadMaxima)
+        if (dto.NumeroHuespedes > publicacion.CapacidadMaxima)
         {
             return BadRequest($"La capacidad máxima de esta publicación es de {publicacion.CapacidadMaxima} personas.");
         }
 
         var hayConflicto = await _context.Reservas
-            .AnyAsync(r => r.PublicacionId == reserva.PublicacionId
+            .AnyAsync(r => r.PublicacionId == dto.PublicacionId
                 && r.Estado != "cancelada"
-                && r.FechaInicio <= reserva.FechaFin
-                && r.FechaFin >= reserva.FechaInicio);
+                && r.FechaInicio <= dto.FechaFin
+                && r.FechaFin >= dto.FechaInicio);
 
         if (hayConflicto)
         {
             return Conflict(new { mensaje = "Las fechas seleccionadas no están disponibles. Alguien ya reservó en ese rango de fechas." });
         }
+
+        var reserva = new Reserva
+        {
+            PublicacionId = dto.PublicacionId,
+            UsuarioId = User.GetSubjectId(),
+            NombreHuesped = dto.NombreHuesped,
+            EmailHuesped = dto.EmailHuesped,
+            TelefonoHuesped = dto.TelefonoHuesped,
+            FechaInicio = dto.FechaInicio,
+            FechaFin = dto.FechaFin,
+            NumeroHuespedes = dto.NumeroHuespedes,
+            PrecioTotal = CalcularPrecioTotal(
+                publicacion, await GetPrecioAdicionalExperienciaAsync(publicacion),
+                dto.FechaInicio, dto.FechaFin, dto.NumeroHuespedes),
+            Estado = "pendiente",
+        };
 
         _context.Reservas.Add(reserva);
         await _context.SaveChangesAsync();
@@ -349,10 +390,60 @@ public class ReservaController : ControllerBase
     }
 
     /// <summary>
+    /// Authoritative reservation price, always computed from the publication row
+    /// and never taken from the request body (spec "Server-side price recompute").
+    /// Lodging uses the half-open range <c>[check-in, check-out)</c> so the
+    /// checkout day is free: nights = fecha_fin - fecha_inicio, clamped to at
+    /// least 1 (a same-day request prices one night, matching the client).
+    /// Experience: the spec ("experience: from the booked horario/experiencia
+    /// price", reserva-ownership-enforcement §Server-side price recompute) does
+    /// not close a formula and horarios carry no price column, so the unit price
+    /// is <c>precio_por_noche + experiencias.precio_adicional</c> charged once per
+    /// guest. When a publication defines several experiencia rows the first (by
+    /// id) supplies the add-on, since the reservation does not select one.
+    /// </summary>
+    private static decimal CalcularPrecioTotal(
+        Publicacione publicacion, decimal? precioAdicional,
+        DateOnly fechaInicio, DateOnly fechaFin, int numeroHuespedes)
+    {
+        if (string.Equals(publicacion.Tipo, "hospedaje", StringComparison.OrdinalIgnoreCase))
+        {
+            var nights = fechaFin.DayNumber - fechaInicio.DayNumber;
+            if (nights < 1)
+            {
+                nights = 1;
+            }
+
+            return publicacion.PrecioPorNoche * nights;
+        }
+
+        return (publicacion.PrecioPorNoche + (precioAdicional ?? 0m)) * numeroHuespedes;
+    }
+
+    /// <summary>
+    /// Loads the add-on price for experience publications from the authoritative
+    /// experiencias row; lodging never pays one, so it short-circuits to null.
+    /// </summary>
+    private async Task<decimal?> GetPrecioAdicionalExperienciaAsync(Publicacione publicacion)
+    {
+        if (!string.Equals(publicacion.Tipo, "experiencia", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return await _context.Experiencias
+            .Where(e => e.PublicacionId == publicacion.Id)
+            .OrderBy(e => e.Id)
+            .Select(e => e.PrecioAdicional)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
     /// Owner-or-admin gate for reservation mutations. Owner means the token
     /// subject equals <c>reservas.usuario_id</c>; rows with a NULL owner (legacy
-    /// reservations the W2 backfill could not match) are admin-only. Fine list
-    /// scoping and DTO binding are W4 follow-ups.
+    /// reservations the W2 backfill could not match) are admin-only. Landed in
+    /// W3b and reused by W4's DTO-bound PUT; list/detail scoping is enforced
+    /// separately in the GET actions above.
     /// </summary>
     private bool CallerCanMutateReserva(Reserva reserva)
     {

@@ -74,11 +74,11 @@ Chain strategy: pending
 
 ## Wave 4 (W4): reserva-ownership-enforcement — PR #5 (~360)
 
-- [ ] 5.1 `Entities/Reserva.cs` +`UsuarioId`; POST/PUT `/api/reserva` bind `DTOs/CreateReservaDto` (no `PrecioTotal`/`UsuarioId` accepted)
-- [ ] 5.2 Run `Validators/CreateReservaValidator.cs` via DTO binding; set `usuario_id` from `sub`
-- [ ] 5.3 Server recompute `PrecioTotal = precio_por_noche × days` (half-open [checkin,checkout))
-- [ ] 5.4 `GET /Reserva` owner-scoped by `sub`; admin all; orphan-NULL rows hidden from non-admins
-- [ ] 5.5 RED integration: precio 3×100→300 with client-sent precio ignored; IDOR other-user row→403/404; orphan-NULL not returned to non-admin
+- [x] 5.1 `Entities/Reserva.cs` +`UsuarioId` (landed with W2's FK); POST/PUT `/api/reserva` bind `Models/CreateReservaDto` — DTO carries only client fields (publicacionId, guest, dates, guests count); `PrecioTotal`/`UsuarioId`/`Estado`/payment keys removed and ignored by the binder
+- [x] 5.2 Run `Validators/CreateReservaValidator.cs` via DTO binding (`AddFluentValidationAutoValidation` + assembly scan make it live; its `PrecioTotal` rule removed with the field); `usuario_id = User.GetSubjectId()` from the token, `Estado` pinned `"pendiente"` server-side
+- [x] 5.3 Server recompute `PrecioTotal = precio_por_noche × days` (half-open [checkin,checkout), clamped ≥1); experience: spec leaves the formula open → `personas × (precio_por_noche + experiencias.precio_adicional)` with a comment citing the spec point; PUT recomputes too and never reparents the publication
+- [x] 5.4 `GET /Reserva` owner-scoped by `sub`; admin all; orphan-NULL rows hidden from non-admins; `GET /Reserva/{id}` non-owner → 404 (existence not leaked); `pagar` sets `MetodoPago`/`FechaPago`/`IdTransaccion` server-side and never touches `PrecioTotal`
+- [x] 5.5 RED integration: precio 3×100→300 with client-sent precio ignored; IDOR other-user row→403/404; orphan-NULL not returned to non-admin — `Backend/IguanaSV.Api.Tests/Reserva/ReservaOwnershipIntegrationTests.cs` (`Category=Reserva`, 10 facts on the shared W3a `AuthApiFixture` container, incl. PUT no-override and cancelar/pagar gates)
 
 ## Wave 5 (W5): no-double-booking — PR #6 (~240)
 

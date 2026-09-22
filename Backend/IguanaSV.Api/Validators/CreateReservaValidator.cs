@@ -28,8 +28,5 @@ public class CreateReservaValidator : AbstractValidator<CreateReservaDto>
 
         RuleFor(x => x.NumeroHuespedes)
             .GreaterThan(0).WithMessage("El número de huéspedes debe ser mayor a 0.");
-
-        RuleFor(x => x.PrecioTotal)
-            .GreaterThan(0).WithMessage("El precio total debe ser mayor a 0.");
     }
 }
