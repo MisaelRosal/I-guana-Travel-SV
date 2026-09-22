@@ -1,6 +1,7 @@
-﻿using ExperienciaEntity = IguanaSV.Api.Entities.Experiencia;
+using ExperienciaEntity = IguanaSV.Api.Entities.Experiencia;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +41,7 @@ public class ExperienciaController : ControllerBase
         return experiencia;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutExperiencia(int id, CreateExperienciaDto dto)
     {
@@ -76,6 +78,7 @@ public class ExperienciaController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<ExperienciaEntity>> PostExperiencia(CreateExperienciaDto dto)
     {
@@ -100,6 +103,7 @@ public class ExperienciaController : ControllerBase
         return CreatedAtAction(nameof(GetExperiencia), new { id = experiencia.Id }, experiencia);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteExperiencia(int id)
     {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api } from '../services/api.js'
+import { api, readCsrfToken } from '../services/api.js'
 import LocationPicker from './LocationPicker.jsx'
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -129,6 +129,10 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       formData.append('file', archivo)
       const res = await fetch('/api/Imagenes/upload', {
         method: 'POST',
+        // Direct fetch bypasses the api() helper, so attach the session cookie
+        // and the CSRF header here (multipart body => no manual Content-Type).
+        credentials: 'include',
+        headers: { 'X-CSRF-Token': readCsrfToken() },
         body: formData,
       })
       if (res.ok) {

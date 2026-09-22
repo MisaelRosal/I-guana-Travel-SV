@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getMunicipios, registrarAnfitrion, obtenerSesion, guardarSesion } from '../../services/anfitriones.js'
-import { api } from '../../services/api.js'
+import { api, readCsrfToken } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
 
 const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
@@ -51,7 +51,14 @@ export default function SerAnfitrionPage() {
     if (!foto) return ''
     const formData = new FormData()
     formData.append('file', foto)
-    const res = await fetch('/api/Imagenes/upload', { method: 'POST', body: formData })
+    // Direct fetch (multipart upload) — attach the auth cookie and CSRF header
+    // that the api() helper would normally add for mutations.
+    const res = await fetch('/api/Imagenes/upload', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-CSRF-Token': readCsrfToken() },
+      body: formData,
+    })
     if (!res.ok) throw new Error('No se pudo subir la foto.')
     const data = await res.json()
     const item = Array.isArray(data) ? data[0] : data
@@ -85,7 +92,6 @@ export default function SerAnfitrionPage() {
     try {
       const url = fotoUrl || (await subirFoto())
       const anfitrion = await registrarAnfitrion({
-        usuarioId: usuario.id,
         municipioId,
         nombre: nombre.trim(),
         email: email.trim(),

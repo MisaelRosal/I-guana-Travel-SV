@@ -1,6 +1,7 @@
 ﻿using NotificacioneEntity = IguanaSV.Api.Entities.Notificacione;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,6 +42,7 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> PutNotificacione(int id, CreateNotificacioneDto dto)
     {
         var notificacione = await _context.Notificaciones.FindAsync(id);
@@ -76,6 +78,7 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<NotificacioneEntity>> PostNotificacione(CreateNotificacioneDto dto)
     {
         if (!await _context.Reservas.AnyAsync(r => r.Id == dto.ReservaId))
@@ -100,6 +103,7 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> DeleteNotificacione(int id)
     {
         var notificacione = await _context.Notificaciones.FindAsync(id);

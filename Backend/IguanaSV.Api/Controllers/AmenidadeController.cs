@@ -1,6 +1,7 @@
-﻿using AmenidadeEntity = IguanaSV.Api.Entities.Amenidade;
+using AmenidadeEntity = IguanaSV.Api.Entities.Amenidade;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +41,7 @@ public class AmenidadeController : ControllerBase
         return amenidade;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutAmenidade(int id, CreateAmenidadDto dto)
     {
@@ -68,6 +70,7 @@ public class AmenidadeController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<AmenidadeEntity>> PostAmenidade(CreateAmenidadDto dto)
     {
@@ -84,6 +87,7 @@ public class AmenidadeController : ControllerBase
         return CreatedAtAction(nameof(GetAmenidade), new { id = amenidade.Id }, amenidade);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAmenidade(int id)
     {

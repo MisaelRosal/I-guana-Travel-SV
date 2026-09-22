@@ -3,17 +3,13 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo.jsx'
 import { api } from '../services/api.js'
 import { esAdmin } from '../services/anfitriones.js'
+import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
 
-const SESION_KEY = 'iguana_usuario'
-
-function leerSesion() {
-  try {
-    return JSON.parse(sessionStorage.getItem(SESION_KEY) || 'null')
-  } catch {
-    return null
-  }
-}
-
+// NOTE (W3a): the role/name read from the session here drives VISIBILITY only
+// (which links/buttons to show). It is a UI convenience backed by the cache that
+// revalidates against GET /api/auth/me. The AUTHORITATIVE check is the server:
+// protected endpoints are enforced by authentication + the role/ownership matrix
+// added in W3b — never rely on this client-side value to grant access.
 function iniciales(nombre, apellido) {
   const n = (nombre || '').trim()
   const a = (apellido || '').trim()
@@ -21,7 +17,7 @@ function iniciales(nombre, apellido) {
 }
 
 export default function Header() {
-  const [usuario, setUsuario] = useState(leerSesion)
+  const [usuario, setUsuario] = useState(leerSesionCache)
   const [fotoPerfil, setFotoPerfil] = useState('')
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
@@ -29,7 +25,7 @@ export default function Header() {
 
   useEffect(() => {
     const actualizar = () => {
-      setUsuario(leerSesion())
+      setUsuario(leerSesionCache())
       setFotoPerfil('')
       setMenuAbierto(false)
     }
@@ -39,6 +35,16 @@ export default function Header() {
       window.removeEventListener('auth-change', actualizar)
       window.removeEventListener('storage', actualizar)
     }
+  }, [])
+
+  // On first paint, revalidate the cached session against the server. An expired
+  // or forged cookie makes /me return 401, so a stale cache is cleared here.
+  useEffect(() => {
+    let activo = true
+    restaurarSesion().then((sesion) => {
+      if (activo) setUsuario(sesion)
+    })
+    return () => { activo = false }
   }, [])
 
   useEffect(() => {
@@ -93,8 +99,9 @@ export default function Header() {
     links.push({ to: '/admin', label: 'Panel admin' })
   }
 
-  const cerrarSesion = () => {
-    sessionStorage.removeItem(SESION_KEY)
+  const cerrarSesion = async () => {
+    // Ask the server to expire the auth + CSRF cookies, then drop the UI cache.
+    await cerrarSesionEnServidor()
     setUsuario(null)
     setMenuAbierto(false)
     setMenuMovilAbierto(false)

@@ -1,5 +1,6 @@
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +47,7 @@ public class CategoriaController : ControllerBase
         return categoria;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutCategoria(int id, Categoria categoria)
     {
@@ -80,6 +82,7 @@ public class CategoriaController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria)
     {
@@ -94,6 +97,7 @@ public class CategoriaController : ControllerBase
         return CreatedAtAction(nameof(GetCategoria), new { id = categoria.Id }, categoria);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCategoria(int id)
     {

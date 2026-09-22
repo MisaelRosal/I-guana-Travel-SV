@@ -294,7 +294,7 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<int>("DiaSemana")
+                    b.Property<int?>("DiaSemana")
                         .HasColumnType("integer")
                         .HasColumnName("dia_semana");
 
@@ -303,6 +303,10 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("disponible");
+
+                    b.Property<DateOnly?>("Fecha")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha");
 
                     b.Property<TimeOnly>("HoraFin")
                         .HasColumnType("time without time zone")
@@ -324,11 +328,6 @@ namespace IguanaSV.Api.Migrations
 
                     b.HasKey("Id")
                         .HasName("horarios_pkey");
-
-                    b.HasIndex("PublicacionId", "DiaSemana")
-                        .HasDatabaseName("horarios_no_overlap");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("PublicacionId", "DiaSemana"), "gist");
 
                     b.HasIndex(new[] { "PublicacionId" }, "idx_horarios_publicacion");
 
@@ -660,6 +659,20 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("date")
                         .HasColumnName("fecha_inicio");
 
+                    b.Property<DateTime?>("FechaPago")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("fecha_pago");
+
+                    b.Property<string>("IdTransaccion")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("id_transaccion");
+
+                    b.Property<string>("MetodoPago")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("metodo_pago");
+
                     b.Property<string>("NombreHuesped")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -690,19 +703,20 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
                     b.HasKey("Id")
                         .HasName("reservas_pkey");
-
-                    b.HasIndex("PublicacionId")
-                        .HasDatabaseName("reservas_no_overlap");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("PublicacionId"), "gist");
 
                     b.HasIndex(new[] { "Estado" }, "idx_reservas_estado");
 
                     b.HasIndex(new[] { "FechaInicio", "FechaFin" }, "idx_reservas_fechas");
 
                     b.HasIndex(new[] { "PublicacionId" }, "idx_reservas_publicacion");
+
+                    b.HasIndex(new[] { "UsuarioId" }, "idx_reservas_usuario");
 
                     b.ToTable("reservas", (string)null);
                 });
@@ -937,7 +951,15 @@ namespace IguanaSV.Api.Migrations
                         .IsRequired()
                         .HasConstraintName("reservas_publicacion_id_fkey");
 
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("reservas_usuario_id_fkey");
+
                     b.Navigation("Publicacion");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.ReservaHorario", b =>

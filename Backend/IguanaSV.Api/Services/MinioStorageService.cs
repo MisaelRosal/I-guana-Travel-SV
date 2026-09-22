@@ -35,6 +35,13 @@ public class MinioStorageService : IMinioStorageService
                 new MakeBucketArgs().WithBucket(_bucket), cancellationToken);
         }
 
+        // Public-read-only policy for catalog images: an anonymous visitor must be
+        // able to GET a listing photo, but NEVER PutObject/RemoveObject. Write and
+        // delete are NOT exposed here — they are gated by [Authorize] on the upload
+        // and delete routes plus the magic-byte/size validation in ImagenesController
+        // (design W6). This policy deliberately grants only s3:GetObject; keeping it
+        // public-read is intentional and the security guarantee is that the object
+        // bytes are already validated server-side before they are ever stored.
         var policyJson = $@"{{
   ""Version"": ""2012-10-17"",
   ""Statement"": [
@@ -53,21 +60,38 @@ public class MinioStorageService : IMinioStorageService
 
     public async Task<string> UploadAsync(IFormFile file, CancellationToken cancellationToken = default)
     {
-        var extension = Path.GetExtension(file.FileName);
-        var fileName = $"{Guid.NewGuid():N}{extension}";
+        // The object name and stored content type are derived from the file's real
+        // magic bytes (the controller has already refused anything that is not an
+        // allowed image). This ignores both the client-supplied extension and
+        // file.ContentType, so a renamed executable or a double extension such as
+        // "payload.php.jpg" can never be persisted or served back.
+        var header = new byte[ImageSignature.HeaderBytes];
+        await using (var head = file.OpenReadStream())
+        {
+            var read = await head.ReadAsync(header, cancellationToken);
+            var detected = ImageSignature.Detect(header.AsSpan(0, read));
+            if (ImageSignature.ExtensionOf(detected) is not { } extension
+                || ImageSignature.ContentTypeOf(detected) is not { } contentType)
+            {
+                throw new InvalidOperationException(
+                    "Refusing to store a file whose bytes are not an allowed image type.");
+            }
 
-        await using var stream = file.OpenReadStream();
+            var fileName = $"{Guid.NewGuid():N}{extension}";
 
-        await _minio.PutObjectAsync(
-            new PutObjectArgs()
-                .WithBucket(_bucket)
-                .WithObject(fileName)
-                .WithStreamData(stream)
-                .WithObjectSize(file.Length)
-                .WithContentType(file.ContentType),
-            cancellationToken);
+            await using var stream = file.OpenReadStream();
 
-        return $"{_publicEndpoint}/{_bucket}/{fileName}";
+            await _minio.PutObjectAsync(
+                new PutObjectArgs()
+                    .WithBucket(_bucket)
+                    .WithObject(fileName)
+                    .WithStreamData(stream)
+                    .WithObjectSize(file.Length)
+                    .WithContentType(contentType),
+                cancellationToken);
+
+            return $"{_publicEndpoint}/{_bucket}/{fileName}";
+        }
     }
     public async Task DeleteAsync(string fileName, CancellationToken cancellationToken = default)
     {

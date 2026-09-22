@@ -1,6 +1,7 @@
-﻿using ImagenesPublicacionEntity = IguanaSV.Api.Entities.ImagenesPublicacion;
+using ImagenesPublicacionEntity = IguanaSV.Api.Entities.ImagenesPublicacion;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +41,7 @@ public class ImagenesPublicacionController : ControllerBase
         return imagenesPublicacion;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutImagenesPublicacion(int id, CreateImagenPublicacionDto dto)
     {
@@ -75,6 +77,7 @@ public class ImagenesPublicacionController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<ImagenesPublicacionEntity>> PostImagenesPublicacion(CreateImagenPublicacionDto dto)
     {
@@ -98,6 +101,7 @@ public class ImagenesPublicacionController : ControllerBase
         return CreatedAtAction(nameof(GetImagenesPublicacion), new { id = imagenesPublicacion.Id }, imagenesPublicacion);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteImagenesPublicacion(int id)
     {

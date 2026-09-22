@@ -433,6 +433,8 @@ public class IguanasDbContext : DbContext
 
             entity.HasIndex(e => e.PublicacionId, "idx_reservas_publicacion");
 
+            entity.HasIndex(e => e.UsuarioId, "idx_reservas_usuario");
+
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -458,6 +460,7 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.TelefonoHuesped)
                 .HasMaxLength(20)
                 .HasColumnName("telefono_huesped");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
             entity.Property(e => e.MetodoPago)
                 .HasMaxLength(30)
                 .HasColumnName("metodo_pago");
@@ -475,6 +478,12 @@ public class IguanasDbContext : DbContext
             entity.HasOne(d => d.Publicacion).WithMany(p => p.Reservas)
                 .HasForeignKey(d => d.PublicacionId)
                 .HasConstraintName("reservas_publicacion_id_fkey");
+
+            entity.HasOne(d => d.Usuario)
+                .WithMany()
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("reservas_usuario_id_fkey");
         });
 
         modelBuilder.Entity<ReservaHorario>(entity =>
@@ -537,14 +546,8 @@ public class IguanasDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
-        modelBuilder.Entity<Horario>()
-            .HasIndex(h => new { h.PublicacionId, h.DiaSemana })
-            .HasMethod("gist")
-            .HasDatabaseName("horarios_no_overlap");
-
-        modelBuilder.Entity<Reserva>()
-            .HasIndex(r => r.PublicacionId)
-            .HasMethod("gist")
-            .HasDatabaseName("reservas_no_overlap");
+        // Fake "no overlap" plain GiST indexes (horarios_no_overlap / reservas_no_overlap)
+        // were removed from the model: they enforced nothing. Real overlap protection is an
+        // EXCLUDE constraint owned by a later migration; keep it out of the EF model.
     }
 }

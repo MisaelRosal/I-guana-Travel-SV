@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../services/api.js'
+import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
 
 export default function AuthPage() {
@@ -23,12 +24,13 @@ export default function AuthPage() {
     }
     setEnviando(true)
     try {
-      const usuario = await api.post('/Auth/login', {
+      // Login only proves who you are; the session object is rehydrated from
+      // GET /api/auth/me (server-authoritative), not from the request/response.
+      await api.post('/Auth/login', {
         email: email.trim(),
         password,
       })
-      sessionStorage.setItem('iguana_usuario', JSON.stringify(usuario))
-      window.dispatchEvent(new Event('auth-change'))
+      await restaurarSesion()
       setToast({ tipo: 'exito', mensaje: '¡Iniciaste sesión con éxito!' })
       setTimeout(() => navigate('/'), 1500)
     } catch (err) {

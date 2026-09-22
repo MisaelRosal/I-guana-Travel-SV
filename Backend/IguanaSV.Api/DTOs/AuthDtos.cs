@@ -31,9 +31,14 @@ public class ActualizarPerfilAnfitrionRequest
     public string? Descripcion { get; set; }
 }
 
+/// <summary>
+/// Self-registration payload for the host profile. W3b removed <c>UsuarioId</c>:
+/// the created host is always bound to the authenticated token's <c>sub</c>,
+/// closing the mass-assignment where a caller could promote an arbitrary user
+/// (spec authz-roles-ownership: "Registrar binds identity from the token").
+/// </summary>
 public class RegistroAnfitrionRequest
 {
-    public int UsuarioId { get; set; }
     public int MunicipioId { get; set; }
     public string Nombre { get; set; } = null!;
     public string Email { get; set; } = null!;

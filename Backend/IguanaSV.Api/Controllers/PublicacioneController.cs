@@ -1,7 +1,9 @@
 using PublicacioneEntity = IguanaSV.Api.Entities.Publicacione;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +20,7 @@ public class PublicacioneController : ControllerBase
         _context = context;
     }
 
+    // Catalog reads stay anonymous (spec: "Public read, protected write").
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PublicacioneEntity>>> GetPublicaciones()
     {
@@ -63,9 +66,16 @@ public class PublicacioneController : ControllerBase
         return publicacione;
     }
 
+    // By-host listing includes reservations (guest PII): owner-of-the-host or admin only.
     [HttpGet("anfitrion/{anfitrionId}")]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<Publicacione>>> GetPublicacionesByAnfitrion(int anfitrionId)
     {
+        if (!User.IsInRole(AuthConstants.AdminRole) && !await CallerOwnsAnfitrionAsync(anfitrionId))
+        {
+            return Forbid();
+        }
+
         return await _context.Publicaciones
             .AsNoTracking()
             .Include(p => p.Anfitrion)
@@ -85,6 +95,7 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> PutPublicacione(int id, CreatePublicacioneDto dto)
     {
         var publicacione = await _context.Publicaciones.FindAsync(id);
@@ -92,6 +103,19 @@ public class PublicacioneController : ControllerBase
         if (publicacione == null)
         {
             return NotFound();
+        }
+
+        // Owner-or-admin gate (spec: "Publication ownership gate"). Ownership is
+        // resolved from the DB host row (Anfitriones.UsuarioId == sub) so role
+        // changes apply immediately; a non-admin must own BOTH the current host
+        // and the target host, which closes silent re-assignment of a publication
+        // to another anfitrión through the body.
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            if (!await CallerOwnsPublicationAsync(id) || !await CallerOwnsAnfitrionAsync(dto.AnfitrionId))
+            {
+                return Forbid();
+            }
         }
 
         if (!await _context.Anfitriones.AnyAsync(a => a.Id == dto.AnfitrionId))
@@ -228,11 +252,18 @@ public class PublicacioneController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<PublicacioneEntity>> PostPublicacione(CreatePublicacioneDto dto)
     {
         if (!await _context.Anfitriones.AnyAsync(a => a.Id == dto.AnfitrionId))
         {
             return NotFound($"El anfitrion con id {dto.AnfitrionId} no existe.");
+        }
+
+        // A non-admin may only publish under a host record they own.
+        if (!User.IsInRole(AuthConstants.AdminRole) && !await CallerOwnsAnfitrionAsync(dto.AnfitrionId))
+        {
+            return Forbid();
         }
 
         if (!await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId))
@@ -300,6 +331,7 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
     }
 
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> DeletePublicacione(int id)
     {
         var publicacione = await _context.Publicaciones.FindAsync(id);
@@ -309,9 +341,37 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
             return NotFound();
         }
 
+        // Owner-or-admin gate (spec: "Publication ownership gate").
+        if (!User.IsInRole(AuthConstants.AdminRole) && !await CallerOwnsPublicationAsync(id))
+        {
+            return Forbid();
+        }
+
         _context.Publicaciones.Remove(publicacione);
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    // --- Ownership helpers (W3b mechanism) ------------------------------------
+    // Deliberately plain controller-side checks (design TD4 "Ownership"): no
+    // custom policy/attribute, so the gate reads top-to-bottom next to the
+    // mutation it protects. Admin is a claim check (short TTL); publication
+    // ownership is a DB query so host-link changes apply immediately.
+
+    /// <summary>True when the token subject is linked to the given host row.</summary>
+    private async Task<bool> CallerOwnsAnfitrionAsync(int anfitrionId)
+    {
+        var sub = User.GetSubjectId();
+        return sub.HasValue
+            && await _context.Anfitriones.AnyAsync(a => a.Id == anfitrionId && a.UsuarioId == sub.Value);
+    }
+
+    /// <summary>True when the token subject owns the host behind the given publication.</summary>
+    private async Task<bool> CallerOwnsPublicationAsync(int publicacionId)
+    {
+        var sub = User.GetSubjectId();
+        return sub.HasValue
+            && await _context.Publicaciones.AnyAsync(p => p.Id == publicacionId && p.Anfitrion!.UsuarioId == sub.Value);
     }
 }

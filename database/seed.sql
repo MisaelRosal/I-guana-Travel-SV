@@ -1,183 +1,8 @@
--- init.sql: Se ejecuta automaticamente al iniciar PostgreSQL por primera vez
--- Orden: schema -> departamentos -> seed municipios 44 -> categorias -> amenidades -> anfitriones -> publicaciones
-
--- =============================================
--- SCHEMA (tablas, indices, constraints)
--- =============================================
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-
-CREATE TABLE IF NOT EXISTS departamentos (
-  id SERIAL PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS municipios (
-  id SERIAL PRIMARY KEY,
-  departamento_id INT NOT NULL REFERENCES departamentos(id) ON DELETE CASCADE,
-  nombre VARCHAR(100) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(departamento_id, nombre)
-);
-
-CREATE TABLE IF NOT EXISTS categorias (
-  id SERIAL PRIMARY KEY,
-  nombre VARCHAR(50) NOT NULL UNIQUE,
-  descripcion TEXT,
-  tipo VARCHAR(20) DEFAULT 'experiencia',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS amenidades (
-  id SERIAL PRIMARY KEY,
-  nombre VARCHAR(50) NOT NULL UNIQUE,
-  icono VARCHAR(50),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS usuarios (
-  id SERIAL PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL,
-  apellido VARCHAR(100) NOT NULL,
-  telefono VARCHAR(20),
-  email VARCHAR(150) NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  rol VARCHAR(20) NOT NULL DEFAULT 'usuario',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS anfitriones (
-  id SERIAL PRIMARY KEY,
-  municipio_id INT NOT NULL REFERENCES municipios(id) ON DELETE RESTRICT,
-  usuario_id INT REFERENCES usuarios(id) ON DELETE RESTRICT,
-  nombre VARCHAR(100) NOT NULL,
-  email VARCHAR(150) NOT NULL UNIQUE,
-  telefono VARCHAR(20),
-  direccion TEXT,
-  descripcion TEXT,
-  foto_perfil TEXT,
-  verificado BOOLEAN DEFAULT false,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS publicaciones (
-  id SERIAL PRIMARY KEY,
-  anfitrion_id INT NOT NULL REFERENCES anfitriones(id) ON DELETE CASCADE,
-  categoria_id INT NOT NULL REFERENCES categorias(id) ON DELETE RESTRICT,
-  titulo VARCHAR(200) NOT NULL,
-  descripcion TEXT,
-  precio_por_noche NUMERIC(10,2) NOT NULL,
-  capacidad_maxima INT NOT NULL,
-  habitaciones INT DEFAULT 1,
-  camas INT DEFAULT 1,
-  banos INT DEFAULT 1,
-  direccion_exacta TEXT,
-  latitud NUMERIC(10,8),
-  longitud NUMERIC(11,8),
-  municipio_id INT REFERENCES municipios(id) ON DELETE SET NULL,
-  tipo VARCHAR(20) DEFAULT 'experiencia',
-  estado VARCHAR(20) DEFAULT 'activo',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS experiencias (
-  id SERIAL PRIMARY KEY,
-  publicacion_id INT NOT NULL REFERENCES publicaciones(id) ON DELETE CASCADE,
-  nombre VARCHAR(200) NOT NULL,
-  descripcion TEXT,
-  duracion_horas INT,
-  precio_adicional NUMERIC(10,2) DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS horarios (
-  id SERIAL PRIMARY KEY,
-  publicacion_id INT NOT NULL REFERENCES publicaciones(id) ON DELETE CASCADE,
-  dia_semana INT,
-  fecha DATE,
-  hora_inicio TIME NOT NULL,
-  hora_fin TIME NOT NULL,
-  disponible BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS imagenes_publicacion (
-  id SERIAL PRIMARY KEY,
-  publicacion_id INT NOT NULL REFERENCES publicaciones(id) ON DELETE CASCADE,
-  url TEXT NOT NULL,
-  es_principal BOOLEAN DEFAULT false,
-  orden INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS publicacion_amenidad (
-  publicacion_id INT NOT NULL REFERENCES publicaciones(id) ON DELETE CASCADE,
-  amenidad_id INT NOT NULL REFERENCES amenidades(id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY(publicacion_id, amenidad_id)
-);
-
-CREATE TABLE IF NOT EXISTS reservas (
-  id SERIAL PRIMARY KEY,
-  publicacion_id INT NOT NULL REFERENCES publicaciones(id) ON DELETE CASCADE,
-  nombre_huesped VARCHAR(100) NOT NULL,
-  email_huesped VARCHAR(150) NOT NULL,
-  telefono_huesped VARCHAR(20),
-  fecha_inicio DATE NOT NULL,
-  fecha_fin DATE NOT NULL,
-  numero_huespedes INT NOT NULL,
-  precio_total NUMERIC(10,2) NOT NULL,
-  estado VARCHAR(20) DEFAULT 'pendiente',
-  metodo_pago VARCHAR(30),
-  fecha_pago TIMESTAMP,
-  id_transaccion VARCHAR(100),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS notificaciones (
-  id SERIAL PRIMARY KEY,
-  reserva_id INT NOT NULL REFERENCES reservas(id) ON DELETE CASCADE,
-  tipo VARCHAR(30) NOT NULL,
-  mensaje TEXT NOT NULL,
-  leida BOOLEAN DEFAULT false,
-  destinatario_email VARCHAR(150) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS reserva_horario (
-  reserva_id INT NOT NULL REFERENCES reservas(id) ON DELETE CASCADE,
-  horario_id INT NOT NULL REFERENCES horarios(id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY(reserva_id, horario_id)
-);
-
--- Indices
-CREATE INDEX IF NOT EXISTS idx_anfitriones_municipio ON anfitriones(municipio_id);
-CREATE INDEX IF NOT EXISTS idx_municipios_departamento ON municipios(departamento_id);
-CREATE INDEX IF NOT EXISTS idx_publicaciones_anfitrion ON publicaciones(anfitrion_id);
-CREATE INDEX IF NOT EXISTS idx_publicaciones_categoria ON publicaciones(categoria_id);
-CREATE INDEX IF NOT EXISTS idx_publicaciones_estado ON publicaciones(estado);
-CREATE INDEX IF NOT EXISTS idx_experiencias_publicacion ON experiencias(publicacion_id);
-CREATE INDEX IF NOT EXISTS idx_horarios_publicacion ON horarios(publicacion_id);
-CREATE INDEX IF NOT EXISTS idx_imagenes_publicacion_publicacion ON imagenes_publicacion(publicacion_id);
-CREATE INDEX IF NOT EXISTS idx_reservas_publicacion ON reservas(publicacion_id);
-CREATE INDEX IF NOT EXISTS idx_reservas_estado ON reservas(estado);
-CREATE INDEX IF NOT EXISTS idx_reservas_fechas ON reservas(fecha_inicio, fecha_fin);
-CREATE INDEX IF NOT EXISTS idx_notificaciones_reserva ON notificaciones(reserva_id);
-CREATE INDEX IF NOT EXISTS idx_notificaciones_destinatario ON notificaciones(destinatario_email);
-CREATE INDEX IF NOT EXISTS idx_reserva_horario_reserva ON reserva_horario(reserva_id);
+-- seed.sql: reference data only.
+-- EF migrations (Backend/IguanaSV.Api/Migrations) are the SINGLE SOURCE OF TRUTH for the
+-- schema: this file MUST NOT contain any table/index/constraint DDL and MUST run only
+-- AFTER `dotnet ef database update` (the compose `migrator` service guarantees the order).
+-- Every statement is existence-guarded so re-running the seed is idempotent.
 
 -- =============================================
 -- SEED: 14 departamentos
@@ -219,10 +44,24 @@ JOIN departamentos d ON d.nombre = n.departamento
 ON CONFLICT (departamento_id, nombre) DO NOTHING;
 
 -- =============================================
--- SEED: Categorias
+-- SEED: Categorias (base set)
 -- =============================================
 INSERT INTO categorias (nombre)
 VALUES ('Aventura'),('Surf'),('Cultura'),('Gastronomía'),('Naturaleza'),('Hospedaje')
+ON CONFLICT (nombre) DO NOTHING;
+
+-- =============================================
+-- SEED: Categorias de experiencia
+-- (absorbed from the retired add_categorias_experiencias.sql; reference data only)
+-- =============================================
+INSERT INTO categorias (nombre, descripcion, tipo) VALUES
+  ('Música', 'Conciertos, festivales musicales y experiencias relacionadas con la música.', 'experiencia'),
+  ('Baile', 'Clases, talleres y presentaciones de baile y danza.', 'experiencia'),
+  ('Fiestas', 'Fiestas, celebraciones y eventos sociales.', 'experiencia'),
+  ('Eventos deportivos', 'Partidos, torneos y experiencias de deportes como espectador o participante.', 'experiencia'),
+  ('Festivales', 'Ferias y festivales culturales y tradicionales.', 'experiencia'),
+  ('Arte', 'Talleres, exposiciones y experiencias artísticas.', 'experiencia'),
+  ('Teatro', 'Obras de teatro y presentaciones escénicas.', 'experiencia')
 ON CONFLICT (nombre) DO NOTHING;
 
 -- =============================================

@@ -4,6 +4,8 @@
 .env
 *.env
 .env.*
+# Keep the committable template tracked while the real .env stays ignored.
+!.env.example
 secrets/
 *.pem
 *.key

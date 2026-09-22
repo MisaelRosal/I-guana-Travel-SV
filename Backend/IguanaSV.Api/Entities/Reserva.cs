@@ -9,6 +9,8 @@ public partial class Reserva
 
     public int PublicacionId { get; set; }
 
+    public int? UsuarioId { get; set; }
+
     public string NombreHuesped { get; set; } = null!;
 
     public string EmailHuesped { get; set; } = null!;
@@ -38,6 +40,8 @@ public partial class Reserva
     public virtual ICollection<Notificacione> Notificaciones { get; set; } = new List<Notificacione>();
 
     public virtual Publicacione? Publicacion { get; set; }
+
+    public virtual Usuario? Usuario { get; set; }
 
     public virtual ICollection<ReservaHorario> ReservaHorarios { get; set; } = new List<ReservaHorario>();
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../services/api.js'
+import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
 
 const estilosInput =
@@ -84,15 +85,16 @@ export default function RegisterPage() {
     }
     setEnviando(true)
     try {
-      const usuario = await api.post('/Auth/register', {
+      // Create the account, then rehydrate the session from GET /api/auth/me
+      // (server-authoritative) rather than trusting the POST body as a session.
+      await api.post('/Auth/register', {
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         telefono: telefono.trim(),
         email: email.trim().toLowerCase(),
         password,
       })
-      sessionStorage.setItem('iguana_usuario', JSON.stringify(usuario))
-      window.dispatchEvent(new Event('auth-change'))
+      await restaurarSesion()
       setToast({ tipo: 'exito', mensaje: '¡Cuenta creada con éxito!' })
       setTimeout(() => navigate('/'), 1500)
     } catch (err) {
