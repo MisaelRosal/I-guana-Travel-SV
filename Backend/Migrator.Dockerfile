@@ -20,7 +20,11 @@ WORKDIR /app
 COPY IguanaSV.Api/IguanaSV.Api.csproj IguanaSV.Api/
 RUN dotnet restore IguanaSV.Api/IguanaSV.Api.csproj
 COPY IguanaSV.Api/ IguanaSV.Api/
-RUN dotnet build --no-restore -c Release IguanaSV.Api/IguanaSV.Api.csproj
+# Build con restore explícito otra vez: el restore previo (solo con el csproj)
+# deja analizadores transitenciales sin descargar (NETSDK1064 en
+# Microsoft.CodeAnalysis.Analyzers); igual que el Dockerfile de la API con
+# `publish`, el build necesita restaurar con el contexto completo.
+RUN dotnet build -c Release IguanaSV.Api/IguanaSV.Api.csproj
 
 COPY migrate-and-seed.sh /usr/local/bin/migrate-and-seed.sh
 RUN chmod +x /usr/local/bin/migrate-and-seed.sh
