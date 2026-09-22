@@ -90,11 +90,11 @@ Chain strategy: pending
 
 ## Wave 6 (W6): upload-hardening — PR #7 (~280)
 
-- [ ] 7.1 Magic-byte allowlist sniffer in `ImagenesController.cs`/`Services/MinioStorageService.cs` → reject renamed wrong bytes 415
-- [ ] 7.2 Enforce size cap → 413 oversize
-- [ ] 7.3 Set `Content-Disposition` on serve; keep bucket public-read policy
-- [ ] 7.4 `[Authorize]` on upload write/delete routes; public read stays 200
-- [ ] 7.5 RED: magic-byte mismatch→415; oversize→413; anon write/delete→401; public read→200
+- [x] 7.1 Magic-byte allowlist (`Services/ImageSignature.cs`: jpeg FF D8 FF / PNG 8-byte sig / GIF "GIF8" / WEBP RIFF..WEBP, 16-byte header read) sniffs the leading bytes in `ImagenesController.Upload` and rejects any other type (HTML/SVG/PE) with 415; `MinioStorageService.UploadAsync` derives the stored object name (GUID+N + detected ext) and authoritative `Content-Type` from the real bytes, never `file.ContentType`/client extension (so no double/executable name is persisted) — `Backend/IguanaSV.Api.Tests/Upload/UploadHardeningTests.cs`
+- [x] 7.2 Configurable per-file size cap (`Minio:MaxUploadBytes`, default 5 MB, read with a comment in the controller) checked against `file.Length` before any storage call → 413; the whole batch is validated first so a rejected/oversize file is never written to MinIO
+- [x] 7.3 GET serves the correct stored `Content-Type` + `X-Content-Type-Options: nosniff` + inline `Content-Disposition` (safe GUID filename only); object key sanitized against traversal; bucket kept public-read with a comment stating write/delete are `[Authorize]`-gated and the upload magic-byte/size validation is the guarantee
+- [x] 7.4 upload/delete `[Authorize]` retained from W3b (public GET stays anonymous 200); DELETE sanitizes `fileName` via `IsSafeObjectName` (no `..`, separators, NUL, leading `.`) → 400 before it reaches the object store
+- [x] 7.5 RED→GREEN: false-JPEG(html)→415 not stored; real jpeg/png/webp/gif→200 stored + public GET 200 with Content-Type+nosniff+disposition; oversize→413 not stored; anon upload/delete→401; traversal delete→400 — `Category=Upload`, 9 facts (`SkippableFact`/`SkippableTheory`) on the shared W3a `AuthApiFixture`, `IMinioStorageService` mocked with an in-memory fake that mirrors production's magic-byte-derived naming/content-type
 
 ## Wave 7 (W7): ci-tests-green completion — PR #8 (~300)
 
@@ -107,4 +107,4 @@ Chain strategy: pending
 
 - [x] OD-1: Audit prod-shaped seed — CONFIRMED in W5. The seed (`database/seed.sql`) never inserts two reservations that overlap on the same publication (pub4 rows `[today-10,today-7)` and `[today+5,today+8)` are disjoint; pub5 has one), so M3's `EXCLUDE` accepts the seed after `ef database update`. Seed publications omit `tipo` so they default to `'experiencia'`, but their reservations are inserted AFTER the M3 pre-clean runs (during migration, on an empty table), so they keep `fecha_fin > fecha_inicio`; that is harmless because the constraint is range-based and no two of them overlap. New API experience reservations are normalized to same-day by the controller (`EffectiveDates`), matching TD3.
 - [x] OD-2: Fix exact JWT TTL (proposal: 60 min `Jwt:ExpiresInMinutes`) — set in W3a 3.1
-- [ ] OD-3: Decide fate of legacy `GET /api/imagenes/{bucket}/{fileName}` (ignores `bucket`): keep shape + disposition or deprecate (W6)
+- [x] OD-3: Decide fate of legacy `GET /api/imagenes/{bucket}/{fileName}` (ignores `bucket`): RESOLVED in W6 — keep the shape (the `{bucket}` segment is retained for URL compatibility, still ignored) and add the W6 response hardening (`Content-Type` from the stored object, `X-Content-Type-Options: nosniff`, inline `Content-Disposition` with the safe GUID name, traversal-guarded key). Not deprecated to avoid breaking already-persisted catalog URLs.
