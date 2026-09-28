@@ -50,6 +50,12 @@ INSERT INTO categorias (nombre)
 VALUES ('Aventura'),('Surf'),('Cultura'),('Gastronomía'),('Naturaleza'),('Hospedaje')
 ON CONFLICT (nombre) DO NOTHING;
 
+-- Reference-data fix: the AddTipoPublicacionCategoria migration renamed a
+-- legacy 'Cabaña' category that the current seed never creates, so 'Hospedaje'
+-- fell back to the column default ('experiencia') and the publish form had no
+-- lodging categories. Re-normalized on every migrator run; idempotent.
+UPDATE categorias SET tipo = 'hospedaje' WHERE nombre = 'Hospedaje';
+
 -- =============================================
 -- SEED: Categorias de experiencia
 -- (absorbed from the retired add_categorias_experiencias.sql; reference data only)
