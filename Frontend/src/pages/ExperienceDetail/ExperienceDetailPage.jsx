@@ -27,7 +27,18 @@ const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 
 function Galeria({ imagenes, titulo }) {
   const [indice, setIndice] = useState(0)
+  const [ampliada, setAmpliada] = useState(false)
   const primera = imagenes[0]
+
+  // Lightbox: cerrar la imagen ampliada con la tecla Escape.
+  useEffect(() => {
+    if (!ampliada) return undefined
+    const onKey = (e) => {
+      if (e.key === 'Escape') setAmpliada(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [ampliada])
 
   return (
     <div>
@@ -37,7 +48,9 @@ function Galeria({ imagenes, titulo }) {
             <img
               src={imagenes[indice % imagenes.length]}
               alt={titulo}
-              className="h-full w-full object-cover"
+              title="Ver imagen completa"
+              onClick={() => setAmpliada(true)}
+              className="h-full w-full cursor-zoom-in object-cover"
             />
             {imagenes.length > 1 && (
               <>
@@ -74,12 +87,64 @@ function Galeria({ imagenes, titulo }) {
             <button
               key={i}
               type="button"
-              onClick={() => setIndice(i)}
+              onClick={() => { setIndice(i); setAmpliada(true) }}
+              aria-label={`Ver imagen ${i + 1} en grande`}
               className={`cursor-pointer overflow-hidden rounded-lg border-2 ${i === indice ? 'border-terracota' : 'border-transparent'}`}
             >
               <img src={img} alt={`${titulo} ${i + 1}`} className="aspect-[16/10] w-full object-cover" />
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Vista ampliada (lightbox): la imagen seleccionada en grande sobre fondo oscuro */}
+      {ampliada && primera && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Imagen ampliada de ${titulo}`}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setAmpliada(false)}
+        >
+          <button
+            type="button"
+            aria-label="Cerrar imagen"
+            onClick={() => setAmpliada(false)}
+            className="absolute top-4 right-4 cursor-pointer rounded-full bg-white/10 px-3.5 py-1.5 text-xl leading-none text-white hover:bg-white/25"
+          >
+            ✕
+          </button>
+          {imagenes.length > 1 && (
+            <button
+              type="button"
+              aria-label="Imagen anterior"
+              onClick={(e) => { e.stopPropagation(); setIndice((indice - 1 + imagenes.length) % imagenes.length) }}
+              className="absolute left-3 cursor-pointer rounded-full bg-white/10 p-3 text-2xl leading-none text-white hover:bg-white/25 sm:left-6"
+            >
+              ‹
+            </button>
+          )}
+          <img
+            src={imagenes[indice % imagenes.length]}
+            alt={titulo}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[88vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
+          />
+          {imagenes.length > 1 && (
+            <button
+              type="button"
+              aria-label="Imagen siguiente"
+              onClick={(e) => { e.stopPropagation(); setIndice((indice + 1) % imagenes.length) }}
+              className="absolute right-3 cursor-pointer rounded-full bg-white/10 p-3 text-2xl leading-none text-white hover:bg-white/25 sm:right-6"
+            >
+              ›
+            </button>
+          )}
+          {imagenes.length > 1 && (
+            <span className="absolute bottom-4 rounded-full bg-black/60 px-3 py-1 text-sm text-white">
+              {indice + 1} / {imagenes.length}
+            </span>
+          )}
         </div>
       )}
     </div>
