@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo.jsx'
-import { api } from '../services/api.js'
-import { esAdmin } from '../services/anfitriones.js'
+import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
 
 // NOTE (W3a): the role/name read from the session here drives VISIBILITY only
@@ -72,12 +71,13 @@ export default function Header() {
       if (usuario.fotoPerfil) {
         setFotoPerfil(usuario.fotoPerfil)
       } else {
-        api.get('/Anfitrione')
-          .then((anfitriones) => {
-            if (activo) {
-              const propio = anfitriones.find((a) => a.usuarioId === usuario.id)
-              setFotoPerfil(propio?.fotoPerfil || '')
-            }
+        // W4: the own row is resolved server-side through GET mi-perfil; the
+        // public /Anfitrione list no longer exposes usuarioId, so the old
+        // list+find lookup is gone. A 404 (no host row) keeps the initials
+        // fallback — same end state as the previous find returning undefined.
+        getMiPerfil()
+          .then((perfil) => {
+            if (activo) setFotoPerfil(perfil?.fotoPerfil || '')
           })
           .catch(() => {})
       }

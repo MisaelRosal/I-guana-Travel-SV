@@ -5,6 +5,7 @@ using IguanaSV.Api.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace IguanaSV.Api.Controllers;
 
@@ -19,18 +20,29 @@ public class AnfitrioneController : ControllerBase
         _context = context;
     }
 
+    // PII bulk guard: the list is catalog data for anonymous/usuario callers,
+    // so it is projected WITHOUT Email/Telefono/UsuarioId. Admin keeps the
+    // full rows (the admin panel legitimately manages contact data); a host
+    // reads their own full row through GET mi-perfil, never through this list.
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Anfitrione>>> GetAnfitriones()
+    public async Task<IActionResult> GetAnfitriones()
     {
-        return await _context.Anfitriones
+        var anfitriones = await _context.Anfitriones
             .Include(a => a.Municipio)
                 .ThenInclude(m => m.Departamento)
             .Include(a => a.Publicaciones)
             .ToListAsync();
+
+        if (User.IsInRole(AuthConstants.AdminRole))
+        {
+            return Ok(anfitriones);
+        }
+
+        return Ok(anfitriones.Select(ToCatalogo));
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Anfitrione>> GetAnfitrione(int id)
+    public async Task<IActionResult> GetAnfitrione(int id)
     {
         var anfitrione = await _context.Anfitriones
             .Include(a => a.Municipio)
@@ -43,7 +55,16 @@ public class AnfitrioneController : ControllerBase
             return NotFound();
         }
 
-        return anfitrione;
+        // Email/Telefono are public by product decision (the host profile page
+        // shows them), but the UsuarioId link is internal plumbing: only admin
+        // and the owner ever see it back. Literal "mi-perfil" wins over this
+        // {id} template in ASP.NET routing, so it cannot be swallowed.
+        if (User.IsInRole(AuthConstants.AdminRole) || await CallerOwnsHostAsync(id))
+        {
+            return Ok(anfitrione);
+        }
+
+        return Ok(ToPublico(anfitrione));
     }
 
     [HttpPut("{id}")]
@@ -139,6 +160,125 @@ public class AnfitrioneController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(anfitrione);
+    }
+
+    // ---- Self-service host profile (Mi perfil) ---------------------------------
+
+    /// <summary>
+    /// Own host row resolved from the token subject — never from a route id,
+    /// so ownership cannot be forged. 404 when the logged-in user has no
+    /// linked host row (plain usuarios and orphan links land here; the SPA
+    /// falls back gracefully).
+    /// </summary>
+    [HttpGet("mi-perfil")]
+    [Authorize]
+    public async Task<IActionResult> GetMiPerfil()
+    {
+        var sub = User.GetSubjectId();
+        if (sub is null)
+        {
+            return Unauthorized();
+        }
+
+        var anfitrione = await _context.Anfitriones
+            .Include(a => a.Municipio)
+                .ThenInclude(m => m.Departamento)
+            .FirstOrDefaultAsync(a => a.UsuarioId == sub.Value);
+
+        if (anfitrione == null)
+        {
+            return NotFound(new { mensaje = "El usuario no tiene un perfil de anfitrión." });
+        }
+
+        return Ok(await ToMiPerfilAsync(anfitrione));
+    }
+
+    /// <summary>
+    /// Partial self-update of the contact fields (correo, teléfono, ubicación
+    /// municipio-backed, descripción) of the CALLER's own host row. Owner-only
+    /// by construction: the row comes from the token sub. Verificado and
+    /// UsuarioId are not part of the payload and are never written here —
+    /// editing a profile does not reset verification (same discipline as the
+    /// PUT /{id} guard) nor re-links the row to another user. The email is
+    /// anfitriones.email (contact), never the usuarios.email login credential.
+    /// </summary>
+    [HttpPut("mi-perfil")]
+    [Authorize]
+    public async Task<IActionResult> PutMiPerfil(EditarPerfilAnfitrionDto dto)
+    {
+        var sub = User.GetSubjectId();
+        if (sub is null)
+        {
+            return Unauthorized();
+        }
+
+        var anfitrione = await _context.Anfitriones
+            .Include(a => a.Municipio)
+                .ThenInclude(m => m.Departamento)
+            .FirstOrDefaultAsync(a => a.UsuarioId == sub.Value);
+
+        if (anfitrione == null)
+        {
+            return NotFound(new { mensaje = "El usuario no tiene un perfil de anfitrión." });
+        }
+
+        if (dto.MunicipioId.HasValue
+            && !await _context.Municipios.AnyAsync(m => m.Id == dto.MunicipioId.Value))
+        {
+            return BadRequest(new { mensaje = $"El municipio con id {dto.MunicipioId.Value} no existe." });
+        }
+
+        string? emailNormalizado = null;
+        if (dto.Email != null)
+        {
+            emailNormalizado = dto.Email.Trim().ToLowerInvariant();
+            if (emailNormalizado.Length == 0)
+            {
+                return BadRequest(new { mensaje = "El correo de contacto no puede quedar vacío." });
+            }
+
+            // Friendly pre-check against the anfitriones_email_key unique index
+            // (same normalisation as registrar). The 23505 catch below still
+            // closes the race between this check and the save.
+            var enUso = await _context.Anfitriones
+                .AnyAsync(a => a.Email == emailNormalizado && a.Id != anfitrione.Id);
+            if (enUso)
+            {
+                return Conflict(new { mensaje = "Ese correo ya está registrado por otro anfitrión." });
+            }
+        }
+
+        // Partial update: only provided fields are written, null keeps the
+        // current value (pattern from PutPublicacione's dto-driven assigns).
+        if (emailNormalizado != null) anfitrione.Email = emailNormalizado;
+        if (dto.Telefono != null) anfitrione.Telefono = dto.Telefono.Trim();
+        if (dto.MunicipioId.HasValue) anfitrione.MunicipioId = dto.MunicipioId.Value;
+        if (dto.Descripcion != null) anfitrione.Descripcion = dto.Descripcion.Trim();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            // SQLSTATE 23505 on anfitriones_email_key: another host claimed
+            // the address between the pre-check and the save. Same 409
+            // { mensaje } payload (mirrors ReservaController's 23P01 mapping).
+            return Conflict(new { mensaje = "Ese correo ya está registrado por otro anfitrión." });
+        }
+
+        // Re-read the row fresh: after a MunicipioId reassign the tracked
+        // entity's Municipio navigation still points to the OLD municipio (the
+        // new one is not tracked, so EF cannot fix it up), and the SPA syncs
+        // both cascade selects from this response body.
+        var actualizado = await _context.Anfitriones
+            .AsNoTracking()
+            .Include(a => a.Municipio)
+                .ThenInclude(m => m.Departamento)
+            .FirstAsync(a => a.Id == anfitrione.Id);
+
+        return Ok(await ToMiPerfilAsync(actualizado));
     }
 
     [HttpPost]
@@ -255,4 +395,69 @@ public class AnfitrioneController : ControllerBase
         return sub.HasValue
             && await _context.Anfitriones.AnyAsync(a => a.Id == anfitrionId && a.UsuarioId == sub.Value);
     }
+
+    // --- Profile/list projections (PII) ----------------------------------------
+    // Explicit DTO mapping, not attributes on the entity: which fields a
+    // caller may see depends on the role/ownership of the REQUEST, and the
+    // same Anfitrione row must serialize fully for admin and owner.
+
+    private static AnfitrionCatalogoDto ToCatalogo(Anfitrione a) => new()
+    {
+        Id = a.Id,
+        Nombre = a.Nombre,
+        Descripcion = a.Descripcion,
+        Direccion = a.Direccion,
+        FotoPerfil = a.FotoPerfil,
+        Verificado = a.Verificado,
+        MunicipioId = a.MunicipioId,
+        Municipio = ToMunicipio(a.Municipio),
+    };
+
+    private static AnfitrionPublicoDto ToPublico(Anfitrione a) => new()
+    {
+        Id = a.Id,
+        Nombre = a.Nombre,
+        Email = a.Email,
+        Telefono = a.Telefono,
+        Descripcion = a.Descripcion,
+        Direccion = a.Direccion,
+        FotoPerfil = a.FotoPerfil,
+        Verificado = a.Verificado,
+        MunicipioId = a.MunicipioId,
+        Municipio = ToMunicipio(a.Municipio),
+    };
+
+    private async Task<MiPerfilAnfitrionDto> ToMiPerfilAsync(Anfitrione a)
+    {
+        // Counted instead of shipped as a collection: "Mi perfil" only shows
+        // the number, and mi-perfil must not grow into a publications dump.
+        var publicacionesCount = await _context.Publicaciones.CountAsync(p => p.AnfitrionId == a.Id);
+
+        return new MiPerfilAnfitrionDto
+        {
+            Id = a.Id,
+            Nombre = a.Nombre,
+            Email = a.Email,
+            Telefono = a.Telefono,
+            Direccion = a.Direccion,
+            Descripcion = a.Descripcion,
+            FotoPerfil = a.FotoPerfil,
+            Verificado = a.Verificado,
+            MunicipioId = a.MunicipioId,
+            Municipio = ToMunicipio(a.Municipio),
+            PublicacionesCount = publicacionesCount,
+        };
+    }
+
+    private static AnfitrionMunicipioDto? ToMunicipio(Municipio? m) => m is null
+        ? null
+        : new AnfitrionMunicipioDto
+        {
+            Id = m.Id,
+            Nombre = m.Nombre,
+            DepartamentoId = m.DepartamentoId,
+            Departamento = m.Departamento is null
+                ? null
+                : new AnfitrionDepartamentoDto { Id = m.Departamento.Id, Nombre = m.Departamento.Nombre },
+        };
 }

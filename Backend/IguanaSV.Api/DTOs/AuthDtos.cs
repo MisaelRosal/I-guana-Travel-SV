@@ -47,3 +47,92 @@ public class RegistroAnfitrionRequest
     public string? Descripcion { get; set; }
     public string? FotoPerfil { get; set; }
 }
+
+/// <summary>
+/// Partial self-update sent by a host from "Mi perfil"
+/// (PUT /api/Anfitrione/mi-perfil). A null field means "keep current value".
+/// <see cref="Email"/> is the anfitriones.email CONTACT address only — the
+/// login credential (usuarios.email) is a different column and is never
+/// touched here. There is deliberately no Verificado/UsuarioId field: profile
+/// editing must not self-verify a host nor re-link the row to another user
+/// (same discipline as the guards in AnfitrioneController).
+/// </summary>
+public class EditarPerfilAnfitrionDto
+{
+    public string? Email { get; set; }
+    public string? Telefono { get; set; }
+    public int? MunicipioId { get; set; }
+    public string? Descripcion { get; set; }
+}
+
+/// <summary>
+/// Full OWN host profile returned by GET/PUT /api/Anfitrione/mi-perfil. The
+/// nested municipio/departamento shape mirrors the entity JSON so the SPA's
+/// departamento→municipio cascade can preselect both selects from ids alone.
+/// </summary>
+public class MiPerfilAnfitrionDto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = null!;
+    public string Email { get; set; } = null!;
+    public string? Telefono { get; set; }
+    public string? Direccion { get; set; }
+    public string? Descripcion { get; set; }
+    public string? FotoPerfil { get; set; }
+    public bool? Verificado { get; set; }
+    public int MunicipioId { get; set; }
+    public AnfitrionMunicipioDto? Municipio { get; set; }
+    public int PublicacionesCount { get; set; }
+}
+
+/// <summary>
+/// Projection of the host LIST for anonymous/usuario callers. Contact PII
+/// (Email/Telefono) and the internal UsuarioId link are excluded: GET
+/// /api/Anfitrione must no longer bulk-expose every host's contact data.
+/// Admins keep the full rows; a host reads their own full row through
+/// GET mi-perfil, never through this list.
+/// </summary>
+public class AnfitrionCatalogoDto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = null!;
+    public string? Descripcion { get; set; }
+    public string? Direccion { get; set; }
+    public string? FotoPerfil { get; set; }
+    public bool? Verificado { get; set; }
+    public int MunicipioId { get; set; }
+    public AnfitrionMunicipioDto? Municipio { get; set; }
+}
+
+/// <summary>
+/// Projection of a SINGLE host for callers that are neither admin nor owner.
+/// Email/Telefono stay — the public profile page shows them by product
+/// decision — but the internal UsuarioId link is stripped.
+/// </summary>
+public class AnfitrionPublicoDto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = null!;
+    public string Email { get; set; } = null!;
+    public string? Telefono { get; set; }
+    public string? Descripcion { get; set; }
+    public string? Direccion { get; set; }
+    public string? FotoPerfil { get; set; }
+    public bool? Verificado { get; set; }
+    public int MunicipioId { get; set; }
+    public AnfitrionMunicipioDto? Municipio { get; set; }
+}
+
+public class AnfitrionMunicipioDto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = null!;
+    public int DepartamentoId { get; set; }
+    public AnfitrionDepartamentoDto? Departamento { get; set; }
+}
+
+public class AnfitrionDepartamentoDto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = null!;
+}
