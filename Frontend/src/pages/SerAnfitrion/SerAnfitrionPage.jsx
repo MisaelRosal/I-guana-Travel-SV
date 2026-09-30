@@ -14,10 +14,12 @@ export default function SerAnfitrionPage() {
   const [municipios, setMunicipios] = useState([])
   const [departamentoId, setDepartamentoId] = useState('')
   const [municipioId, setMunicipioId] = useState('')
-  const [nombre, setNombre] = useState(usuario ? `${usuario.nombre} ${usuario.apellido}`.trim() : '')
+  // El nombre publicable del anfitrion NO se edita aqui: se deriva siempre
+  // del nombre y apellido de la cuenta (usuarios). La direccion dejo de
+  // solicitarse en el formulario; puede completarse por otro medio si se desea.
+  const nombreAnfitrion = usuario ? `${usuario.nombre} ${usuario.apellido}`.trim() : ''
   const [email, setEmail] = useState(usuario?.email ?? '')
   const [telefono, setTelefono] = useState(usuario?.telefono ?? '')
-  const [direccion, setDireccion] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [foto, setFoto] = useState(null)
   const [fotoUrl, setFotoUrl] = useState('')
@@ -93,10 +95,9 @@ export default function SerAnfitrionPage() {
       const url = fotoUrl || (await subirFoto())
       const anfitrion = await registrarAnfitrion({
         municipioId,
-        nombre: nombre.trim(),
+        nombre: nombreAnfitrion,
         email: email.trim(),
         telefono: telefono.trim(),
-        direccion: direccion.trim(),
         descripcion: descripcion.trim(),
         fotoPerfil: url,
       })
@@ -179,20 +180,12 @@ export default function SerAnfitrionPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className={labelCls} htmlFor="anf-nombre">Nombre *</label>
-                <input id="anf-nombre" className={inputCls} value={nombre} onChange={(e) => setNombre(e.target.value)} required />
-              </div>
-              <div className="sm:col-span-2">
                 <label className={labelCls} htmlFor="anf-email">Correo electrónico *</label>
                 <input id="anf-email" type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <div>
                 <label className={labelCls} htmlFor="anf-telefono">Teléfono</label>
                 <input id="anf-telefono" className={inputCls} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono de contacto" />
-              </div>
-              <div>
-                <label className={labelCls} htmlFor="anf-direccion">Dirección</label>
-                <input id="anf-direccion" className={inputCls} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Dirección (opcional)" />
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls} htmlFor="anf-descripcion">Breve descripción *</label>
