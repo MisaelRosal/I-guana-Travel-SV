@@ -4,8 +4,99 @@ import ExperienceCard from '../../components/ExperienceCard.jsx'
 import LoadingIguana from '../../components/LoadingIguana.jsx'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
 
-const clasesSelect =
-  'rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 focus:border-azul focus:outline-none focus:ring-2 focus:ring-azul-cielo/40'
+// Filtro desplegable con la estetica del sitio: pastilla redondeada con borde
+// cafe, panel de opciones estilo tarjeta (hover crema, seleccion verde-bosque
+// con tilde). Cierra con Escape o clic fuera. Sustituye al <select> nativo.
+function FiltroDesplegable({ etiqueta, placeholder, valor, opciones, onChange }) {
+  const [abierto, setAbierto] = useState(false)
+  const contenedor = useRef(null)
+
+  useEffect(() => {
+    if (!abierto) return undefined
+    const cerrarFuera = (evento) => {
+      if (contenedor.current && !contenedor.current.contains(evento.target)) setAbierto(false)
+    }
+    const cerrarEscape = (evento) => {
+      if (evento.key === 'Escape') setAbierto(false)
+    }
+    document.addEventListener('mousedown', cerrarFuera)
+    document.addEventListener('keydown', cerrarEscape)
+    return () => {
+      document.removeEventListener('mousedown', cerrarFuera)
+      document.removeEventListener('keydown', cerrarEscape)
+    }
+  }, [abierto])
+
+  const seleccion = opciones.find((op) => op.valor === valor)
+  const todas = [{ valor: '', etiqueta: placeholder }, ...opciones]
+
+  return (
+    <div className="relative flex-1 min-w-[190px]" ref={contenedor}>
+      <button
+        type="button"
+        onClick={() => setAbierto((prev) => !prev)}
+        aria-expanded={abierto}
+        aria-haspopup="listbox"
+        className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border-2 bg-white px-4 py-2.5 text-left text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 ${
+          valor
+            ? 'border-verde-bosque text-verde-bosque shadow-sm'
+            : 'border-cafe-claro text-neutral-700 hover:border-verde-hoja'
+        }`}
+      >
+        <span className="min-w-0 truncate">
+          <span className="mr-1.5 text-xs font-bold uppercase tracking-wide opacity-70">{etiqueta}</span>
+          <span className={valor ? 'font-semibold' : 'text-neutral-500'}>
+            {seleccion ? seleccion.etiqueta : placeholder}
+          </span>
+        </span>
+        <svg
+          className={`h-4 w-4 shrink-0 transition-transform ${abierto ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {abierto && (
+        <div
+          role="listbox"
+          aria-label={`Opciones de ${etiqueta}`}
+          className="absolute left-0 right-0 z-30 mt-1.5 max-h-64 overflow-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl"
+        >
+          {todas.map((op) => {
+            const activa = op.valor === valor
+            return (
+              <button
+                key={op.valor || '__cualquiera__'}
+                type="button"
+                role="option"
+                aria-selected={activa}
+                onClick={() => { onChange(op.valor); setAbierto(false) }}
+                className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-3.5 py-2.5 text-left text-sm transition-colors ${
+                  activa
+                    ? 'bg-verde-bosque/10 font-semibold text-verde-bosque'
+                    : 'text-neutral-700 hover:bg-crema'
+                }`}
+              >
+                <span className="truncate">{op.etiqueta}</span>
+                {activa && (
+                  <svg
+                    className="h-4 w-4 shrink-0 text-verde-bosque"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function aleatorias(lista, cantidad) {
   const copia = [...lista]
@@ -122,41 +213,70 @@ export default function CatalogPage() {
 
       {/* Filtros y listado */}
       <section className="mx-auto max-w-7xl px-4 py-10">
-        <div className="mb-6 grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
-          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className={clasesSelect}>
-            <option value="">Todas las categorías</option>
-            {categorias.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <select value={zona} onChange={(e) => setZona(e.target.value)} className={clasesSelect}>
-            <option value="">Todo El Salvador</option>
-            {departamentos.map((d) => (
-              <option key={d.nombre} value={d.nombre}>{d.nombre}</option>
-            ))}
-          </select>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={clasesSelect}>
-            <option value="">Cualquier tipo</option>
-            <option value="experiencia">Experiencia</option>
-            <option value="hospedaje">Hospedaje</option>
-          </select>
-          <select
-            value={precioMax}
-            onChange={(e) => setPrecioMax(e.target.value)}
-            className={clasesSelect}
-          >
-            <option value="">Cualquier precio</option>
-            <option value="30">Hasta $30</option>
-            <option value="40">Hasta $40</option>
-            <option value="50">Hasta $50</option>
-            <option value="80">Hasta $80</option>
-          </select>
-          <button
-            onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax('') }}
-            className="rounded-lg bg-terracota px-4 py-2 text-sm font-semibold text-white hover:bg-verde-bosque transition-colors"
-          >
-            Limpiar filtros
-          </button>
+        <div className="mb-6 rounded-2xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-cafe">Filtrar resultados</p>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Tipo: control segmentado con la paleta del sitio */}
+            <div
+              role="group"
+              aria-label="Tipo de publicación"
+              className="flex min-w-[190px] flex-1 items-center gap-1 rounded-xl border-2 border-cafe-claro bg-crema/60 p-1.5"
+            >
+              {[
+                { valor: '', etiqueta: 'Todos' },
+                { valor: 'experiencia', etiqueta: 'Experiencias' },
+                { valor: 'hospedaje', etiqueta: 'Hospedaje' },
+              ].map((op) => (
+                <button
+                  key={op.valor || 'todos'}
+                  type="button"
+                  onClick={() => setTipo(op.valor)}
+                  aria-pressed={tipo === op.valor}
+                  className={`flex-1 cursor-pointer rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
+                    tipo === op.valor
+                      ? 'bg-verde-bosque font-semibold text-white shadow-sm'
+                      : 'text-cafe hover:bg-white'
+                  }`}
+                >
+                  {op.etiqueta}
+                </button>
+              ))}
+            </div>
+
+            <FiltroDesplegable
+              etiqueta="Categoría"
+              placeholder="Todas las categorías"
+              valor={categoria}
+              opciones={categorias.map((c) => ({ valor: c, etiqueta: c }))}
+              onChange={setCategoria}
+            />
+            <FiltroDesplegable
+              etiqueta="Zona"
+              placeholder="Todo El Salvador"
+              valor={zona}
+              opciones={departamentos.map((d) => ({ valor: d.nombre, etiqueta: d.nombre }))}
+              onChange={setZona}
+            />
+            <FiltroDesplegable
+              etiqueta="Precio"
+              placeholder="Cualquier precio"
+              valor={precioMax}
+              opciones={[
+                { valor: '30', etiqueta: 'Hasta $30' },
+                { valor: '40', etiqueta: 'Hasta $40' },
+                { valor: '50', etiqueta: 'Hasta $50' },
+                { valor: '80', etiqueta: 'Hasta $80' },
+              ]}
+              onChange={setPrecioMax}
+            />
+            <button
+              type="button"
+              onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax('') }}
+              className="cursor-pointer rounded-xl border-2 border-dashed border-cafe-claro px-4 py-2.5 text-sm font-semibold text-cafe transition-colors hover:border-terracota hover:bg-terracota hover:text-white"
+            >
+              Limpiar filtros
+            </button>
+          </div>
         </div>
 
         {cargando ? (
