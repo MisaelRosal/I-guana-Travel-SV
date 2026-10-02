@@ -86,11 +86,11 @@ export default function MiPerfilPage() {
     setError('')
 
     if (!correo.trim()) {
-      setError('Ingresá un correo de contacto.')
+      setError('Ingresa un correo de contacto.')
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim())) {
-      setError('Ingresá un correo electrónico válido.')
+      setError('Ingresa un correo electrónico válido.')
       return
     }
     if (correo.trim().length > 150) {
@@ -289,7 +289,7 @@ export default function MiPerfilPage() {
                 className={inputCls + ' h-28 resize-none'}
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
-                placeholder="Contanos quién sos y qué experiencia ofrecés..."
+                placeholder="Cuéntanos quién eres y qué experiencia ofreces..."
                 required
               />
             </div>

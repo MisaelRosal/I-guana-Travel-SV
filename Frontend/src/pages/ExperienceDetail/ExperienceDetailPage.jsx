@@ -515,8 +515,8 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             {paso === 'personas'
               ? '¿Para cuántas personas?'
               : esHospedaje
-                ? 'Elegí tus fechas'
-                : 'Elegí tu fecha'}
+                ? 'Elige tus fechas'
+                : 'Elige tu fecha'}
           </h3>
           <button
             type="button"

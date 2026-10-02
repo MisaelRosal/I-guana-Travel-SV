@@ -467,6 +467,9 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.FechaPago)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("fecha_pago");
+            entity.Property(e => e.FechaExpiracionGracia)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("fecha_expiracion_gracia");
             entity.Property(e => e.IdTransaccion)
                 .HasMaxLength(100)
                 .HasColumnName("id_transaccion");

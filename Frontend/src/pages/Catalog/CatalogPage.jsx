@@ -175,10 +175,10 @@ export default function CatalogPage() {
         />
         <div className="relative mx-auto max-w-7xl px-4 py-12 sm:py-24">
           <h1 className="text-3xl font-extrabold sm:text-5xl">
-            Descubrí las experiencias de <span className="text-verde-hoja">El Salvador</span>
+            Descubre las experiencias de <span className="text-verde-hoja">El Salvador</span>
           </h1>
           <p className="mt-3 max-w-2xl text-base text-crema/85 sm:text-lg">
-            Surf, café, volcanes y pueblos con encanto. Explorá, reservá y viví el país con
+            Surf, café, volcanes y pueblos con encanto. Explora, reserva y vive el país con
             anfitriones locales.
           </p>
           <form onSubmit={handleBuscar} className="mt-8 flex max-w-2xl flex-col gap-2 sm:flex-row">
@@ -330,8 +330,8 @@ export default function CatalogPage() {
             <p className="px-6 text-center">
               <span className="block text-lg font-semibold text-verde-bosque">No se encontraron publicaciones</span>
               {busqueda || categoria || zona || tipo || precioMax
-                ? 'Probá cambiando los filtros de búsqueda.'
-                : 'Creá la primera publicación desde el panel del operador.'}
+                ? 'Prueba cambiando los filtros de búsqueda.'
+                : 'Crea la primera publicación desde el panel del operador.'}
             </p>
           </div>
         ) : (

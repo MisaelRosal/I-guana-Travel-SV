@@ -199,7 +199,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       return
     }
     if (tipo === 'experiencia' && fechasSeleccionadas.length === 0) {
-      setError('Elegí al menos una fecha disponible en el calendario')
+      setError('Elige al menos una fecha disponible en el calendario')
       setEnviando(false)
       return
     }
@@ -331,7 +331,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
           {/* Tipo de publicación */}
           <fieldset className="mb-6">
-            <legend className="mb-3 text-lg font-bold text-verde-bosque">¿Qué querés publicar?</legend>
+            <legend className="mb-3 text-lg font-bold text-verde-bosque">¿Qué quieres publicar?</legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all ${
                 esEdicion ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
@@ -542,7 +542,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
             <fieldset className="mb-6">
               <legend className="mb-3 text-lg font-bold text-verde-bosque">Fechas disponibles</legend>
               <p className="mb-3 text-sm text-cafe">
-                Elegí en el calendario los días en que se puede reservar esta experiencia.
+                Elige en el calendario los días en que se puede reservar esta experiencia.
               </p>
 
               <div className="rounded-xl border border-neutral-200 bg-white p-4">

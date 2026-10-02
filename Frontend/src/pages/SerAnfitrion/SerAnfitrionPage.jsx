@@ -80,8 +80,8 @@ export default function SerAnfitrionPage() {
       return
     }
     if (!descripcion.trim()) {
-      setError('Contanos una breve descripción sobre vos.')
-      setToast({ tipo: 'error', mensaje: 'Contanos una breve descripción sobre vos.' })
+      setError('Cuéntanos una breve descripción sobre ti.')
+      setToast({ tipo: 'error', mensaje: 'Cuéntanos una breve descripción sobre ti.' })
       return
     }
     if (!municipioId) {
@@ -102,7 +102,7 @@ export default function SerAnfitrionPage() {
         fotoPerfil: url,
       })
       guardarSesion({ ...usuario, rol: 'anfitrion', fotoPerfil: url })
-      setToast({ tipo: 'exito', mensaje: '¡Ya sos anfitrión!' })
+      setToast({ tipo: 'exito', mensaje: '¡Ya eres anfitrión!' })
       setTimeout(() => navigate('/panel'), 1500)
       return anfitrion
     } catch (err) {
@@ -140,7 +140,7 @@ export default function SerAnfitrionPage() {
         <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
           <h1 className="text-2xl font-bold text-verde-bosque">Conviértete en anfitrión</h1>
           <p className="mt-1 text-sm text-cafe">
-            Creá tu perfil de anfitrión. Necesitamos una foto de tu persona.
+            Crea tu perfil de anfitrión. Necesitamos una foto de tu persona.
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
@@ -194,7 +194,7 @@ export default function SerAnfitrionPage() {
                   className={inputCls + ' h-24 resize-none'}
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Contanos quién sos y qué experiencia ofrecés..."
+                  placeholder="Cuéntanos quién eres y qué experiencia ofreces..."
                   required
                 />
               </div>
