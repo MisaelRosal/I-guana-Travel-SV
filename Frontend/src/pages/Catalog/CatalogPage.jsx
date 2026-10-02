@@ -31,7 +31,7 @@ function FiltroDesplegable({ etiqueta, placeholder, valor, opciones, onChange })
   const todas = [{ valor: '', etiqueta: placeholder }, ...opciones]
 
   return (
-    <div className="relative flex-1 min-w-[190px]" ref={contenedor}>
+    <div className="relative w-full sm:min-w-[190px] sm:flex-1" ref={contenedor}>
       <button
         type="button"
         onClick={() => setAbierto((prev) => !prev)}
@@ -40,7 +40,7 @@ function FiltroDesplegable({ etiqueta, placeholder, valor, opciones, onChange })
         className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border-2 bg-white px-4 py-2.5 text-left text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 ${
           valor
             ? 'border-verde-bosque text-verde-bosque shadow-sm'
-            : 'border-cafe-claro text-neutral-700 hover:border-verde-hoja'
+            : 'border-verde-bosque text-neutral-700 hover:border-verde-hoja'
         }`}
       >
         <span className="min-w-0 truncate">
@@ -122,6 +122,9 @@ export default function CatalogPage() {
   const [zona, setZona] = useState('')
   const [tipo, setTipo] = useState('')
   const [precioMax, setPrecioMax] = useState('')
+  // En móvil los filtros van ocultos tras un botón "Filtros" hasta que se abre.
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
+  const filtrosActivos = [tipo, categoria, zona, precioMax].filter(Boolean).length
 
   useEffect(() => {
     getCategorias().then(setCategorias)
@@ -198,7 +201,7 @@ export default function CatalogPage() {
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar por nombre o descripción…"
-                className="w-full rounded-lg border-2 border-cafe-claro bg-white py-3 pl-11 pr-4 text-neutral-800 shadow-md placeholder:text-neutral-500 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
+                className="w-full rounded-lg border-2 border-verde-bosque bg-white py-3 pl-11 pr-4 text-neutral-800 shadow-md placeholder:text-neutral-500 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
               />
             </div>
             <button
@@ -213,14 +216,55 @@ export default function CatalogPage() {
 
       {/* Filtros y listado */}
       <section className="mx-auto max-w-7xl px-4 py-10">
-        <div className="mb-6 rounded-2xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-cafe">Filtrar resultados</p>
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="mb-6 rounded-2xl border border-verde-bosque/30 bg-white p-4 shadow-sm sm:p-5">
+          {/* Botón tipo menú de filtros: visible SOLO en móvil, colapsa/expande los controles */}
+          <button
+            type="button"
+            onClick={() => setFiltrosAbiertos((prev) => !prev)}
+            aria-expanded={filtrosAbiertos}
+            aria-controls="filtros-controles"
+            className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border-2 border-verde-bosque bg-verde-bosque/5 px-4 py-3 text-sm font-bold text-verde-bosque transition-colors hover:bg-verde-bosque/10 focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 sm:hidden"
+          >
+            <span className="flex items-center gap-2">
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              Filtros{filtrosActivos > 0 ? ` (${filtrosActivos})` : ''}
+            </span>
+            <svg
+              className={`h-4 w-4 shrink-0 transition-transform ${filtrosAbiertos ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+
+          <p className="mb-3 hidden text-xs font-bold uppercase tracking-wider text-verde-bosque sm:block">Filtrar resultados</p>
+
+          <div
+            id="filtros-controles"
+            className={`${filtrosAbiertos ? 'flex' : 'hidden'} mt-3 flex-col gap-3 sm:mt-0 sm:flex sm:flex-row sm:flex-wrap sm:items-center`}
+          >
             {/* Tipo: control segmentado con la paleta del sitio */}
             <div
               role="group"
               aria-label="Tipo de publicación"
-              className="flex min-w-[190px] flex-1 items-center gap-1 rounded-xl border-2 border-cafe-claro bg-crema/60 p-1.5"
+              className="flex w-full items-center gap-1 rounded-xl border-2 border-verde-bosque bg-verde-bosque/5 p-1.5 sm:min-w-[190px] sm:flex-1"
             >
               {[
                 { valor: '', etiqueta: 'Todos' },
@@ -235,7 +279,7 @@ export default function CatalogPage() {
                   className={`flex-1 cursor-pointer rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
                     tipo === op.valor
                       ? 'bg-verde-bosque font-semibold text-white shadow-sm'
-                      : 'text-cafe hover:bg-white'
+                      : 'text-verde-bosque hover:bg-white'
                   }`}
                 >
                   {op.etiqueta}
@@ -272,7 +316,7 @@ export default function CatalogPage() {
             <button
               type="button"
               onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax('') }}
-              className="cursor-pointer rounded-xl border-2 border-dashed border-cafe-claro px-4 py-2.5 text-sm font-semibold text-cafe transition-colors hover:border-terracota hover:bg-terracota hover:text-white"
+              className="w-full cursor-pointer rounded-xl border-2 border-dashed border-verde-bosque px-4 py-2.5 text-sm font-semibold text-verde-bosque transition-colors hover:border-verde-bosque hover:bg-verde-bosque hover:text-white sm:w-auto"
             >
               Limpiar filtros
             </button>
