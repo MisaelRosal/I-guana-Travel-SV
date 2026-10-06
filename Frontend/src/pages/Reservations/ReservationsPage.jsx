@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Trans, useTranslation } from 'react-i18next'
 import { actualizarReserva, eliminarReserva, getMisReservas, pagarReserva, cancelarReserva } from '../../services/reservas.js'
 import Toast from '../../components/Toast.jsx'
 
-const etiquetasEstado = {
-  pendiente: 'Pendiente',
-  confirmada: 'Confirmada',
-  cancelada: 'Cancelada',
-  completada: 'Completada',
+// Display-only mapping DB estado -> reservas chip key (localized-ui-content spec:
+// the stored value is never rewritten; unknown values render verbatim passthrough).
+const CHIP_ESTADOS = {
+  pendiente: 'chip.pendiente',
+  confirmada: 'chip.confirmada',
+  cancelada: 'chip.cancelada',
+  completada: 'chip.completada',
 }
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
@@ -24,9 +27,9 @@ const ESTILOS_ESTADO = {
 }
 
 const METODOS_PAGO = [
-  { id: 'tarjeta_credito', label: 'Tarjeta de crédito' },
-  { id: 'tarjeta_debito', label: 'Tarjeta de débito' },
-  { id: 'paypal', label: 'PayPal' },
+  { id: 'tarjeta_credito', labelKey: 'pay.methods.credit' },
+  { id: 'tarjeta_debito', labelKey: 'pay.methods.debit' },
+  { id: 'paypal', labelKey: 'pay.methods.paypal' },
 ]
 
 function formatearFecha(iso) {
@@ -46,10 +49,8 @@ function fechaBloqueada(iso) {
 }
 
 function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) {
+  const { t } = useTranslation('reservas')
   const multinoche = reserva.fechaFin && reserva.fechaFin !== reserva.fechaInicio
-  const rango = multinoche
-    ? `${formatearFecha(reserva.fechaInicio)} → ${formatearFecha(reserva.fechaFin)}`
-    : formatearFecha(reserva.fechaInicio)
 
   const cancelada = reserva.estado === 'cancelada'
   const confirmada = reserva.estado === 'confirmada'
@@ -82,13 +83,13 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
           <span
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${ESTILOS_ESTADO[reserva.estado] || 'bg-neutral-100 text-neutral-600'}`}
           >
-            {etiquetasEstado[reserva.estado] || reserva.estado}
+            {CHIP_ESTADOS[reserva.estado] ? t(CHIP_ESTADOS[reserva.estado]) : reserva.estado}
           </span>
         </div>
 
         <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-xs font-semibold uppercase text-cafe">Fecha</dt>
+            <dt className="text-xs font-semibold uppercase text-cafe">{t('card.dateLabel')}</dt>
             <dd className="mt-0.5 font-medium text-neutral-800">
               {multinoche ? (
                 <>
@@ -100,13 +101,13 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase text-cafe">Personas</dt>
+            <dt className="text-xs font-semibold uppercase text-cafe">{t('card.peopleLabel')}</dt>
             <dd className="mt-0.5 font-medium text-neutral-800">
-              {reserva.personas} {reserva.personas === 1 ? 'persona' : 'personas'}
+              {t('card.persons', { count: reserva.personas })}
             </dd>
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <dt className="text-xs font-semibold uppercase text-cafe">Total</dt>
+            <dt className="text-xs font-semibold uppercase text-cafe">{t('card.totalLabel')}</dt>
             <dd className="mt-0.5 text-lg font-extrabold text-terracota">
               {formatoPrecio.format(reserva.precioTotal)}
             </dd>
@@ -115,7 +116,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
 
         <div className="mt-4 border-t border-neutral-100 pt-4">
           {cancelada ? (
-            <p className="text-sm text-neutral-500">Esta reserva ya fue cancelada.</p>
+            <p className="text-sm text-neutral-500">{t('card.noteCancelled')}</p>
           ) : esCorta && confirmada ? (
             <div className="flex items-start gap-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-2.5">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden="true">
@@ -123,7 +124,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
                 <path d="M12 8v4M12 16h.01" />
               </svg>
               <p className="text-xs text-amber">
-                Pagaste: falta menos de un día, ya no se puede editar ni cancelar.
+                {t('card.noteShortConfirmed')}
               </p>
             </div>
           ) : esCorta && graciaVencida ? (
@@ -133,7 +134,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
                 <path d="M12 8v4M12 16h.01" />
               </svg>
               <p className="text-xs text-amber">
-                La hora para pagar venció. Esta reserva se cancelará automáticamente.
+                {t('card.noteGraceExpired')}
               </p>
             </div>
           ) : bloqueadaLejana ? (
@@ -143,7 +144,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
                 <path d="M12 8v4M12 16h.01" />
               </svg>
               <p className="text-xs text-amber">
-                Falta un día o menos para tu entrada. Por eso esta reserva ya no se puede editar ni eliminar.
+                {t('card.noteBlockedSoon')}
               </p>
             </div>
           ) : (
@@ -154,7 +155,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
                   onClick={() => onPagar(reserva.id)}
                   className="cursor-pointer rounded-lg bg-terracota px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
                 >
-                  Pagar
+                  {t('card.pay')}
                 </button>
               )}
               {(confirmada || (esCorta && pendiente)) && onCancelar && (
@@ -163,7 +164,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
                   onClick={() => onCancelar(reserva)}
                   className="cursor-pointer rounded-lg border border-red-300 px-4 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white"
                 >
-                  Cancelar
+                  {t('common:actions.cancel')}
                 </button>
               )}
               <button
@@ -171,14 +172,14 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
                 onClick={() => onEditar(reserva)}
                 className="cursor-pointer rounded-lg border border-verde-bosque/30 px-4 py-1.5 text-sm font-semibold text-verde-bosque transition-colors hover:bg-verde-bosque hover:text-white"
               >
-                Editar
+                {t('card.edit')}
               </button>
               <button
                 type="button"
                 onClick={() => onEliminar(reserva)}
                 className="cursor-pointer rounded-lg border border-red-300 px-4 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white"
               >
-                Eliminar
+                {t('card.delete')}
               </button>
             </div>
           )}
@@ -194,6 +195,8 @@ function todayISO() {
 }
 
 function CalendarioFechas({ fechasDisponibles, seleccionada, onSeleccionar }) {
+  const { t } = useTranslation('reservas')
+  // F4 owns these manual date arrays (Intl migration); they stay untouched here.
   const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
   const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
@@ -225,11 +228,11 @@ function CalendarioFechas({ fechasDisponibles, seleccionada, onSeleccionar }) {
   return (
     <div className="rounded-xl border border-cafe-claro bg-white p-3">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => cambiarMes(-1)} aria-label="Mes anterior" className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+        <button type="button" onClick={() => cambiarMes(-1)} aria-label={t('common:calendar.prevMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
         <p className="text-sm font-bold text-verde-bosque">{MESES[mes]} {anio}</p>
-        <button type="button" onClick={() => cambiarMes(1)} aria-label="Mes siguiente" className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+        <button type="button" onClick={() => cambiarMes(1)} aria-label={t('common:calendar.nextMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
         </button>
       </div>
@@ -266,13 +269,14 @@ function CalendarioFechas({ fechasDisponibles, seleccionada, onSeleccionar }) {
       </div>
 
       <p className="mt-2 text-center text-[11px] text-cafe">
-        Solo se pueden elegir las fechas que ofrece el anfitrión.
+        {t('calendar.hint')}
       </p>
     </div>
   )
 }
 
 function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
+  const { t } = useTranslation('reservas')
   const esHospedaje = reserva.tipo === 'hospedaje'
   const fechasDisponibles = reserva.fechasDisponibles ?? []
   const [fechaInicio, setFechaInicio] = useState(reserva.fechaInicio)
@@ -291,15 +295,15 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!fechaInicio) {
-      setErrorFecha('Elige una fecha de inicio.')
+      setErrorFecha(t('edit.errorPickDate'))
       return
     }
     if (esHospedaje && fechaFin < fechaInicio) {
-      setErrorFecha('La fecha de fin no puede ser anterior a la de inicio.')
+      setErrorFecha(t('edit.errorEndBefore'))
       return
     }
     if (personas > maxPersonas) {
-      setErrorFecha(`La capacidad máxima es de ${maxPersonas} ${maxPersonas === 1 ? 'persona' : 'personas'}.`)
+      setErrorFecha(t('edit.errorCapacity', { count: maxPersonas }))
       return
     }
     setErrorFecha('')
@@ -316,10 +320,10 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
         numeroHuespedes: personas,
         precioTotal,
       })
-      setToast({ tipo: 'exito', mensaje: 'Reserva actualizada.' })
+      setToast({ tipo: 'exito', mensaje: t('edit.toastSaved') })
       setTimeout(() => onGuardado(), 1200)
     } catch (err) {
-      setToast({ tipo: 'error', mensaje: err.mensaje || err.message || 'Error al actualizar la reserva.' })
+      setToast({ tipo: 'error', mensaje: err.mensaje || err.message || t('edit.toastError') })
     } finally {
       setEnviando(false)
     }
@@ -330,15 +334,15 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
       className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
       aria-modal="true"
-      aria-label="Editar reserva"
+      aria-label={t('edit.title')}
     >
       <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-verde-bosque">Editar reserva</h3>
+          <h3 className="text-xl font-bold text-verde-bosque">{t('edit.title')}</h3>
           <button
             type="button"
             onClick={onCerrar}
-            aria-label="Cerrar"
+            aria-label={t('common:modal.close')}
             className="cursor-pointer rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
           >
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -350,8 +354,8 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
         <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
           <p className="text-sm font-semibold text-verde-bosque">{reserva.experienciaTitulo}</p>
           <p className="mt-1 text-sm text-cafe">
-            {formatoPrecio.format(precioTotal)}
-            {esHospedaje ? ` · ${noches} noche${noches > 1 ? 's' : ''}` : ` · ${personas} persona${personas > 1 ? 's' : ''}`}
+            {formatoPrecio.format(precioTotal)}{' · '}
+            {esHospedaje ? t('edit.summaryNights', { count: noches }) : t('edit.summaryGuests', { count: personas })}
           </p>
         </div>
 
@@ -359,7 +363,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
           {esHospedaje ? (
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="text-sm font-semibold text-cafe">Entrada</span>
+                <span className="text-sm font-semibold text-cafe">{t('edit.startLabel')}</span>
                 <input
                   type="date"
                   required
@@ -373,7 +377,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
                 />
               </label>
               <label className="block">
-                <span className="text-sm font-semibold text-cafe">Salida</span>
+                <span className="text-sm font-semibold text-cafe">{t('edit.endLabel')}</span>
                 <input
                   type="date"
                   required
@@ -386,13 +390,13 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
             </div>
           ) : (
             <div>
-              <span className="text-sm font-semibold text-cafe">Fecha</span>
+              <span className="text-sm font-semibold text-cafe">{t('card.dateLabel')}</span>
               <p className="mb-2 mt-0.5 text-xs text-neutral-500">
-                Fecha actual: {formatearFecha(reserva.fechaInicio)}
+                {t('edit.currentDate', { date: formatearFecha(reserva.fechaInicio) })}
               </p>
               {fechasDisponibles.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-cafe-claro bg-neutral-50 px-3 py-4 text-center text-xs text-cafe">
-                  Esta experiencia todavía no tiene fechas disponibles.
+                  {t('edit.noDates')}
                 </p>
               ) : (
                 <CalendarioFechas
@@ -407,15 +411,15 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
           {errorFecha && <p className="text-sm font-medium text-red-600">{errorFecha}</p>}
 
           <div>
-            <span className="text-sm font-semibold text-cafe">Personas</span>
+            <span className="text-sm font-semibold text-cafe">{t('card.peopleLabel')}</span>
             <p className="mt-0.5 text-xs text-neutral-500">
-              Capacidad máxima: {maxPersonas} {maxPersonas === 1 ? 'persona' : 'personas'}
+              {t('edit.capacityHint', { count: maxPersonas })}
             </p>
             <div className="mt-2 flex items-center gap-4">
               <button
                 type="button"
                 onClick={() => setPersonas((n) => Math.max(1, n - 1))}
-                aria-label="Menos personas"
+                aria-label={t('edit.ariaLess')}
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-terracota text-xl font-bold text-terracota transition-colors hover:bg-terracota/10"
               >
                 −
@@ -423,13 +427,13 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
               <div className="w-16 text-center">
                 <p className="text-3xl font-extrabold text-verde-bosque">{personas}</p>
                 <p className="text-xs font-semibold uppercase text-cafe">
-                  {personas === 1 ? 'persona' : 'personas'}
+                  {t('edit.peopleUnit', { count: personas })}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setPersonas((n) => Math.min(maxPersonas, n + 1))}
-                aria-label="Más personas"
+                aria-label={t('edit.ariaMore')}
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-terracota text-xl font-bold text-terracota transition-colors hover:bg-terracota/10"
               >
                 +
@@ -443,14 +447,14 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
               onClick={onCerrar}
               className="cursor-pointer flex-1 rounded-lg border border-cafe-claro bg-white px-4 py-2.5 text-sm font-semibold text-cafe-oscuro transition-colors hover:bg-neutral-50"
             >
-              Cancelar
+              {t('common:actions.cancel')}
             </button>
             <button
               type="submit"
               disabled={enviando}
               className="cursor-pointer flex-1 rounded-lg bg-terracota px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:opacity-50"
             >
-              {enviando ? 'Guardando...' : 'Guardar cambios'}
+              {enviando ? t('edit.saving') : t('edit.save')}
             </button>
           </div>
         </form>
@@ -462,6 +466,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
 }
 
 function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
+  const { t } = useTranslation('reservas')
   const [eliminando, setEliminando] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -469,10 +474,10 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
     setEliminando(true)
     try {
       await eliminarReserva(reserva.id)
-      setToast({ tipo: 'exito', mensaje: 'Reserva eliminada.' })
+      setToast({ tipo: 'exito', mensaje: t('deleteConfirm.toastDone') })
       setTimeout(() => onEliminado(), 1200)
     } catch (err) {
-      setToast({ tipo: 'error', mensaje: err.mensaje || err.message || 'Error al eliminar la reserva.' })
+      setToast({ tipo: 'error', mensaje: err.mensaje || err.message || t('deleteConfirm.toastError') })
       setEliminando(false)
     }
   }
@@ -482,15 +487,15 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
       className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Confirmar eliminación"
+      aria-label={t('deleteConfirm.dialogLabel')}
     >
       <div className="animate-modal-box w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="flex items-start justify-between">
-          <h3 className="text-lg font-bold text-verde-bosque">¿Eliminar reserva?</h3>
+          <h3 className="text-lg font-bold text-verde-bosque">{t('deleteConfirm.heading')}</h3>
           <button
             type="button"
             onClick={onCerrar}
-            aria-label="Cerrar"
+            aria-label={t('common:modal.close')}
             className="cursor-pointer rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -499,8 +504,12 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
           </button>
         </div>
         <p className="mt-3 text-sm text-cafe">
-          Vas a eliminar la reserva de <span className="font-semibold text-verde-bosque">{reserva.experienciaTitulo}</span> para el{' '}
-          <span className="font-semibold text-verde-bosque">{formatearFecha(reserva.fechaInicio)}</span>. Esta acción no se puede deshacer.
+          <Trans
+            ns="reservas"
+            i18nKey="deleteConfirm.body"
+            values={{ title: reserva.experienciaTitulo, date: formatearFecha(reserva.fechaInicio) }}
+            components={{ b: <span className="font-semibold text-verde-bosque" /> }}
+          />
         </p>
         <div className="mt-6 flex gap-3">
           <button
@@ -508,7 +517,7 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
             onClick={onCerrar}
             className="cursor-pointer flex-1 rounded-lg border border-cafe-claro bg-white px-4 py-2.5 text-sm font-semibold text-cafe-oscuro transition-colors hover:bg-neutral-50"
           >
-            Cancelar
+            {t('common:actions.cancel')}
           </button>
           <button
             type="button"
@@ -516,7 +525,7 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
             disabled={eliminando}
             className="cursor-pointer flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
           >
-            {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+            {eliminando ? t('deleteConfirm.deleting') : t('common:actions.deleteYes')}
           </button>
         </div>
         <Toast mensaje={toast?.mensaje || ''} tipo={toast?.tipo || 'exito'} onCerrar={() => setToast(null)} />
@@ -526,6 +535,7 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
 }
 
 function ModalPago({ reserva, onCerrar, onExito }) {
+  const { t } = useTranslation('reservas')
   const [metodoPago, setMetodoPago] = useState('')
   const [numeroTarjeta, setNumeroTarjeta] = useState('')
   const [nombreTitular, setNombreTitular] = useState('')
@@ -536,15 +546,15 @@ function ModalPago({ reserva, onCerrar, onExito }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!metodoPago) {
-      setError('Seleccioná un método de pago')
+      setError(t('pay.errorMethod'))
       return
     }
     if (metodoPago !== 'paypal' && !numeroTarjeta.trim()) {
-      setError('Ingresa el número de tarjeta')
+      setError(t('pay.errorCardNumber'))
       return
     }
     if (metodoPago !== 'paypal' && !nombreTitular.trim()) {
-      setError('Ingresa el nombre del titular')
+      setError(t('pay.errorHolder'))
       return
     }
 
@@ -556,7 +566,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
       const resultado = await pagarReserva(reserva.id, metodoPago)
       onExito(resultado)
     } catch (err) {
-      setError(err.mensaje || err.message || 'Error al procesar el pago')
+      setError(err.mensaje || err.message || t('pay.errorGeneric'))
     } finally {
       setProcesando(false)
     }
@@ -566,7 +576,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
     <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8">
       <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-verde-bosque">Simular pago</h2>
+          <h2 className="text-xl font-bold text-verde-bosque">{t('pay.title')}</h2>
           <button
             type="button"
             onClick={onCerrar}
@@ -577,7 +587,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
         </div>
 
         <div className="mb-5 rounded-lg bg-neutral-50 p-4">
-          <p className="text-sm text-cafe">Reserva #{reserva.id}</p>
+          <p className="text-sm text-cafe">{t('bookingRef', { id: reserva.id })}</p>
           <p className="text-lg font-bold text-terracota">
             {formatoPrecio.format(reserva.precioTotal)}
           </p>
@@ -586,7 +596,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-semibold text-verde-bosque">
-              Método de pago
+              {t('pay.methodLabel')}
             </label>
             <div className="flex flex-col gap-2 sm:flex-row">
               {METODOS_PAGO.map((m) => (
@@ -600,7 +610,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
                       : 'border-neutral-300 text-verde-bosque hover:bg-neutral-50'
                   }`}
                 >
-                  {m.label}
+                  {t(m.labelKey)}
                 </button>
               ))}
             </div>
@@ -610,7 +620,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
             <>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-verde-bosque">
-                  Número de tarjeta
+                  {t('pay.cardNumber')}
                 </label>
                 <input
                   type="text"
@@ -623,25 +633,25 @@ function ModalPago({ reserva, onCerrar, onExito }) {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-verde-bosque">
-                  Nombre del titular
+                  {t('pay.holderName')}
                 </label>
                 <input
                   type="text"
                   value={nombreTitular}
                   onChange={(e) => setNombreTitular(e.target.value)}
-                  placeholder="Como aparece en la tarjeta"
+                  placeholder={t('pay.holderPlaceholder')}
                   className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-verde-bosque">
-                  Vencimiento
+                  {t('pay.expiry')}
                 </label>
                 <input
                   type="text"
                   value={vencimiento}
                   onChange={(e) => setVencimiento(e.target.value)}
-                  placeholder="MM/AA"
+                  placeholder={t('pay.expiryPlaceholder')}
                   maxLength={5}
                   className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
                 />
@@ -651,7 +661,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
 
           {metodoPago === 'paypal' && (
             <div className="rounded-lg bg-blue-50 p-3 text-center text-sm text-blue-800">
-              Serás redirigido a PayPal para completar el pago.
+              {t('pay.paypalNotice')}
             </div>
           )}
 
@@ -664,7 +674,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
             disabled={procesando}
             className="w-full cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
           >
-            {procesando ? 'Procesando pago...' : 'Confirmar pago'}
+            {procesando ? t('pay.processing') : t('pay.submit')}
           </button>
         </form>
       </div>
@@ -673,6 +683,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
 }
 
 function ModalCancelar({ reserva, onCerrar, onExito }) {
+  const { t } = useTranslation('reservas')
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -683,9 +694,7 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
   const esCompletada = reserva.estado === 'completada'
   const noSePuedeCancelar = yaEmpezada || esCompletada
 
-  const motivo = yaEmpezada
-    ? 'No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy.'
-    : 'No se puede cancelar una reserva que ya fue completada.'
+  const motivo = yaEmpezada ? t('cancel.reasonStarted') : t('cancel.reasonCompleted')
 
   const handleCancelar = async () => {
     setProcesando(true)
@@ -695,7 +704,7 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
       await cancelarReserva(reserva.id)
       onExito(reserva.id)
     } catch (err) {
-      setError(err.mensaje || err.message || 'Error al cancelar la reserva')
+      setError(err.mensaje || err.message || t('cancel.errorGeneric'))
       setProcesando(false)
     }
   }
@@ -704,7 +713,7 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
     <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
       <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-terracota">Cancelar reserva</h2>
+          <h2 className="text-xl font-bold text-terracota">{t('cancel.title')}</h2>
           <button
             type="button"
             onClick={onCerrar}
@@ -720,12 +729,12 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
             <p className="text-sm text-red-700 font-semibold">{motivo}</p>
           ) : (
             <>
-              <p className="text-sm text-cafe">¿Estás seguro que deseas cancelar esta reserva?</p>
+              <p className="text-sm text-cafe">{t('cancel.question')}</p>
               <p className="mt-2 text-sm font-semibold text-verde-bosque">
-                Reserva #{reserva.id} — {formatoPrecio.format(reserva.precioTotal)}
+                {t('bookingRef', { id: reserva.id })} — {formatoPrecio.format(reserva.precioTotal)}
               </p>
               <p className="text-xs text-cafe mt-1">
-                Check-in: {formatearFecha(reserva.fechaInicio)}
+                {t('cancel.checkIn', { date: formatearFecha(reserva.fechaInicio) })}
               </p>
             </>
           )}
@@ -743,7 +752,7 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
               disabled={procesando}
               className="flex-1 cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
             >
-              {procesando ? 'Cancelando...' : 'Sí, cancelar reserva'}
+              {procesando ? t('cancel.processing') : t('cancel.confirm')}
             </button>
           )}
           <button
@@ -752,7 +761,7 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
             disabled={procesando}
             className="flex-1 cursor-pointer rounded-lg border border-neutral-300 px-4 py-3 font-semibold text-verde-bosque hover:bg-neutral-50 transition-colors disabled:opacity-50"
           >
-            {noSePuedeCancelar ? 'Cerrar' : 'No, mantener'}
+            {noSePuedeCancelar ? t('common:modal.close') : t('cancel.keep')}
           </button>
         </div>
       </div>
@@ -761,6 +770,7 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
 }
 
 export default function ReservationsPage() {
+  const { t } = useTranslation('reservas')
   const [reservas, setReservas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -821,7 +831,7 @@ export default function ReservationsPage() {
       )
     )
     setReservaPagar(null)
-    setToast({ tipo: 'exito', mensaje: resultado?.mensaje ?? 'Pago realizado exitosamente.' })
+    setToast({ tipo: 'exito', mensaje: resultado?.mensaje ?? t('toast.paySuccess') })
   }
 
   const handleExitoCancelacion = (id) => {
@@ -833,19 +843,19 @@ export default function ReservationsPage() {
       )
     )
     setReservaCancelar(null)
-    setToast({ tipo: 'exito', mensaje: 'Reserva cancelada exitosamente.' })
+    setToast({ tipo: 'exito', mensaje: t('toast.cancelSuccess') })
   }
 
   if (!cargando && !sesion) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-20 text-center">
-        <h1 className="text-3xl font-bold text-verde-bosque">Mis reservas</h1>
-        <p className="mt-1 text-cafe">Debes iniciar sesión para ver tus reservas.</p>
+        <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
+        <p className="mt-1 text-cafe">{t('gate.body')}</p>
         <Link
           to="/login"
           className="mt-5 inline-block cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
         >
-          Iniciar sesión
+          {t('gate.cta')}
         </Link>
       </main>
     )
@@ -853,32 +863,32 @@ export default function ReservationsPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-3xl font-bold text-verde-bosque">Mis reservas</h1>
-      <p className="mt-1 text-cafe">Aquí vas a encontrar todas tus reservas.</p>
+      <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
+      <p className="mt-1 text-cafe">{t('subtitle')}</p>
 
       {cargando ? (
-        <p className="mt-8 text-cafe">Cargando tus reservas…</p>
+        <p className="mt-8 text-cafe">{t('status.loading')}</p>
       ) : error ? (
-        <p className="mt-8 text-terracota">Error: {error}</p>
+        <p className="mt-8 text-terracota">{t('status.error', { error })}</p>
       ) : reservas.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-cafe-claro bg-white p-10 text-center">
-          <p className="text-lg font-semibold text-verde-bosque">Todavía no tienes reservas</p>
+          <p className="text-lg font-semibold text-verde-bosque">{t('status.emptyTitle')}</p>
           <p className="mt-1 text-sm text-cafe">
-            Cuando hagas una reserva, la vas a poder ver aquí.
+            {t('status.emptyBody')}
           </p>
           <Link
             to="/"
             className="mt-5 inline-block cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
           >
-            Explorar experiencias
+            {t('status.exploreCta')}
           </Link>
         </div>
       ) : (
         <div className="mt-6 space-y-8">
           {[
-            { titulo: 'Futuras reservas', items: reservas.filter((r) => r.estado === 'pendiente' || r.estado === 'confirmada') },
-            { titulo: 'Reservas canceladas', items: reservas.filter((r) => r.estado === 'cancelada') },
-            { titulo: 'Reservas completadas', items: reservas.filter((r) => r.estado === 'completada') },
+            { titulo: t('sections.upcoming'), emptyKey: 'sections.emptyUpcoming', items: reservas.filter((r) => r.estado === 'pendiente' || r.estado === 'confirmada') },
+            { titulo: t('sections.cancelled'), emptyKey: 'sections.emptyCancelled', items: reservas.filter((r) => r.estado === 'cancelada') },
+            { titulo: t('sections.completed'), emptyKey: 'sections.emptyCompleted', items: reservas.filter((r) => r.estado === 'completada') },
           ].map((seccion) => (
             <section key={seccion.titulo}>
               <h2 className="mb-3 text-lg font-bold text-verde-bosque">
@@ -886,7 +896,7 @@ export default function ReservationsPage() {
               </h2>
               {seccion.items.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-cafe-claro bg-white p-5 text-sm text-cafe">
-                  No tienes {seccion.titulo.toLowerCase()}.
+                  {t(seccion.emptyKey)}
                 </p>
               ) : (
                 <div className="space-y-5">

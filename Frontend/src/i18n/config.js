@@ -7,6 +7,9 @@ import esFooter from '../locales/es/footer.json'
 import esAuth from '../locales/es/auth.json'
 import esPerfil from '../locales/es/perfil.json'
 import esPublicacion from '../locales/es/publicacion.json'
+import esReservas from '../locales/es/reservas.json'
+import esPanel from '../locales/es/panel.json'
+import esAdmin from '../locales/es/admin.json'
 import enCommon from '../locales/en/common.json'
 import enHeader from '../locales/en/header.json'
 import enCatalog from '../locales/en/catalog.json'
@@ -14,6 +17,9 @@ import enFooter from '../locales/en/footer.json'
 import enAuth from '../locales/en/auth.json'
 import enPerfil from '../locales/en/perfil.json'
 import enPublicacion from '../locales/en/publicacion.json'
+import enReservas from '../locales/en/reservas.json'
+import enPanel from '../locales/en/panel.json'
+import enAdmin from '../locales/en/admin.json'
 
 // F0 (i18n-es-en): single shared i18n runtime (AD-2, AD-5).
 // Initialized once at module scope — module evaluation happens a single time
@@ -51,6 +57,9 @@ const resources = {
     auth: esAuth,
     perfil: esPerfil,
     publicacion: esPublicacion,
+    reservas: esReservas,
+    panel: esPanel,
+    admin: esAdmin,
   },
   en: {
     common: enCommon,
@@ -60,6 +69,9 @@ const resources = {
     auth: enAuth,
     perfil: enPerfil,
     publicacion: enPublicacion,
+    reservas: enReservas,
+    panel: enPanel,
+    admin: enAdmin,
   },
 }
 
@@ -69,7 +81,7 @@ if (!i18n.isInitialized) {
     lng: readStoredLocale(),
     fallbackLng: 'es',
     defaultNS: 'common',
-    ns: ['common', 'header', 'catalog', 'footer', 'auth', 'perfil', 'publicacion'],
+    ns: ['common', 'header', 'catalog', 'footer', 'auth', 'perfil', 'publicacion', 'reservas', 'panel', 'admin'],
     // Resources are static JSON, so store setup is fully synchronous. The
     // restored startup language may still emit one deferred `languageChanged`
     // that reaches the persistence listener below; it rewrites the value just

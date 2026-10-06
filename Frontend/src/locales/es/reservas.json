@@ -1,0 +1,118 @@
+{
+  "heading": "Mis reservas",
+  "subtitle": "Aquí vas a encontrar todas tus reservas.",
+  "gate": {
+    "body": "Debes iniciar sesión para ver tus reservas.",
+    "cta": "Iniciar sesión"
+  },
+  "chip": {
+    "pendiente": "Pendiente",
+    "confirmada": "Confirmada",
+    "cancelada": "Cancelada",
+    "completada": "Completada"
+  },
+  "cupos_one": "{{count}} cupo",
+  "cupos_other": "{{count}} cupos",
+  "bookingRef": "Reserva #{{id}}",
+  "status": {
+    "loading": "Cargando tus reservas…",
+    "error": "Error: {{error}}",
+    "emptyTitle": "Todavía no tienes reservas",
+    "emptyBody": "Cuando hagas una reserva, la vas a poder ver aquí.",
+    "exploreCta": "Explorar experiencias"
+  },
+  "card": {
+    "dateLabel": "Fecha",
+    "peopleLabel": "Personas",
+    "totalLabel": "Total",
+    "persons_one": "{{count}} persona",
+    "persons_other": "{{count}} personas",
+    "noteCancelled": "Esta reserva ya fue cancelada.",
+    "noteShortConfirmed": "Pagaste: falta menos de un día, ya no se puede editar ni cancelar.",
+    "noteGraceExpired": "La hora para pagar venció. Esta reserva se cancelará automáticamente.",
+    "noteBlockedSoon": "Falta un día o menos para tu entrada. Por eso esta reserva ya no se puede editar ni eliminar.",
+    "pay": "Pagar",
+    "edit": "Editar",
+    "delete": "Eliminar"
+  },
+  "sections": {
+    "upcoming": "Futuras reservas",
+    "cancelled": "Reservas canceladas",
+    "completed": "Reservas completadas",
+    "emptyUpcoming": "No tienes futuras reservas.",
+    "emptyCancelled": "No tienes reservas canceladas.",
+    "emptyCompleted": "No tienes reservas completadas."
+  },
+  "calendar": {
+    "hint": "Solo se pueden elegir las fechas que ofrece el anfitrión."
+  },
+  "edit": {
+    "title": "Editar reserva",
+    "startLabel": "Entrada",
+    "endLabel": "Salida",
+    "currentDate": "Fecha actual: {{date}}",
+    "noDates": "Esta experiencia todavía no tiene fechas disponibles.",
+    "capacityHint_one": "Capacidad máxima: {{count}} persona",
+    "capacityHint_other": "Capacidad máxima: {{count}} personas",
+    "peopleUnit_one": "persona",
+    "peopleUnit_other": "personas",
+    "ariaLess": "Menos personas",
+    "ariaMore": "Más personas",
+    "summaryNights_one": "{{count}} noche",
+    "summaryNights_other": "{{count}} noches",
+    "summaryGuests_one": "{{count}} persona",
+    "summaryGuests_other": "{{count}} personas",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "errorPickDate": "Elige una fecha de inicio.",
+    "errorEndBefore": "La fecha de fin no puede ser anterior a la de inicio.",
+    "errorCapacity_one": "La capacidad máxima es de {{count}} persona.",
+    "errorCapacity_other": "La capacidad máxima es de {{count}} personas.",
+    "toastSaved": "Reserva actualizada.",
+    "toastError": "Error al actualizar la reserva."
+  },
+  "pay": {
+    "title": "Simular pago",
+    "methodLabel": "Método de pago",
+    "methods": {
+      "credit": "Tarjeta de crédito",
+      "debit": "Tarjeta de débito",
+      "paypal": "PayPal"
+    },
+    "cardNumber": "Número de tarjeta",
+    "holderName": "Nombre del titular",
+    "holderPlaceholder": "Como aparece en la tarjeta",
+    "expiry": "Vencimiento",
+    "expiryPlaceholder": "MM/AA",
+    "paypalNotice": "Serás redirigido a PayPal para completar el pago.",
+    "submit": "Confirmar pago",
+    "processing": "Procesando pago...",
+    "errorMethod": "Seleccioná un método de pago",
+    "errorCardNumber": "Ingresa el número de tarjeta",
+    "errorHolder": "Ingresa el nombre del titular",
+    "errorGeneric": "Error al procesar el pago"
+  },
+  "cancel": {
+    "title": "Cancelar reserva",
+    "reasonStarted": "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy.",
+    "reasonCompleted": "No se puede cancelar una reserva que ya fue completada.",
+    "question": "¿Estás seguro que deseas cancelar esta reserva?",
+    "checkIn": "Check-in: {{date}}",
+    "confirm": "Sí, cancelar reserva",
+    "processing": "Cancelando...",
+    "keep": "No, mantener",
+    "errorGeneric": "Error al cancelar la reserva"
+  },
+  "deleteConfirm": {
+    "dialogLabel": "Confirmar eliminación",
+    "heading": "¿Eliminar reserva?",
+    "body": "Vas a eliminar la reserva de <b>{{title}}</b> para el <b>{{date}}</b>. Esta acción no se puede deshacer.",
+    "deleting": "Eliminando...",
+    "toastDone": "Reserva eliminada.",
+    "toastError": "Error al eliminar la reserva."
+  },
+  "toast": {
+    "paySuccess": "Pago realizado exitosamente.",
+    "cancelSuccess": "Reserva cancelada exitosamente."
+  }
+}

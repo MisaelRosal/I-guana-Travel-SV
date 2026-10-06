@@ -1,5 +1,20 @@
 {
   "toast": {
     "close": "Close"
+  },
+  "modal": {
+    "close": "Close"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "deleteQuestion": "Delete?",
+    "deleteYes": "Yes, delete"
+  },
+  "calendar": {
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
+  },
+  "banner": {
+    "dismiss": "Dismiss message"
   }
 }

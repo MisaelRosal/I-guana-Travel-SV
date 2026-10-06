@@ -1,0 +1,60 @@
+{
+  "heading": "Panel de administración",
+  "subtitle": "Gestión general de la plataforma.",
+  "restricted": {
+    "title": "Acceso restringido",
+    "body": "Esta sección es exclusiva para administradores del sistema."
+  },
+  "tabs": {
+    "hosts": "Anfitriones",
+    "listings": "Publicaciones",
+    "reviews": "Reseñas"
+  },
+  "chip": {
+    "verified": "Verificado",
+    "pending": "Pendiente"
+  },
+  "action": {
+    "verify": "Verificar",
+    "unverify": "No verificar",
+    "verifyProfileTitle": "Verificar perfil",
+    "removeVerificationTitle": "Quitar verificación",
+    "deleteProfileTitle": "Eliminar perfil",
+    "editListingTitle": "Editar publicación",
+    "deleteListingTitle": "Eliminar publicación"
+  },
+  "hosts": {
+    "loading": "Cargando anfitriones…",
+    "empty": "Aún no hay anfitriones registrados.",
+    "table": {
+      "host": "Anfitrión",
+      "contact": "Contacto",
+      "location": "Ubicación",
+      "listings": "Publicaciones",
+      "verified": "Verificado",
+      "actions": "Acciones"
+    }
+  },
+  "listings": {
+    "loading": "Cargando publicaciones…",
+    "empty": "Aún no hay publicaciones.",
+    "table": {
+      "listing": "Publicación",
+      "host": "Anfitrión",
+      "price": "Precio",
+      "status": "Estado",
+      "actions": "Acciones"
+    }
+  },
+  "reviews": {
+    "title": "Gestión de reseñas",
+    "soon": "Esta sección estará disponible próximamente."
+  },
+  "toast": {
+    "hostDeleted": "El perfil de «{{name}}» fue eliminado.",
+    "hostDeleteError": "No se pudo eliminar el perfil del anfitrión.",
+    "hostStateError": "No se pudo actualizar el estado del anfitrión.",
+    "listingDeleted": "«{{title}}» fue eliminada.",
+    "listingDeleteError": "No se pudo eliminar la publicación."
+  }
+}

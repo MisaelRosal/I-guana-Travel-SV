@@ -1,0 +1,117 @@
+{
+  "heading": "My bookings",
+  "subtitle": "Here you'll find all your bookings.",
+  "gate": {
+    "cta": "Sign in"
+  },
+  "chip": {
+    "pendiente": "Pending",
+    "confirmada": "Confirmed",
+    "cancelada": "Cancelled",
+    "completada": "Completed"
+  },
+  "cupos_one": "{{count}} spot",
+  "cupos_other": "{{count}} spots",
+  "bookingRef": "Booking #{{id}}",
+  "status": {
+    "loading": "Loading your bookings…",
+    "error": "Error: {{error}}",
+    "emptyTitle": "No bookings yet",
+    "emptyBody": "Once you make a booking, you'll see it here.",
+    "exploreCta": "Explore experiences"
+  },
+  "card": {
+    "dateLabel": "Date",
+    "peopleLabel": "People",
+    "totalLabel": "Total",
+    "persons_one": "{{count}} person",
+    "persons_other": "{{count}} people",
+    "noteCancelled": "This booking has already been cancelled.",
+    "noteShortConfirmed": "Paid: less than a day left, editing and cancelling are no longer available.",
+    "noteGraceExpired": "The payment hour expired. This booking will be cancelled automatically.",
+    "noteBlockedSoon": "Your start date is a day away or earlier, so this booking can no longer be edited or deleted.",
+    "pay": "Pay",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "sections": {
+    "upcoming": "Upcoming bookings",
+    "cancelled": "Cancelled bookings",
+    "completed": "Completed bookings",
+    "emptyUpcoming": "You have no upcoming bookings.",
+    "emptyCancelled": "You have no cancelled bookings.",
+    "emptyCompleted": "You have no completed bookings."
+  },
+  "calendar": {
+    "hint": "Only the dates offered by the host can be selected."
+  },
+  "edit": {
+    "title": "Edit booking",
+    "startLabel": "Check-in",
+    "endLabel": "Check-out",
+    "currentDate": "Current date: {{date}}",
+    "noDates": "This experience has no available dates yet.",
+    "capacityHint_one": "Maximum capacity: {{count}} guest",
+    "capacityHint_other": "Maximum capacity: {{count}} guests",
+    "peopleUnit_one": "person",
+    "peopleUnit_other": "people",
+    "ariaLess": "Fewer people",
+    "ariaMore": "More people",
+    "summaryNights_one": "{{count}} night",
+    "summaryNights_other": "{{count}} nights",
+    "summaryGuests_one": "{{count}} guest",
+    "summaryGuests_other": "{{count}} guests",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "errorPickDate": "Pick a start date.",
+    "errorEndBefore": "The end date cannot be before the start date.",
+    "errorCapacity_one": "The maximum capacity is {{count}} person.",
+    "errorCapacity_other": "The maximum capacity is {{count}} people.",
+    "toastSaved": "Booking updated.",
+    "toastError": "Error updating the booking."
+  },
+  "pay": {
+    "title": "Simulate payment",
+    "methodLabel": "Payment method",
+    "methods": {
+      "credit": "Credit card",
+      "debit": "Debit card",
+      "paypal": "PayPal"
+    },
+    "cardNumber": "Card number",
+    "holderName": "Cardholder name",
+    "holderPlaceholder": "As it appears on the card",
+    "expiry": "Expiry",
+    "expiryPlaceholder": "MM/YY",
+    "paypalNotice": "You'll be redirected to PayPal to complete the payment.",
+    "submit": "Confirm payment",
+    "processing": "Processing payment...",
+    "errorMethod": "Select a payment method",
+    "errorCardNumber": "Enter the card number",
+    "errorHolder": "Enter the cardholder name",
+    "errorGeneric": "Error processing the payment"
+  },
+  "cancel": {
+    "title": "Cancel booking",
+    "reasonStarted": "A booking whose start date already passed or is today cannot be cancelled.",
+    "reasonCompleted": "A booking that was already completed cannot be cancelled.",
+    "question": "Are you sure you want to cancel this booking?",
+    "checkIn": "Check-in: {{date}}",
+    "confirm": "Yes, cancel booking",
+    "processing": "Cancelling...",
+    "keep": "No, keep it",
+    "errorGeneric": "Error cancelling the booking"
+  },
+  "deleteConfirm": {
+    "dialogLabel": "Confirm deletion",
+    "heading": "Delete booking?",
+    "body": "You are about to delete the booking of <b>{{title}}</b> for <b>{{date}}</b>. This action cannot be undone.",
+    "deleting": "Deleting...",
+    "toastDone": "Booking deleted.",
+    "toastError": "Error deleting the booking."
+  },
+  "toast": {
+    "paySuccess": "Payment completed successfully.",
+    "cancelSuccess": "Booking cancelled successfully."
+  }
+}
