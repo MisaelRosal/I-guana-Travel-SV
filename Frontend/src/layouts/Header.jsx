@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
 import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
@@ -13,6 +14,44 @@ function iniciales(nombre, apellido) {
   const n = (nombre || '').trim()
   const a = (apellido || '').trim()
   return ((n.charAt(0) || '') + (a.charAt(0) || '')).toUpperCase()
+}
+
+// F0 (i18n-es-en): ES/EN language pill (AD-5), rendered in both the desktop
+// and the mobile nav. Reuses the nav-link styling classes; accessible names
+// come from the `header` namespace. The handler is just changeLanguage —
+// persistence and cross-tab sync are handled by the single listeners in
+// src/i18n/config.js, so the toggle never writes storage or reloads itself.
+function ToggleIdioma() {
+  const { t, i18n } = useTranslation('header')
+  const activo = i18n.language === 'en' ? 'en' : 'es'
+  const clasePill = (lng) =>
+    `cursor-pointer text-sm px-3 py-2 rounded-md transition-colors ${
+      lng === activo
+        ? 'bg-white/15 text-white'
+        : 'text-crema/85 hover:text-white hover:bg-white/10'
+    }`
+  return (
+    <div role="group" aria-label={t('langToggle.group')} className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => { i18n.changeLanguage('es') }}
+        aria-pressed={activo === 'es'}
+        aria-label={t('langToggle.switchToEs')}
+        className={clasePill('es')}
+      >
+        ES
+      </button>
+      <button
+        type="button"
+        onClick={() => { i18n.changeLanguage('en') }}
+        aria-pressed={activo === 'en'}
+        aria-label={t('langToggle.switchToEn')}
+        className={clasePill('en')}
+      >
+        EN
+      </button>
+    </div>
+  )
 }
 
 export default function Header() {
@@ -132,6 +171,7 @@ export default function Header() {
               {link.label}
             </NavLink>
           ))}
+          <ToggleIdioma />
           {usuario ? (
             <div className="relative flex items-center gap-3" data-menu-usuario>
               <button
@@ -236,6 +276,10 @@ export default function Header() {
                 {link.label}
               </NavLink>
             ))}
+          </div>
+
+          <div className="mt-3">
+            <ToggleIdioma />
           </div>
 
           <div className="mt-3 border-t border-white/10 pt-3">
