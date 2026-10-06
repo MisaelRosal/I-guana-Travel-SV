@@ -156,7 +156,7 @@ function InfoBox({ experiencia, onReservar }) {
   const unidad = esHospedaje ? '/noche' : '/persona'
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-md">
+    <div>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-terracota">{experiencia.categoria}</p>
@@ -235,40 +235,26 @@ function InfoBox({ experiencia, onReservar }) {
       >
         Reservar ahora
       </button>
-    </div>
-  )
-}
 
-function ExperienciasLista({ experiencias }) {
-  if (!experiencias.length) return null
-  return (
-    <section className="mt-10">
-      <h3 className="text-2xl font-bold text-verde-bosque">Experiencias incluidas</h3>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {experiencias.map((e, i) => (
-          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-            <h4 className="text-lg font-bold text-verde-bosque">{e.nombre}</h4>
-            {e.descripcion && <p className="mt-1 text-base text-neutral-700">{e.descripcion}</p>}
-            <p className="mt-2 text-sm font-medium text-cafe">
-              {e.duracionHoras ? `${e.duracionHoras} h` : ''}
-              {e.duracionHoras && e.precioAdicional != null ? ' · ' : ''}
-              {e.precioAdicional != null && e.precioAdicional > 0 ? `${formatoPrecio.format(e.precioAdicional)} adicional` : ''}
-            </p>
-          </div>
-        ))}
-      </div>
-    </section>
+      <button
+        type="button"
+        onClick={() => document.getElementById('ubicacion')?.scrollIntoView({ behavior: 'smooth' })}
+        className="mt-3 block w-full cursor-pointer text-center font-medium text-azul transition-colors hover:text-azul-cielo"
+      >
+        Cómo llegar
+      </button>
+    </div>
   )
 }
 
 function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
   if (!anfitrionId) return null
   return (
-    <section className="mt-10">
+    <section className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">Tu anfitrión</h3>
       <Link
         to={`/anfitriones/${anfitrionId}`}
-        className="mt-4 flex items-start gap-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+        className="mt-4 flex items-start gap-4 rounded-xl p-1 transition-colors hover:bg-neutral-50"
       >
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-crema text-2xl font-bold text-cafe">
           {foto ? (
@@ -313,12 +299,12 @@ function Horarios({ horarios }) {
   if (conFecha.length > 0) {
     const rango = (h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`
     return (
-      <section className="mt-10">
+      <section className="mt-8 border-t border-neutral-100 pt-8">
         <h3 className="text-2xl font-bold text-verde-bosque">Fechas disponibles</h3>
         <p className="mt-1 text-sm text-cafe">Solo se pueden reservar las fechas marcadas por el anfitrión.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {conFecha.map((h, i) => (
-            <div key={i} className="rounded-xl border border-neutral-200 bg-white px-4 py-2 shadow-sm">
+            <div key={i} className="min-w-24 rounded-lg bg-crema px-4 py-2">
               <p className="text-sm font-bold capitalize text-verde-bosque">{formatearFecha(h.fecha)}</p>
               <p className="text-xs font-medium text-cafe">{rango(h)}</p>
             </div>
@@ -330,13 +316,13 @@ function Horarios({ horarios }) {
 
   const dias = [...new Set(porDiaSemana.map((h) => h.diaSemana))].sort()
   return (
-    <section className="mt-10">
+    <section className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">Horarios disponibles</h3>
       <div className="mt-4 flex flex-wrap gap-3">
         {dias.map((dia) => {
           const hs = porDiaSemana.filter((h) => h.diaSemana === dia)
           return (
-            <div key={dia} className="rounded-xl border border-neutral-200 bg-white px-5 py-3 shadow-sm">
+            <div key={dia} className="min-w-28 rounded-lg bg-crema px-5 py-3">
               <p className="text-base font-bold text-verde-bosque">{DIAS[dia]}</p>
               <p className="mt-0.5 text-sm font-medium text-cafe">
                 {hs.map((h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`).join(' · ')}
@@ -352,7 +338,7 @@ function Horarios({ horarios }) {
 function Mapa({ latitud, longitud }) {
   const posicion = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
   return (
-    <section className="mt-10">
+    <section id="ubicacion" className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">Ubicación</h3>
       <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 shadow-sm">
         <MapContainer
@@ -721,7 +707,7 @@ export default function ExperienceDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="mx-auto max-w-[1600px] px-4 py-8">
       <Link to="/" className="mb-4 block font-medium text-azul hover:text-azul-cielo">
         ← Volver al catálogo
       </Link>
@@ -731,7 +717,7 @@ export default function ExperienceDetailPage() {
       {!cargando && !error && !experiencia && <p className="text-cafe">No se encontró la experiencia.</p>}
 
       {experiencia && (
-        <>
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
           <div className="grid gap-8 lg:grid-cols-5">
             <div className="lg:col-span-3">
               <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
@@ -741,15 +727,11 @@ export default function ExperienceDetailPage() {
             </div>
           </div>
 
-          <ExperienciasLista experiencias={experiencia.experiencias} />
-
-          <section className="mt-10">
+          <section className="mt-8 border-t border-neutral-100 pt-8">
             <h3 className="text-2xl font-bold text-verde-bosque">Descripción</h3>
-            <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-              <p className="text-lg leading-relaxed text-neutral-800">
-                {experiencia.descripcion || 'Sin descripción disponible.'}
-              </p>
-            </div>
+            <p className="mt-4 text-lg leading-relaxed text-neutral-800">
+              {experiencia.descripcion || 'Sin descripción disponible.'}
+            </p>
           </section>
 
           <CardAnfitrion
@@ -761,11 +743,11 @@ export default function ExperienceDetailPage() {
           />
 
           {experiencia.amenidades.length > 0 && (
-            <section className="mt-10">
+            <section className="mt-8 border-t border-neutral-100 pt-8">
               <h3 className="text-2xl font-bold text-verde-bosque">Amenidades</h3>
               <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {experiencia.amenidades.map((a, i) => (
-                  <li key={i} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-base font-medium text-neutral-800 shadow-sm">
+                  <li key={i} className="flex items-center gap-3 px-1 py-2 text-base font-medium text-neutral-800">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-verde-hoja/15 text-verde-bosque">
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M20 6 9 17l-5-5" />
@@ -781,7 +763,7 @@ export default function ExperienceDetailPage() {
           <Horarios horarios={experiencia.horarios} />
 
           <Mapa latitud={experiencia.latitud} longitud={experiencia.longitud} />
-        </>
+        </div>
       )}
 
       {experiencia && pasoReserva === 'calendario' && (
