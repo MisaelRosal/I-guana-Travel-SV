@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
+import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
 
 const markerIcon = new L.Icon({
@@ -46,6 +47,7 @@ function DraggableMarker({ position, onMove, disabled }) {
 }
 
 function SearchBar({ onSearch, disabled }) {
+  const { t } = useTranslation('experiencia')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
@@ -89,7 +91,7 @@ function SearchBar({ onSearch, disabled }) {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setResults([]) }}
           onKeyDown={handleKeyDown}
-          placeholder="Buscar ubicación..."
+          placeholder={t('location.searchPlaceholder')}
           disabled={disabled}
           className="flex-1 rounded-l-lg border border-r-0 border-neutral-300 bg-white px-3 py-2 text-sm focus:border-verde-hoja focus:outline-none focus:ring-1 focus:ring-verde-hoja/40 disabled:opacity-50 disabled:cursor-not-allowed"
         />
@@ -99,7 +101,7 @@ function SearchBar({ onSearch, disabled }) {
           disabled={searching || disabled}
           className="cursor-pointer rounded-r-lg bg-verde-bosque px-3 py-2 text-sm font-semibold text-white hover:bg-verde-bosque/90 disabled:opacity-50"
         >
-          {searching ? '...' : 'Buscar'}
+          {searching ? '...' : t('location.search')}
         </button>
       </div>
       {results.length > 0 && (
@@ -131,6 +133,7 @@ export default function LocationPicker({
   onMunicipioChange,
   disabled = false,
 }) {
+  const { t } = useTranslation('experiencia')
   const defaultPosition = [13.7, -89.2]
   const markerPosition = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
 
@@ -211,7 +214,7 @@ export default function LocationPicker({
       </MapContainer>
       {markerPosition && (
         <div className="bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-          Lat: {markerPosition[0]} | Lng: {markerPosition[1]}
+          {t('location.lat')}: {markerPosition[0]} | {t('location.lng')}: {markerPosition[1]}
         </div>
       )}
     </div>

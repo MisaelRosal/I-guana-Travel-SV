@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
+// F4 owns these Intl formatters; extraction leaves them untouched.
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
   style: 'currency',
   currency: 'USD',
@@ -13,11 +15,15 @@ const formatoFecha = new Intl.DateTimeFormat('es-SV', {
 })
 
 export default function ExperienceCard({ experiencia, proximaFecha }) {
+  const { t } = useTranslation('experiencia')
   const esHospedaje = experiencia.tipo === 'hospedaje'
-  const unidad = esHospedaje ? 'noche' : 'persona'
+  const unidad = esHospedaje ? t('card.perNight') : t('card.perPerson')
+  // Capacity badge (spec "Enum, unit, and badge labels localized"): consumed
+  // from the `reservas:cupos` plural contract F2b-1 established — single
+  // source of truth for `{{count}} cupo(s)`, so no duplicate key lands here.
   const detalle = esHospedaje
-    ? `${experiencia.habitaciones ?? 1} hab · ${experiencia.capacidad} huéspedes`
-    : `${experiencia.capacidad} cupos`
+    ? t('card.stayDetail', { rooms: experiencia.habitaciones ?? 1, guests: experiencia.capacidad })
+    : t('reservas:cupos', { count: experiencia.capacidad })
 
   return (
     <Link
@@ -41,7 +47,7 @@ export default function ExperienceCard({ experiencia, proximaFecha }) {
         )}
         {!proximaFecha && experiencia.popular && (
           <span className="absolute top-3 right-3 rounded-full bg-terracota px-3 py-1 text-xs font-semibold text-white">
-            Popular
+            {t('card.popular')}
           </span>
         )}
       </div>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api, readCsrfToken } from '../services/api.js'
 import LocationPicker from './LocationPicker.jsx'
 
+// F4 owns these manual date arrays; extraction leaves them untouched.
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -10,6 +12,7 @@ const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2
 const labelCls = 'block text-sm font-semibold text-cafe-oscuro mb-1'
 
 export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion, anfitrionFijo }) {
+  const { t } = useTranslation('experiencia')
   const [categorias, setCategorias] = useState([])
   const [anfitriones, setAnfitriones] = useState([])
   const [amenidades, setAmenidades] = useState([])
@@ -194,12 +197,12 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     e.preventDefault()
     setError(null)
     if (!latitud || !longitud) {
-      setError('Por favor seleccioná una ubicación en el mapa')
+      setError(t('modal.errorLocation'))
       setEnviando(false)
       return
     }
     if (tipo === 'experiencia' && fechasSeleccionadas.length === 0) {
-      setError('Elige al menos una fecha disponible en el calendario')
+      setError(t('modal.errorDates'))
       setEnviando(false)
       return
     }
@@ -276,7 +279,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
       onCreada()
     } catch (err) {
-      setError(esEdicion ? 'Error al actualizar la publicación' : err.message || 'Error al crear la publicación')
+      setError(esEdicion ? t('modal.errorUpdate') : err.message || t('modal.errorCreate'))
     } finally {
       setEnviando(false)
     }
@@ -310,10 +313,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-crema shadow-2xl"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cafe-claro/30 bg-crema px-4 py-4 sm:px-6">
-          <h2 className="text-xl font-bold text-verde-bosque">{esEdicion ? 'Editar publicación' : 'Crear publicación'}</h2>
+          <h2 className="text-xl font-bold text-verde-bosque">{esEdicion ? t('modal.editTitle') : t('modal.createTitle')}</h2>
           <button
             type="button"
             onClick={handleCerrar}
+            aria-label={t('common:modal.close')}
             className="cursor-pointer rounded-lg p-1 text-cafe transition-colors hover:bg-cafe/10 hover:text-cafe-oscuro"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-5 w-5">
@@ -331,7 +335,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
           {/* Tipo de publicación */}
           <fieldset className="mb-6">
-            <legend className="mb-3 text-lg font-bold text-verde-bosque">¿Qué quieres publicar?</legend>
+            <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.typeLegend')}</legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all ${
                 esEdicion ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
@@ -347,7 +351,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                   <path d="M3 21h18" />
                   <path d="M7 9h2M7 13h2" />
                 </svg>
-                Hospedaje
+                {t('modal.stay')}
               </label>
               <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all ${
                 esEdicion ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
@@ -361,25 +365,25 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 6v6l4 2" />
                 </svg>
-                Experiencia
+                {t('modal.experience')}
               </label>
             </div>
           </fieldset>
 
           {/* Información básica */}
           <fieldset className="mb-6">
-            <legend className="mb-3 text-lg font-bold text-verde-bosque">Información básica</legend>
+            <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.basicLegend')}</legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className={labelCls}>Título *</label>
-                <input required value={titulo} onChange={(e) => setTitulo(e.target.value)} className={inputCls} placeholder={tipo === 'hospedaje' ? 'Ej: Casa frente al mar en El Tunco' : 'Ej: Clases de surf en El Tunco'} />
+                <label className={labelCls}>{t('modal.title')} *</label>
+                <input required value={titulo} onChange={(e) => setTitulo(e.target.value)} className={inputCls} placeholder={tipo === 'hospedaje' ? t('modal.titlePhStay') : t('modal.titlePhExp')} />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls}>Descripción</label>
-                <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} className={inputCls + ' h-20 resize-none'} placeholder={tipo === 'hospedaje' ? 'Describe el alojamiento...' : 'Describe la experiencia...'} />
+                <label className={labelCls}>{t('modal.description')}</label>
+                <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} className={inputCls + ' h-20 resize-none'} placeholder={tipo === 'hospedaje' ? t('modal.descPhStay') : t('modal.descPhExp')} />
               </div>
               <div>
-                <label className={labelCls}>Anfitrión *</label>
+                <label className={labelCls}>{t('modal.host')} *</label>
                 {anfitrionFijo && !esEdicion ? (
                   <input
                     type="text"
@@ -389,7 +393,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                   />
                 ) : (
                   <select required value={anfitrionId} onChange={(e) => setAnfitrionId(e.target.value)} className={inputCls}>
-                    <option value="">Seleccionar...</option>
+                    <option value="">{t('modal.select')}</option>
                     {anfitriones.map((a) => (
                       <option key={a.id} value={a.id}>{a.nombre}</option>
                     ))}
@@ -397,28 +401,28 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                 )}
               </div>
               <div>
-                <label className={labelCls}>Categoría *</label>
+                <label className={labelCls}>{t('modal.category')} *</label>
                 <select required value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={inputCls}>
-                  <option value="">Seleccionar...</option>
+                  <option value="">{t('modal.select')}</option>
                   {categorias.filter((c) => c.tipo === tipo).map((c) => (
                     <option key={c.id} value={c.id}>{c.nombre}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelCls}>{tipo === 'hospedaje' ? 'Precio por noche (USD) *' : 'Precio de la experiencia (USD) *'}</label>
+                <label className={labelCls}>{tipo === 'hospedaje' ? `${t('modal.priceStay')} *` : `${t('modal.priceExp')} *`}</label>
                 <input required type="number" min="0" step="0.01" value={precio} onChange={(e) => setPrecio(e.target.value)} className={inputCls} placeholder="0.00" />
               </div>
               <div>
-                <label className={labelCls}>Capacidad máxima *</label>
-                <input required type="number" min="1" value={capacidad} onChange={(e) => setCapacidad(e.target.value)} className={inputCls} placeholder="Personas" />
+                <label className={labelCls}>{t('modal.capacity')} *</label>
+                <input required type="number" min="1" value={capacidad} onChange={(e) => setCapacidad(e.target.value)} className={inputCls} placeholder={t('modal.capacityPh')} />
               </div>
             </div>
           </fieldset>
 
           {/* Ubicación */}
           <fieldset className="mb-6">
-            <legend className="mb-3 text-lg font-bold text-verde-bosque">Ubicación</legend>
+            <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.locationLegend')}</legend>
             <div className="mb-4">
               <LocationPicker
                 departamentos={departamentos}
@@ -435,18 +439,18 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelCls}>Departamento *</label>
+                <label className={labelCls}>{t('modal.department')} *</label>
                 <select required value={departamentoId} onChange={(e) => { setDepartamentoId(e.target.value); setMunicipioId('') }} className={inputCls}>
-                  <option value="">Seleccionar...</option>
+                  <option value="">{t('modal.select')}</option>
                   {departamentos.map((d) => (
                     <option key={d.id} value={d.id}>{d.nombre}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Municipio *</label>
+                <label className={labelCls}>{t('modal.municipality')} *</label>
                 <select required value={municipioId} onChange={(e) => setMunicipioId(e.target.value)} className={inputCls} disabled={!departamentoId}>
-                  <option value="">{departamentoId ? 'Seleccionar...' : 'Primero elegí un departamento'}</option>
+                  <option value="">{departamentoId ? t('modal.select') : t('modal.municipalityDisabled')}</option>
                   {municipios.map((m) => (
                     <option key={m.id} value={m.id}>{m.nombre}</option>
                   ))}
@@ -464,28 +468,28 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           {/* Detalles del alojamiento - solo hospedaje */}
           {tipo === 'hospedaje' && (
             <fieldset className="mb-6">
-              <legend className="mb-3 text-lg font-bold text-verde-bosque">Detalles del alojamiento</legend>
+              <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.stayDetailsLegend')}</legend>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
-                  <label className={labelCls}>Habitaciones</label>
+                  <label className={labelCls}>{t('modal.rooms')}</label>
                   <input type="number" min="0" value={habitaciones} onChange={(e) => setHabitaciones(e.target.value)} className={inputCls} placeholder="0" />
                 </div>
                 <div>
-                  <label className={labelCls}>Camas</label>
+                  <label className={labelCls}>{t('modal.beds')}</label>
                   <input type="number" min="0" value={camas} onChange={(e) => setCamas(e.target.value)} className={inputCls} placeholder="0" />
                 </div>
                 <div>
-                  <label className={labelCls}>Baños</label>
+                  <label className={labelCls}>{t('modal.baths')}</label>
                   <input type="number" min="0" value={banos} onChange={(e) => setBanos(e.target.value)} className={inputCls} placeholder="0" />
                 </div>
               </div>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelCls}>Hora de entrada</label>
+                  <label className={labelCls}>{t('modal.checkInTime')}</label>
                   <input type="time" value={horaEntrada} onChange={(e) => setHoraEntrada(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>Hora de salida</label>
+                  <label className={labelCls}>{t('modal.checkOutTime')}</label>
                   <input type="time" value={horaSalida} onChange={(e) => setHoraSalida(e.target.value)} className={inputCls} />
                 </div>
               </div>
@@ -495,7 +499,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           {/* Amenidades - solo hospedaje */}
           {tipo === 'hospedaje' && (
             <fieldset className="mb-6">
-              <legend className="mb-3 text-lg font-bold text-verde-bosque">Amenidades</legend>
+              <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.amenitiesLegend')}</legend>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {amenidades.map((a) => (
                   <label key={a.id} className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 transition-colors hover:border-verde-hoja cursor-pointer">
@@ -514,7 +518,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
           {/* Imágenes */}
           <fieldset className="mb-6">
-            <legend className="mb-3 text-lg font-bold text-verde-bosque">Imágenes</legend>
+            <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.imagesLegend')}</legend>
             <input
               type="file"
               accept="image/*"
@@ -527,7 +531,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                 {archivos.map((a, i) => (
                   <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-neutral-200">
                     <img src={URL.createObjectURL(a)} alt="" className="h-full w-full object-cover" />
-                    {i === 0 && <span className="absolute top-0 left-0 rounded-br bg-verde-bosque px-1.5 py-0.5 text-[10px] font-bold text-white">Principal</span>}
+                    {i === 0 && <span className="absolute top-0 left-0 rounded-br bg-verde-bosque px-1.5 py-0.5 text-[10px] font-bold text-white">{t('modal.primaryBadge')}</span>}
                     <button type="button" onClick={() => setArchivos((prev) => prev.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>
@@ -540,18 +544,18 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           {/* Disponibilidad - solo experiencia */}
           {tipo === 'experiencia' && (
             <fieldset className="mb-6">
-              <legend className="mb-3 text-lg font-bold text-verde-bosque">Fechas disponibles</legend>
+              <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.datesLegend')}</legend>
               <p className="mb-3 text-sm text-cafe">
-                Elige en el calendario los días en que se puede reservar esta experiencia.
+                {t('modal.datesHint')}
               </p>
 
               <div className="rounded-xl border border-neutral-200 bg-white p-4">
                 <div className="flex items-center justify-between">
-                  <button type="button" onClick={() => cambiarMesCal(-1)} aria-label="Mes anterior" className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+                  <button type="button" onClick={() => cambiarMesCal(-1)} aria-label={t('common:calendar.prevMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                   </button>
                   <p className="text-sm font-bold text-verde-bosque">{MESES[mesCal]} {anioCal}</p>
-                  <button type="button" onClick={() => cambiarMesCal(1)} aria-label="Mes siguiente" className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+                  <button type="button" onClick={() => cambiarMesCal(1)} aria-label={t('common:calendar.nextMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                   </button>
                 </div>
@@ -587,29 +591,29 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelCls}>Hora de inicio</label>
+                  <label className={labelCls}>{t('modal.startTime')}</label>
                   <input type="time" value={horaInicioExp} onChange={(e) => setHoraInicioExp(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>Hora de fin</label>
+                  <label className={labelCls}>{t('modal.endTime')}</label>
                   <input type="time" value={horaFinExp} onChange={(e) => setHoraFinExp(e.target.value)} className={inputCls} />
                 </div>
               </div>
 
               <div className="mt-4">
                 <p className="mb-2 text-sm font-semibold text-cafe-oscuro">
-                  Fechas elegidas ({fechasSeleccionadas.length})
+                  {t('modal.selectedDates', { n: fechasSeleccionadas.length })}
                 </p>
                 {fechasSeleccionadas.length === 0 ? (
                   <p className="rounded-lg border border-dashed border-cafe-claro bg-white px-3 py-4 text-center text-sm text-cafe">
-                    Todavía no elegiste ninguna fecha
+                    {t('modal.noDatesYet')}
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {[...fechasSeleccionadas].sort().map((f) => (
                       <span key={f} className="flex items-center gap-1.5 rounded-full bg-verde-bosque/10 px-3 py-1 text-xs font-semibold text-verde-bosque">
                         {formatearFechaChip(f)}
-                        <button type="button" onClick={() => toggleFecha(f)} aria-label="Quitar fecha" className="cursor-pointer rounded-full p-0.5 hover:bg-verde-bosque/20">
+                        <button type="button" onClick={() => toggleFecha(f)} aria-label={t('modal.removeDate')} className="cursor-pointer rounded-full p-0.5 hover:bg-verde-bosque/20">
                           <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                         </button>
                       </span>
@@ -623,14 +627,14 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           {/* Botones */}
           <div className="flex flex-col-reverse gap-3 border-t border-cafe-claro/30 pt-4 sm:flex-row sm:justify-end">
             <button type="button" onClick={handleCerrar} className="cursor-pointer rounded-lg border border-cafe-claro bg-white px-5 py-2.5 text-sm font-semibold text-cafe-oscuro transition-colors hover:bg-neutral-50">
-              Cancelar
+              {t('common:actions.cancel')}
             </button>
             <button
               type="submit"
               disabled={enviando}
               className="cursor-pointer rounded-lg bg-verde-bosque px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque/90 disabled:opacity-50"
             >
-              {enviando ? (esEdicion ? 'Guardando...' : 'Creando...') : (esEdicion ? 'Guardar cambios' : 'Crear publicación')}
+              {enviando ? (esEdicion ? t('modal.saving') : t('modal.creating')) : (esEdicion ? t('modal.save') : t('modal.create'))}
             </button>
           </div>
         </form>
@@ -639,22 +643,22 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       {confirmarSalida && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-crema p-6 shadow-2xl">
-            <h3 className="mb-2 text-lg font-bold text-verde-bosque">¿Estás seguro de salir?</h3>
-            <p className="mb-5 text-sm text-cafe">Todos los datos del formulario se eliminarán.</p>
+            <h3 className="mb-2 text-lg font-bold text-verde-bosque">{t('modal.leaveTitle')}</h3>
+            <p className="mb-5 text-sm text-cafe">{t('modal.leaveBody')}</p>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setConfirmarSalida(false)}
                 className="cursor-pointer rounded-lg border border-cafe-claro bg-white px-4 py-2 text-sm font-semibold text-cafe-oscuro transition-colors hover:bg-neutral-50"
               >
-                Quedarme
+                {t('modal.stayButton')}
               </button>
               <button
                 type="button"
                 onClick={confirmarCierre}
                 className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
               >
-                Sí, salir
+                {t('modal.leaveYes')}
               </button>
             </div>
           </div>

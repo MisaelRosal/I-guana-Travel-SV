@@ -1,4 +1,10 @@
 {
+  "brand": {
+    "name": "I Guana Travel SV"
+  },
+  "loading": {
+    "default": "Loading…"
+  },
   "toast": {
     "close": "Close"
   },

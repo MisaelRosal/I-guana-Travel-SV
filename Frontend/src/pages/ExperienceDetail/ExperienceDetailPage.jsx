@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
 import { getExperienciaById } from '../../services/experiencias'
 import { getDisponibilidad } from '../../services/reservas'
@@ -17,6 +18,8 @@ const markerIcon = new L.Icon({
   shadowSize: [41, 41],
 })
 
+// F4 owns this Intl formatter and the manual day/month arrays below;
+// extraction leaves them untouched.
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
   style: 'currency',
   currency: 'USD',
@@ -26,6 +29,7 @@ const formatoPrecio = new Intl.NumberFormat('es-SV', {
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
 function Galeria({ imagenes, titulo }) {
+  const { t } = useTranslation('experiencia')
   const [indice, setIndice] = useState(0)
   const [ampliada, setAmpliada] = useState(false)
   const primera = imagenes[0]
@@ -48,7 +52,7 @@ function Galeria({ imagenes, titulo }) {
             <img
               src={imagenes[indice % imagenes.length]}
               alt={titulo}
-              title="Ver imagen completa"
+              title={t('gallery.zoomTitle')}
               onClick={() => setAmpliada(true)}
               className="h-full w-full cursor-zoom-in object-cover"
             />
@@ -57,7 +61,7 @@ function Galeria({ imagenes, titulo }) {
                 <button
                   type="button"
                   onClick={() => setIndice((indice - 1 + imagenes.length) % imagenes.length)}
-                  aria-label="Imagen anterior"
+                  aria-label={t('gallery.prev')}
                   className="absolute top-1/2 left-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-white hover:bg-black/60"
                 >
                   ‹
@@ -65,7 +69,7 @@ function Galeria({ imagenes, titulo }) {
                 <button
                   type="button"
                   onClick={() => setIndice((indice + 1) % imagenes.length)}
-                  aria-label="Imagen siguiente"
+                  aria-label={t('gallery.next')}
                   className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-white hover:bg-black/60"
                 >
                   ›
@@ -77,7 +81,7 @@ function Galeria({ imagenes, titulo }) {
             )}
           </>
         ) : (
-          <div className="flex h-full items-center justify-center text-cafe">Sin imágenes</div>
+          <div className="flex h-full items-center justify-center text-cafe">{t('gallery.noImages')}</div>
         )}
       </div>
 
@@ -88,7 +92,7 @@ function Galeria({ imagenes, titulo }) {
               key={i}
               type="button"
               onClick={() => { setIndice(i); setAmpliada(true) }}
-              aria-label={`Ver imagen ${i + 1} en grande`}
+              aria-label={t('gallery.viewLarge', { n: i + 1 })}
               className={`cursor-pointer overflow-hidden rounded-lg border-2 ${i === indice ? 'border-terracota' : 'border-transparent'}`}
             >
               <img src={img} alt={`${titulo} ${i + 1}`} className="aspect-[16/10] w-full object-cover" />
@@ -102,13 +106,13 @@ function Galeria({ imagenes, titulo }) {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Imagen ampliada de ${titulo}`}
+          aria-label={t('gallery.expandedAria', { title: titulo })}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
           onClick={() => setAmpliada(false)}
         >
           <button
             type="button"
-            aria-label="Cerrar imagen"
+            aria-label={t('gallery.close')}
             onClick={() => setAmpliada(false)}
             className="absolute top-4 right-4 cursor-pointer rounded-full bg-white/10 px-3.5 py-1.5 text-xl leading-none text-white hover:bg-white/25"
           >
@@ -117,7 +121,7 @@ function Galeria({ imagenes, titulo }) {
           {imagenes.length > 1 && (
             <button
               type="button"
-              aria-label="Imagen anterior"
+              aria-label={t('gallery.prev')}
               onClick={(e) => { e.stopPropagation(); setIndice((indice - 1 + imagenes.length) % imagenes.length) }}
               className="absolute left-3 cursor-pointer rounded-full bg-white/10 p-3 text-2xl leading-none text-white hover:bg-white/25 sm:left-6"
             >
@@ -133,7 +137,7 @@ function Galeria({ imagenes, titulo }) {
           {imagenes.length > 1 && (
             <button
               type="button"
-              aria-label="Imagen siguiente"
+              aria-label={t('gallery.next')}
               onClick={(e) => { e.stopPropagation(); setIndice((indice + 1) % imagenes.length) }}
               className="absolute right-3 cursor-pointer rounded-full bg-white/10 p-3 text-2xl leading-none text-white hover:bg-white/25 sm:right-6"
             >
@@ -152,8 +156,10 @@ function Galeria({ imagenes, titulo }) {
 }
 
 function InfoBox({ experiencia, onReservar }) {
+  const { t } = useTranslation('experiencia')
   const esHospedaje = experiencia.tipo === 'hospedaje'
-  const unidad = esHospedaje ? '/noche' : '/persona'
+  // Slash stays an inline glyph so the ES render remains byte-comparable.
+  const unidad = esHospedaje ? t('card.perNight') : t('card.perPerson')
 
   return (
     <div>
@@ -173,57 +179,57 @@ function InfoBox({ experiencia, onReservar }) {
 
       <div className="mt-5 flex items-baseline gap-1.5 border-b border-neutral-100 pb-5">
         <span className="text-4xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
-        <span className="text-lg font-medium text-neutral-600"> {unidad}</span>
+        <span className="text-lg font-medium text-neutral-600"> /{unidad}</span>
       </div>
 
       <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5">
         {esHospedaje ? (
           <>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Capacidad</dt>
-              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.capacidad} huéspedes</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.capacity')}</dt>
+              <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{t('info.guests', { count: experiencia.capacidad })}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Habitaciones</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.rooms')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.habitaciones || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Camas</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.beds')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.camas || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Baños</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.baths')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.banos || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Entrada</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.checkIn')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.horaEntrada || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Salida</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.checkOut')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.horaSalida || '—'}</dd>
             </div>
           </>
         ) : (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Cupos</dt>
-            <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.capacidad} personas</dd>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.cupos')}</dt>
+            <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{t('info.persons', { count: experiencia.capacidad })}</dd>
           </div>
         )}
         {experiencia.anfitrion && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Anfitrión</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.host')}</dt>
             <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.anfitrion}</dd>
           </div>
         )}
         {experiencia.direccion && (
           <div className="col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Dirección</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.address')}</dt>
             <dd className="mt-0.5 text-base text-neutral-700">{experiencia.direccion}</dd>
           </div>
         )}
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">Estado</dt>
+          <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.status')}</dt>
           <dd className="mt-0.5 text-lg font-semibold text-verde-bosque capitalize">{experiencia.estado}</dd>
         </div>
       </dl>
@@ -233,7 +239,7 @@ function InfoBox({ experiencia, onReservar }) {
         onClick={onReservar}
         className="mt-7 block w-full cursor-pointer rounded-lg bg-terracota px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque shadow-sm"
       >
-        Reservar ahora
+        {t('info.bookNow')}
       </button>
 
       <button
@@ -241,24 +247,25 @@ function InfoBox({ experiencia, onReservar }) {
         onClick={() => document.getElementById('ubicacion')?.scrollIntoView({ behavior: 'smooth' })}
         className="mt-3 block w-full cursor-pointer text-center font-medium text-azul transition-colors hover:text-azul-cielo"
       >
-        Cómo llegar
+        {t('info.howToArrive')}
       </button>
     </div>
   )
 }
 
 function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
+  const { t } = useTranslation('experiencia')
   if (!anfitrionId) return null
   return (
     <section className="mt-8 border-t border-neutral-100 pt-8">
-      <h3 className="text-2xl font-bold text-verde-bosque">Tu anfitrión</h3>
+      <h3 className="text-2xl font-bold text-verde-bosque">{t('host.title')}</h3>
       <Link
         to={`/anfitriones/${anfitrionId}`}
         className="mt-4 flex items-start gap-4 rounded-xl p-1 transition-colors hover:bg-neutral-50"
       >
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-crema text-2xl font-bold text-cafe">
           {foto ? (
-            <img src={foto} alt="Foto de perfil" className="h-full w-full object-cover" />
+            <img src={foto} alt={t('host.photoAlt')} className="h-full w-full object-cover" />
           ) : (
             (nombre || '').charAt(0).toUpperCase()
           )}
@@ -268,15 +275,15 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
             <span className="text-lg font-bold text-verde-bosque">{nombre}</span>
             {verificado && (
               <span className="inline-flex items-center gap-1 rounded-full bg-verde-hoja/15 px-2 py-0.5 text-xs font-semibold text-verde-bosque">
-                Verificado
+                {t('host.verified')}
               </span>
             )}
           </div>
           <p className="mt-1 line-clamp-2 text-sm text-neutral-700">
-            {descripcion || 'Este anfitrión aún no agregó una descripción.'}
+            {descripcion || t('host.noDescription')}
           </p>
           <span className="mt-2 inline-block font-medium text-azul hover:text-azul-cielo">
-            Ver perfil completo →
+            {t('host.fullProfile')} →
           </span>
         </div>
       </Link>
@@ -285,6 +292,7 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
 }
 
 function Horarios({ horarios }) {
+  const { t } = useTranslation('experiencia')
   if (!horarios.length) return null
   const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -300,8 +308,8 @@ function Horarios({ horarios }) {
     const rango = (h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`
     return (
       <section className="mt-8 border-t border-neutral-100 pt-8">
-        <h3 className="text-2xl font-bold text-verde-bosque">Fechas disponibles</h3>
-        <p className="mt-1 text-sm text-cafe">Solo se pueden reservar las fechas marcadas por el anfitrión.</p>
+        <h3 className="text-2xl font-bold text-verde-bosque">{t('schedule.datesTitle')}</h3>
+        <p className="mt-1 text-sm text-cafe">{t('schedule.datesHint')}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {conFecha.map((h, i) => (
             <div key={i} className="min-w-24 rounded-lg bg-crema px-4 py-2">
@@ -317,7 +325,7 @@ function Horarios({ horarios }) {
   const dias = [...new Set(porDiaSemana.map((h) => h.diaSemana))].sort()
   return (
     <section className="mt-8 border-t border-neutral-100 pt-8">
-      <h3 className="text-2xl font-bold text-verde-bosque">Horarios disponibles</h3>
+      <h3 className="text-2xl font-bold text-verde-bosque">{t('schedule.weeklyTitle')}</h3>
       <div className="mt-4 flex flex-wrap gap-3">
         {dias.map((dia) => {
           const hs = porDiaSemana.filter((h) => h.diaSemana === dia)
@@ -336,10 +344,11 @@ function Horarios({ horarios }) {
 }
 
 function Mapa({ latitud, longitud }) {
+  const { t } = useTranslation('experiencia')
   const posicion = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
   return (
     <section id="ubicacion" className="mt-8 border-t border-neutral-100 pt-8">
-      <h3 className="text-2xl font-bold text-verde-bosque">Ubicación</h3>
+      <h3 className="text-2xl font-bold text-verde-bosque">{t('map.title')}</h3>
       <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 shadow-sm">
         <MapContainer
           center={posicion || [13.7, -89.2]}
@@ -358,6 +367,7 @@ function Mapa({ latitud, longitud }) {
 }
 
 function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCerrar }) {
+  const { t } = useTranslation('experiencia')
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const [mes, setMes] = useState(() => hoy.getMonth())
@@ -466,17 +476,28 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
   const textoSeleccion = () => {
     if (esHospedaje) {
       if (fechaInicio && fechaFin) {
-        return `${fechaInicio.getDate()} al ${fechaFin.getDate()} de ${nombreMeses[fechaFin.getMonth()]}`
+        return t('calendar.rangeSelection', {
+          from: fechaInicio.getDate(),
+          to: fechaFin.getDate(),
+          month: nombreMeses[fechaFin.getMonth()],
+        })
       }
       if (fechaInicio) {
-        return `Inicio: ${fechaInicio.getDate()} de ${nombreMeses[fechaInicio.getMonth()]} — elegí la fecha de salida`
+        return t('calendar.startHint', {
+          day: fechaInicio.getDate(),
+          month: nombreMeses[fechaInicio.getMonth()],
+        })
       }
-      return 'Seleccioná la fecha de llegada'
+      return t('calendar.pickArrival')
     }
     if (fechaInicio) {
-      return `${fechaInicio.getDate()} de ${nombreMeses[fechaInicio.getMonth()]} de ${fechaInicio.getFullYear()}`
+      return t('calendar.daySelected', {
+        day: fechaInicio.getDate(),
+        month: nombreMeses[fechaInicio.getMonth()],
+        year: fechaInicio.getFullYear(),
+      })
     }
-    return 'Seleccioná un día'
+    return t('calendar.pickDay')
   }
 
   const confirmarSeleccion = () => {
@@ -493,21 +514,21 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
       className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
       aria-modal="true"
-      aria-label="Elegir fecha de reserva"
+      aria-label={t('calendar.dialogLabel')}
     >
       <div className="animate-modal-box w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/5">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-verde-bosque">
             {paso === 'personas'
-              ? '¿Para cuántas personas?'
+              ? t('calendar.peopleTitle')
               : esHospedaje
-                ? 'Elige tus fechas'
-                : 'Elige tu fecha'}
+                ? t('calendar.chooseDates')
+                : t('calendar.chooseDate')}
           </h3>
           <button
             type="button"
             onClick={onCerrar}
-            aria-label="Cerrar"
+            aria-label={t('common:modal.close')}
             className="cursor-pointer rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
           >
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -519,17 +540,17 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
         {paso === 'personas' && (
           <div className="mt-6">
             <p className="text-base text-neutral-700">
-              {esHospedaje ? '¿Para cuántas personas es la reserva?' : '¿Cuántas personas van a participar de la experiencia?'}
+              {esHospedaje ? t('calendar.questionStay') : t('calendar.questionExperience')}
             </p>
             <p className="mt-1 text-sm text-cafe">
-              Capacidad máxima: {experiencia.capacidad || 1} personas
+              {t('calendar.maxCapacity', { count: experiencia.capacidad || 1 })}
             </p>
 
             <div className="mt-4 flex items-center justify-center gap-4">
               <button
                 type="button"
                 onClick={() => setNumPersonas((n) => Math.max(1, n - 1))}
-                aria-label="Menos personas"
+                aria-label={t('calendar.less')}
                 className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
               >
                 −
@@ -537,13 +558,13 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
               <div className="w-20 text-center">
                 <p className="text-4xl font-extrabold text-verde-bosque">{numPersonas}</p>
                 <p className="text-xs font-semibold uppercase text-cafe">
-                  {numPersonas === 1 ? 'persona' : 'personas'}
+                  {t('calendar.unit', { count: numPersonas })}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setNumPersonas((n) => Math.min(experiencia.capacidad || 99, n + 1))}
-                aria-label="Más personas"
+                aria-label={t('calendar.more')}
                 className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
               >
                 +
@@ -555,7 +576,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
               onClick={() => setPaso('fecha')}
               className="mt-6 w-full cursor-pointer rounded-lg bg-terracota px-4 py-3 text-base font-bold text-white transition-colors hover:bg-verde-bosque"
             >
-              Continuar
+              {t('calendar.continue')}
             </button>
           </div>
         )}
@@ -563,14 +584,14 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
         {paso === 'fecha' && (
         <>
         {cargandoFechas ? (
-          <p className="mt-6 text-center text-sm text-cafe">Cargando disponibilidad…</p>
+          <p className="mt-6 text-center text-sm text-cafe">{t('calendar.loading')}</p>
         ) : (
         <>
         <div className="mt-4 flex items-center justify-between">
           <button
             type="button"
             onClick={() => cambiarMes(-1)}
-            aria-label="Mes anterior"
+            aria-label={t('common:calendar.prevMonth')}
             className="cursor-pointer rounded-lg p-2 text-terracota transition-colors hover:bg-terracota/10"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -583,7 +604,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
           <button
             type="button"
             onClick={() => cambiarMes(1)}
-            aria-label="Mes siguiente"
+            aria-label={t('common:calendar.nextMonth')}
             className="cursor-pointer rounded-lg p-2 text-terracota transition-colors hover:bg-terracota/10"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -634,7 +655,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
                 disabled={pasado || ocupado || noDisponible}
                 onClick={() => seleccionarDia(dia)}
                 className={clases}
-                title={ocupado ? 'Fecha ya reservada' : noDisponible ? 'El anfitrión no ofrece esta fecha' : ''}
+                title={ocupado ? t('calendar.bookedTitle') : noDisponible ? t('calendar.notOfferedTitle') : ''}
               >
                 {dia}
               </button>
@@ -644,7 +665,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 
         {fechasOcupadas.length > 0 && (
           <p className="mt-2 text-center text-xs text-red-500">
-            Las fechas en rojo ya están reservadas
+            {t('calendar.redLegend')}
           </p>
         )}
 
@@ -658,7 +679,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             onClick={confirmarSeleccion}
             className="cursor-pointer rounded-lg bg-terracota px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Continuar
+            {t('calendar.continue')}
           </button>
         </div>
         </>
@@ -671,6 +692,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 }
 
 export default function ExperienceDetailPage() {
+  const { t } = useTranslation('experiencia')
   const { id } = useParams()
   const navigate = useNavigate()
   const [experiencia, setExperiencia] = useState(null)
@@ -702,19 +724,19 @@ export default function ExperienceDetailPage() {
 
   const manejarReservaCreada = () => {
     setPasoReserva('inicio')
-    setToast({ tipo: 'exito', mensaje: 'Reserva creada exitosamente. Ve a "Mis reservas" para pagar.' })
+    setToast({ tipo: 'exito', mensaje: t('page.toastBooked') })
     setTimeout(() => navigate('/reservas'), 2000)
   }
 
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-8">
       <Link to="/" className="mb-4 block font-medium text-azul hover:text-azul-cielo">
-        ← Volver al catálogo
+        ← {t('page.backToCatalog')}
       </Link>
 
-      {cargando && <p className="text-cafe">Cargando información…</p>}
-      {error && <p className="text-terracota">Error: {error}</p>}
-      {!cargando && !error && !experiencia && <p className="text-cafe">No se encontró la experiencia.</p>}
+      {cargando && <p className="text-cafe">{t('page.loading')}</p>}
+      {error && <p className="text-terracota">{t('page.error', { error })}</p>}
+      {!cargando && !error && !experiencia && <p className="text-cafe">{t('page.notFound')}</p>}
 
       {experiencia && (
         <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
@@ -728,9 +750,9 @@ export default function ExperienceDetailPage() {
           </div>
 
           <section className="mt-8 border-t border-neutral-100 pt-8">
-            <h3 className="text-2xl font-bold text-verde-bosque">Descripción</h3>
+            <h3 className="text-2xl font-bold text-verde-bosque">{t('page.descriptionTitle')}</h3>
             <p className="mt-4 text-lg leading-relaxed text-neutral-800">
-              {experiencia.descripcion || 'Sin descripción disponible.'}
+              {experiencia.descripcion || t('page.noDescription')}
             </p>
           </section>
 
@@ -744,7 +766,7 @@ export default function ExperienceDetailPage() {
 
           {experiencia.amenidades.length > 0 && (
             <section className="mt-8 border-t border-neutral-100 pt-8">
-              <h3 className="text-2xl font-bold text-verde-bosque">Amenidades</h3>
+              <h3 className="text-2xl font-bold text-verde-bosque">{t('page.amenitiesTitle')}</h3>
               <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {experiencia.amenidades.map((a, i) => (
                   <li key={i} className="flex items-center gap-3 px-1 py-2 text-base font-medium text-neutral-800">
