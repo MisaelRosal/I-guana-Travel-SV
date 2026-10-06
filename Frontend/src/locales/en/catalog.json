@@ -1,0 +1,40 @@
+{
+  "hero": {
+    "title": "Discover the experiences of <green>El Salvador</green>",
+    "subtitle": "Surf, coffee, volcanoes and charming towns. Explore, book and live the country with local hosts."
+  },
+  "search": {
+    "placeholder": "Search by name or description…",
+    "button": "Search"
+  },
+  "filters": {
+    "button": "Filters",
+    "buttonCount": "Filters ({{n}})",
+    "heading": "Filter results",
+    "typeGroup": "Listing type",
+    "categoryLabel": "Category",
+    "categoryPlaceholder": "All categories",
+    "zoneLabel": "Area",
+    "zonePlaceholder": "All of El Salvador",
+    "priceLabel": "Price",
+    "pricePlaceholder": "Any price",
+    "priceUpTo": "Up to ${{max}}",
+    "clear": "Clear filters",
+    "optionsFor": "Options for {{label}}"
+  },
+  "type": {
+    "all": "All",
+    "experiences": "Experiences",
+    "stays": "Stays"
+  },
+  "status": {
+    "loading": "Loading listings…",
+    "emptyTitle": "No listings found",
+    "emptyWithFilters": "Try changing your search filters.",
+    "emptyNoContent": "Create the first listing from the operator panel."
+  },
+  "upcoming": {
+    "title": "Upcoming experiences",
+    "subtitle": "The {{n}} experiences with availability coming up soon."
+  }
+}

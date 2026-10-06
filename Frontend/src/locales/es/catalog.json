@@ -1,0 +1,40 @@
+{
+  "hero": {
+    "title": "Descubre las experiencias de <green>El Salvador</green>",
+    "subtitle": "Surf, café, volcanes y pueblos con encanto. Explora, reserva y vive el país con anfitriones locales."
+  },
+  "search": {
+    "placeholder": "Buscar por nombre o descripción…",
+    "button": "Buscar"
+  },
+  "filters": {
+    "button": "Filtros",
+    "buttonCount": "Filtros ({{n}})",
+    "heading": "Filtrar resultados",
+    "typeGroup": "Tipo de publicación",
+    "categoryLabel": "Categoría",
+    "categoryPlaceholder": "Todas las categorías",
+    "zoneLabel": "Zona",
+    "zonePlaceholder": "Todo El Salvador",
+    "priceLabel": "Precio",
+    "pricePlaceholder": "Cualquier precio",
+    "priceUpTo": "Hasta ${{max}}",
+    "clear": "Limpiar filtros",
+    "optionsFor": "Opciones de {{label}}"
+  },
+  "type": {
+    "all": "Todos",
+    "experiences": "Experiencias",
+    "stays": "Hospedaje"
+  },
+  "status": {
+    "loading": "Cargando publicaciones…",
+    "emptyTitle": "No se encontraron publicaciones",
+    "emptyWithFilters": "Prueba cambiando los filtros de búsqueda.",
+    "emptyNoContent": "Crea la primera publicación desde el panel del operador."
+  },
+  "upcoming": {
+    "title": "Próximas experiencias",
+    "subtitle": "Las {{n}} experiencias con pronta disponibilidad por fecha."
+  }
+}

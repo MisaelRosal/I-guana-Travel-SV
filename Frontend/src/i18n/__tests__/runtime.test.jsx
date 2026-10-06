@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StrictMode } from 'react'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import App from '../../App.jsx'
 import i18n from '../config.js'
@@ -74,9 +74,33 @@ describe('ES/EN toggle pill in the Header (desktop)', () => {
     // Spanish fallback, never a raw key, while the rest of the page is intact.
     expect(screen.getByRole('group', { name: 'Selecciona el idioma de la interfaz' })).toBeInTheDocument()
 
-    // F0 does not touch page content: all ES page text stays inline Spanish.
+    // F1 landed the catalog pilot content: page chrome now localizes through
+    // resources too, so under EN the hero renders the English catalog resource.
     const heading = await screen.findByRole('heading', { level: 1 })
-    expect(heading).toHaveTextContent('Descubre las experiencias de')
+    expect(heading).toHaveTextContent('Discover the experiences of')
+  })
+
+  it('localizes the header nav and footer chrome from resources under EN (F1 pilot)', async () => {
+    // Logged-out chrome: /Auth/me answers 401 so the Sign in control is stable.
+    globalThis.fetch = vi.fn(async (url) =>
+      String(url).includes('/Auth/me') ? jsonResponse({}, 401) : jsonResponse([]),
+    )
+    await i18n.changeLanguage('en')
+    render(<App />)
+
+    // Spec scenario "Localized accessibility names": the header nav's
+    // accessible names are the English strings from the header resource.
+    const mainNav = await screen.findByRole('navigation', { name: 'Main navigation' })
+    expect(within(mainNav).getByRole('link', { name: 'Home' })).toBeInTheDocument()
+    expect(within(mainNav).getByRole('link', { name: 'My bookings' })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Sign in' })).toBeInTheDocument()
+
+    // Footer chrome comes from the footer resource (EN overlay).
+    const footer = screen.getByRole('contentinfo')
+    expect(within(footer).getByText('Explore')).toBeInTheDocument()
+    expect(within(footer).getByText('Follow us')).toBeInTheDocument()
+    expect(within(footer).getByText(/All rights reserved\./)).toBeInTheDocument()
+    expect(within(footer).getAllByRole('link', { name: 'Become a host' })).toHaveLength(2)
   })
 
   it('writes iguana_locale exactly once per languageChanged (StrictMode-safe single listener)', async () => {

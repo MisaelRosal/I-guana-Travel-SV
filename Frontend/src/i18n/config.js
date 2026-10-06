@@ -2,8 +2,12 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import esCommon from '../locales/es/common.json'
 import esHeader from '../locales/es/header.json'
+import esCatalog from '../locales/es/catalog.json'
+import esFooter from '../locales/es/footer.json'
 import enCommon from '../locales/en/common.json'
 import enHeader from '../locales/en/header.json'
+import enCatalog from '../locales/en/catalog.json'
+import enFooter from '../locales/en/footer.json'
 
 // F0 (i18n-es-en): single shared i18n runtime (AD-2, AD-5).
 // Initialized once at module scope — module evaluation happens a single time
@@ -33,8 +37,8 @@ export function readStoredLocale() {
 const resources = {
   // ES is the canonical, complete set; EN is an overlay subset during rollout
   // (AD-3). A missing EN key falls back to Spanish, so raw keys never render.
-  es: { common: esCommon, header: esHeader },
-  en: { common: enCommon, header: enHeader },
+  es: { common: esCommon, header: esHeader, catalog: esCatalog, footer: esFooter },
+  en: { common: enCommon, header: enHeader, catalog: enCatalog, footer: enFooter },
 }
 
 if (!i18n.isInitialized) {
@@ -43,7 +47,7 @@ if (!i18n.isInitialized) {
     lng: readStoredLocale(),
     fallbackLng: 'es',
     defaultNS: 'common',
-    ns: ['common', 'header'],
+    ns: ['common', 'header', 'catalog', 'footer'],
     // Resources are static JSON, so store setup is fully synchronous. The
     // restored startup language may still emit one deferred `languageChanged`
     // that reaches the persistence listener below; it rewrites the value just

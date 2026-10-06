@@ -55,6 +55,7 @@ function ToggleIdioma() {
 }
 
 export default function Header() {
+  const { t } = useTranslation('header')
   const [usuario, setUsuario] = useState(leerSesionCache)
   const [fotoPerfil, setFotoPerfil] = useState('')
   const [menuAbierto, setMenuAbierto] = useState(false)
@@ -128,14 +129,14 @@ export default function Header() {
 
   const rol = usuario?.rol ?? ''
   const links = [
-    { to: '/', label: 'Inicio' },
+    { to: '/', label: t('nav.home') },
   ]
-  links.push({ to: '/reservas', label: 'Mis reservas' })
+  links.push({ to: '/reservas', label: t('nav.reservations') })
   if (rol === 'anfitrion') {
-    links.push({ to: '/panel', label: 'Panel operador' })
+    links.push({ to: '/panel', label: t('nav.operatorPanel') })
   }
   if (esAdmin(rol)) {
-    links.push({ to: '/admin', label: 'Panel admin' })
+    links.push({ to: '/admin', label: t('nav.adminPanel') })
   }
 
   const cerrarSesion = async () => {
@@ -157,11 +158,11 @@ export default function Header() {
   return (
     <header className="bg-verde-bosque text-white sticky top-0 z-20 shadow-md">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4" data-menu-movil>
-        <Link to="/" aria-label="I Guana Travel SV">
+        <Link to="/" aria-label={t('brand.ariaLabel')}>
           <Logo />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-4" aria-label="Navegación principal">
+        <nav className="hidden md:flex items-center gap-4" aria-label={t('nav.mainAria')}>
           {links.map((link) => (
             <NavLink
               key={link.to}
@@ -188,7 +189,7 @@ export default function Header() {
                   {esAdmin(rol) ? (
                     <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
                   ) : rol === 'anfitrion' && fotoPerfil ? (
-                    <img src={fotoPerfil} alt="Foto de perfil" className="h-full w-full object-cover" />
+                    <img src={fotoPerfil} alt={t('user.profilePhotoAlt')} className="h-full w-full object-cover" />
                   ) : (
                     iniciales(usuario.nombre, usuario.apellido)
                   )}
@@ -211,7 +212,7 @@ export default function Header() {
                         <circle cx="12" cy="8" r="4" />
                         <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
                       </svg>
-                      Mi perfil
+                      {t('user.myProfile')}
                     </Link>
                   )}
                   <button
@@ -223,7 +224,7 @@ export default function Header() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
                     </svg>
-                    Cerrar sesión
+                    {t('user.signOut')}
                   </button>
                 </div>
               )}
@@ -233,7 +234,7 @@ export default function Header() {
               to="/login"
               className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-[#00B4D8] hover:text-verde-bosque transition-colors"
             >
-              Iniciar sesión
+              {t('session.signIn')}
             </Link>
           )}
         </nav>
@@ -243,7 +244,7 @@ export default function Header() {
           onClick={() => setMenuMovilAbierto((v) => !v)}
           aria-expanded={menuMovilAbierto}
           aria-controls="menu-movil"
-          aria-label={menuMovilAbierto ? 'Cerrar menú' : 'Abrir menú'}
+          aria-label={menuMovilAbierto ? t('mobileMenu.close') : t('mobileMenu.open')}
           className="md:hidden flex cursor-pointer items-center justify-center rounded-lg p-2 text-white/90 transition-colors hover:bg-white/10"
         >
           {menuMovilAbierto ? (
@@ -261,7 +262,7 @@ export default function Header() {
       {menuMovilAbierto && (
         <nav
           id="menu-movil"
-          aria-label="Menú móvil"
+          aria-label={t('mobileMenu.label')}
           className="md:hidden border-t border-white/10 bg-verde-bosque px-4 pb-4 pt-3 shadow-lg"
         >
           <div className="flex flex-col gap-1">
@@ -293,7 +294,7 @@ export default function Header() {
                     {esAdmin(rol) ? (
                       <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
                     ) : rol === 'anfitrion' && fotoPerfil ? (
-                      <img src={fotoPerfil} alt="Foto de perfil" className="h-full w-full object-cover" />
+                      <img src={fotoPerfil} alt={t('user.profilePhotoAlt')} className="h-full w-full object-cover" />
                     ) : (
                       iniciales(usuario.nombre, usuario.apellido)
                     )}
@@ -308,7 +309,7 @@ export default function Header() {
                     onClick={() => setMenuMovilAbierto(false)}
                     className="text-sm px-3 py-2 rounded-md text-crema/85 hover:text-white hover:bg-white/10"
                   >
-                    Mi perfil
+                    {t('user.myProfile')}
                   </Link>
                 )}
                 <button
@@ -316,7 +317,7 @@ export default function Header() {
                   onClick={cerrarSesion}
                   className="cursor-pointer text-sm px-3 py-2 rounded-md text-left text-crema/85 hover:text-white hover:bg-white/10"
                 >
-                  Cerrar sesión
+                  {t('user.signOut')}
                 </button>
               </div>
             ) : (
@@ -325,7 +326,7 @@ export default function Header() {
                 onClick={() => setMenuMovilAbierto(false)}
                 className="block cursor-pointer text-center text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold transition-colors"
               >
-                Iniciar sesión
+                {t('session.signIn')}
               </Link>
             )}
           </div>

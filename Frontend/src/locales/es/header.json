@@ -3,5 +3,28 @@
     "group": "Selecciona el idioma de la interfaz",
     "switchToEs": "Cambiar a español",
     "switchToEn": "Cambiar a inglés"
+  },
+  "brand": {
+    "ariaLabel": "I Guana Travel SV"
+  },
+  "nav": {
+    "mainAria": "Navegación principal",
+    "home": "Inicio",
+    "reservations": "Mis reservas",
+    "operatorPanel": "Panel operador",
+    "adminPanel": "Panel admin"
+  },
+  "user": {
+    "profilePhotoAlt": "Foto de perfil",
+    "myProfile": "Mi perfil",
+    "signOut": "Cerrar sesión"
+  },
+  "session": {
+    "signIn": "Iniciar sesión"
+  },
+  "mobileMenu": {
+    "open": "Abrir menú",
+    "close": "Cerrar menú",
+    "label": "Menú móvil"
   }
 }

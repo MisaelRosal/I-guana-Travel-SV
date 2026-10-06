@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { getCategorias, getDepartamentos, getExperiencias, getProximasExperiencias } from '../../services/experiencias.js'
 import ExperienceCard from '../../components/ExperienceCard.jsx'
 import LoadingIguana from '../../components/LoadingIguana.jsx'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
 
+// Cuántas próximas experiencias se piden y se muestran; el subtítulo de la
+// sección las interpola desde el recurso (AD-3), nunca por concatenación.
+const PROXIMAS_LIMITE = 3
+
 // Filtro desplegable con la estetica del sitio: pastilla redondeada con borde
 // cafe, panel de opciones estilo tarjeta (hover crema, seleccion verde-bosque
 // con tilde). Cierra con Escape o clic fuera. Sustituye al <select> nativo.
 function FiltroDesplegable({ etiqueta, placeholder, valor, opciones, onChange }) {
+  const { t } = useTranslation('catalog')
   const [abierto, setAbierto] = useState(false)
   const contenedor = useRef(null)
 
@@ -61,7 +67,7 @@ function FiltroDesplegable({ etiqueta, placeholder, valor, opciones, onChange })
       {abierto && (
         <div
           role="listbox"
-          aria-label={`Opciones de ${etiqueta}`}
+          aria-label={t('filters.optionsFor', { label: etiqueta })}
           className="absolute left-0 right-0 z-30 mt-1.5 max-h-64 overflow-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl"
         >
           {todas.map((op) => {
@@ -108,6 +114,7 @@ function aleatorias(lista, cantidad) {
 }
 
 export default function CatalogPage() {
+  const { t } = useTranslation('catalog')
   const [categorias, setCategorias] = useState([])
   const [departamentos, setDepartamentos] = useState([])
   const [experiencias, setExperiencias] = useState([])
@@ -149,7 +156,7 @@ export default function CatalogPage() {
   }, [busqueda, categoria, zona, tipo, precioMax])
 
   useEffect(() => {
-    getProximasExperiencias(3)
+    getProximasExperiencias(PROXIMAS_LIMITE)
       .then(setProximasExperiencias)
       .catch(() => setProximasExperiencias([]))
   }, [])
@@ -175,11 +182,10 @@ export default function CatalogPage() {
         />
         <div className="relative mx-auto max-w-7xl px-4 py-12 sm:py-24">
           <h1 className="text-3xl font-extrabold sm:text-5xl">
-            Descubre las experiencias de <span className="text-verde-hoja">El Salvador</span>
+            <Trans i18nKey="hero.title" ns="catalog" components={{ green: <span className="text-verde-hoja" /> }} />
           </h1>
           <p className="mt-3 max-w-2xl text-base text-crema/85 sm:text-lg">
-            Surf, café, volcanes y pueblos con encanto. Explora, reserva y vive el país con
-            anfitriones locales.
+            {t('hero.subtitle')}
           </p>
           <form onSubmit={handleBuscar} className="mt-8 flex max-w-2xl flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
@@ -200,7 +206,7 @@ export default function CatalogPage() {
                 type="search"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por nombre o descripción…"
+                placeholder={t('search.placeholder')}
                 className="w-full rounded-lg border-2 border-verde-bosque bg-white py-3 pl-11 pr-4 text-neutral-800 shadow-md placeholder:text-neutral-500 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
               />
             </div>
@@ -208,7 +214,7 @@ export default function CatalogPage() {
               type="submit"
               className="rounded-lg bg-terracota px-6 py-3 font-semibold text-white hover:bg-verde-bosque transition-colors sm:w-auto"
             >
-              Buscar
+              {t('search.button')}
             </button>
           </form>
         </div>
@@ -238,7 +244,7 @@ export default function CatalogPage() {
               >
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
               </svg>
-              Filtros{filtrosActivos > 0 ? ` (${filtrosActivos})` : ''}
+              {filtrosActivos > 0 ? t('filters.buttonCount', { n: filtrosActivos }) : t('filters.button')}
             </span>
             <svg
               className={`h-4 w-4 shrink-0 transition-transform ${filtrosAbiertos ? 'rotate-180' : ''}`}
@@ -254,7 +260,7 @@ export default function CatalogPage() {
             </svg>
           </button>
 
-          <p className="mb-3 hidden text-xs font-bold uppercase tracking-wider text-verde-bosque sm:block">Filtrar resultados</p>
+          <p className="mb-3 hidden text-xs font-bold uppercase tracking-wider text-verde-bosque sm:block">{t('filters.heading')}</p>
 
           <div
             id="filtros-controles"
@@ -263,13 +269,13 @@ export default function CatalogPage() {
             {/* Tipo: control segmentado con la paleta del sitio */}
             <div
               role="group"
-              aria-label="Tipo de publicación"
+              aria-label={t('filters.typeGroup')}
               className="flex w-full items-center gap-1 rounded-xl border-2 border-verde-bosque bg-verde-bosque/5 p-1.5 sm:min-w-[190px] sm:flex-1"
             >
               {[
-                { valor: '', etiqueta: 'Todos' },
-                { valor: 'experiencia', etiqueta: 'Experiencias' },
-                { valor: 'hospedaje', etiqueta: 'Hospedaje' },
+                { valor: '', etiqueta: t('type.all') },
+                { valor: 'experiencia', etiqueta: t('type.experiences') },
+                { valor: 'hospedaje', etiqueta: t('type.stays') },
               ].map((op) => (
                 <button
                   key={op.valor || 'todos'}
@@ -288,29 +294,27 @@ export default function CatalogPage() {
             </div>
 
             <FiltroDesplegable
-              etiqueta="Categoría"
-              placeholder="Todas las categorías"
+              etiqueta={t('filters.categoryLabel')}
+              placeholder={t('filters.categoryPlaceholder')}
               valor={categoria}
               opciones={categorias.map((c) => ({ valor: c, etiqueta: c }))}
               onChange={setCategoria}
             />
             <FiltroDesplegable
-              etiqueta="Zona"
-              placeholder="Todo El Salvador"
+              etiqueta={t('filters.zoneLabel')}
+              placeholder={t('filters.zonePlaceholder')}
               valor={zona}
               opciones={departamentos.map((d) => ({ valor: d.nombre, etiqueta: d.nombre }))}
               onChange={setZona}
             />
             <FiltroDesplegable
-              etiqueta="Precio"
-              placeholder="Cualquier precio"
+              etiqueta={t('filters.priceLabel')}
+              placeholder={t('filters.pricePlaceholder')}
               valor={precioMax}
-              opciones={[
-                { valor: '30', etiqueta: 'Hasta $30' },
-                { valor: '40', etiqueta: 'Hasta $40' },
-                { valor: '50', etiqueta: 'Hasta $50' },
-                { valor: '80', etiqueta: 'Hasta $80' },
-              ]}
+              opciones={[30, 40, 50, 80].map((max) => ({
+                valor: String(max),
+                etiqueta: t('filters.priceUpTo', { max }),
+              }))}
               onChange={setPrecioMax}
             />
             <button
@@ -318,20 +322,20 @@ export default function CatalogPage() {
               onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax('') }}
               className="w-full cursor-pointer rounded-xl border-2 border-dashed border-verde-bosque px-4 py-2.5 text-sm font-semibold text-verde-bosque transition-colors hover:border-verde-bosque hover:bg-verde-bosque hover:text-white sm:w-auto"
             >
-              Limpiar filtros
+              {t('filters.clear')}
             </button>
           </div>
         </div>
 
         {cargando ? (
-          <LoadingIguana fullscreen message="Cargando publicaciones…" />
+          <LoadingIguana fullscreen message={t('status.loading')} />
         ) : visibles.length === 0 ? (
           <div className="flex h-72 items-center justify-center rounded-xl border-2 border-dashed border-cafe-claro bg-white/60 text-cafe">
             <p className="px-6 text-center">
-              <span className="block text-lg font-semibold text-verde-bosque">No se encontraron publicaciones</span>
+              <span className="block text-lg font-semibold text-verde-bosque">{t('status.emptyTitle')}</span>
               {busqueda || categoria || zona || tipo || precioMax
-                ? 'Prueba cambiando los filtros de búsqueda.'
-                : 'Crea la primera publicación desde el panel del operador.'}
+                ? t('status.emptyWithFilters')
+                : t('status.emptyNoContent')}
             </p>
           </div>
         ) : (
@@ -350,10 +354,10 @@ export default function CatalogPage() {
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-2xl font-extrabold text-verde-bosque">
-                  Próximas experiencias
+                  {t('upcoming.title')}
                 </h2>
                 <p className="mt-1 text-sm text-cafe">
-                  Las 3 experiencias con pronta disponibilidad por fecha.
+                  {t('upcoming.subtitle', { n: PROXIMAS_LIMITE })}
                 </p>
               </div>
             </div>
