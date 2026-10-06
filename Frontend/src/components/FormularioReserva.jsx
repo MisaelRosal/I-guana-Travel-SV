@@ -1,27 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useFormatLocale } from '../i18n/config.js'
+import { formatDateDMY, formatPrice } from '../i18n/format.js'
 import { crearReserva } from '../services/reservas.js'
 import Toast from './Toast.jsx'
 
-// F4 owns this Intl formatter; extraction leaves it untouched.
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
-
-function formatearFechaCorta(fecha) {
-  if (!fecha) return ''
-  const d = new Date(fecha)
-  const dia = String(d.getDate()).padStart(2, '0')
-  const mes = String(d.getMonth() + 1).padStart(2, '0')
-  const anio = d.getFullYear()
-  return `${dia}/${mes}/${anio}`
-}
-
 export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, numPersonas, onCancelar, onReservada }) {
   const { t } = useTranslation('experiencia')
+  const locale = useFormatLocale()
   const sesion = JSON.parse(sessionStorage.getItem('iguana_usuario') || 'null')
   const [enviando, setEnviando] = useState(false)
   const [toast, setToast] = useState(null)
@@ -83,11 +70,11 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
         <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
           <p className="text-sm font-semibold text-verde-bosque">{experiencia.titulo}</p>
           <p className="mt-1 text-sm text-cafe">
-            {formatearFechaCorta(fechaInicio)}
-            {fechaFin ? ` → ${formatearFechaCorta(fechaFin)}` : ''}
+            {formatDateDMY(fechaInicio, locale)}
+            {fechaFin ? ` → ${formatDateDMY(fechaFin, locale)}` : ''}
             {esHospedaje ? <> · {t('form.nights', { count: noches })}</> : <> · {t('form.guests', { count: numPersonas })}</>}
           </p>
-          <p className="mt-2 text-lg font-extrabold text-terracota">{formatoPrecio.format(precioTotal)}</p>
+          <p className="mt-2 text-lg font-extrabold text-terracota">{formatPrice(precioTotal, locale)}</p>
         </div>
 
         {sesion ? (

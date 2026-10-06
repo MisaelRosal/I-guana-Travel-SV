@@ -1,21 +1,15 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useFormatLocale } from '../i18n/config.js'
+import { formatDayMonthYear, formatPrice } from '../i18n/format.js'
 
-// F4 owns these Intl formatters; extraction leaves them untouched.
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
-
-const formatoFecha = new Intl.DateTimeFormat('es-SV', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
+// F4 (AD-4): Intl comes from format.js through the active-locale hook; the
+// tags are never hardcoded here (es-SV stays `5 ene 2026`, EN switches to
+// `Jan 5, 2026` and en-US grouping in place, without a reload).
 
 export default function ExperienceCard({ experiencia, proximaFecha }) {
   const { t } = useTranslation('experiencia')
+  const locale = useFormatLocale()
   const esHospedaje = experiencia.tipo === 'hospedaje'
   const unidad = esHospedaje ? t('card.perNight') : t('card.perPerson')
   // Capacity badge (spec "Enum, unit, and badge labels localized"): consumed
@@ -42,7 +36,7 @@ export default function ExperienceCard({ experiencia, proximaFecha }) {
         </span>
         {proximaFecha && (
           <span className="absolute top-3 right-3 rounded-full bg-terracota px-3 py-1 text-xs font-semibold text-white">
-            {formatoFecha.format(new Date(`${proximaFecha}T00:00:00`))}
+            {formatDayMonthYear(proximaFecha, locale)}
           </span>
         )}
         {!proximaFecha && experiencia.popular && (
@@ -60,7 +54,7 @@ export default function ExperienceCard({ experiencia, proximaFecha }) {
         <p className="mt-2 text-base text-neutral-600 line-clamp-2 flex-1">{experiencia.descripcion}</p>
         <div className="mt-3 flex items-end justify-between gap-2 border-t border-neutral-100 pt-3">
           <div className="min-w-0">
-            <span className="text-3xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
+            <span className="text-3xl font-extrabold text-terracota">{formatPrice(experiencia.precio, locale)}</span>
             <span className="text-sm text-cafe"> / {unidad}</span>
           </div>
           <span className="text-sm text-cafe whitespace-nowrap">{detalle}</span>

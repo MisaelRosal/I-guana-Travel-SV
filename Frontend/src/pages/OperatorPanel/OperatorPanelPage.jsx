@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useFormatLocale } from '../../i18n/config.js'
+import { formatPrice } from '../../i18n/format.js'
 import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
 import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.js'
 
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
-
 export default function OperatorPanelPage() {
   const { t } = useTranslation('panel')
+  const locale = useFormatLocale()
   const usuario = obtenerSesion()
   const [publicaciones, setPublicaciones] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -162,7 +159,7 @@ export default function OperatorPanelPage() {
                     </td>
                     <td className="px-4 py-3 text-neutral-700">{p.categoria?.nombre ?? '—'}</td>
                     <td className="px-4 py-3 font-semibold text-terracota">
-                      {formatoPrecio.format(p.precioPorNoche)}
+                      {formatPrice(p.precioPorNoche, locale)}
                     </td>
                     <td className="px-4 py-3 text-neutral-700">{t('capacity', { count: p.capacidadMaxima })}</td>
                     <td className="px-4 py-3 text-neutral-700">{p.imagenesPublicacions?.length ?? 0}</td>

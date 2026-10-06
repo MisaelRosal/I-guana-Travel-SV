@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useFormatLocale } from '../i18n/config.js'
+import { formatDayMonthShort, formatMonthYear, weekdayShortMonFirst } from '../i18n/format.js'
 import { api, readCsrfToken } from '../services/api.js'
 import LocationPicker from './LocationPicker.jsx'
-
-// F4 owns these manual date arrays; extraction leaves them untouched.
-const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
 const labelCls = 'block text-sm font-semibold text-cafe-oscuro mb-1'
 
 export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion, anfitrionFijo }) {
   const { t } = useTranslation('experiencia')
+  const locale = useFormatLocale()
   const [categorias, setCategorias] = useState([])
   const [anfitriones, setAnfitriones] = useState([])
   const [amenidades, setAmenidades] = useState([])
@@ -168,10 +166,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     )
   }
 
-  const formatearFechaChip = (fecha) => {
-    const [a, m, d] = fecha.split('-')
-    return `${parseInt(d, 10)} ${MESES[parseInt(m, 10) - 1].slice(0, 3).toLowerCase()}`
-  }
+  const formatearFechaChip = (fecha) => formatDayMonthShort(fecha, locale)
 
   const celdasCalendario = () => {
     const hoy = new Date()
@@ -554,16 +549,17 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                   <button type="button" onClick={() => cambiarMesCal(-1)} aria-label={t('common:calendar.prevMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                   </button>
-                  <p className="text-sm font-bold text-verde-bosque">{MESES[mesCal]} {anioCal}</p>
+                  <p className="text-sm font-bold text-verde-bosque">{formatMonthYear(new Date(anioCal, mesCal, 1), locale)}</p>
                   <button type="button" onClick={() => cambiarMesCal(1)} aria-label={t('common:calendar.nextMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                   </button>
                 </div>
 
                 <div className="mt-3 grid grid-cols-7 gap-1">
-                  {DIAS_CORTOS.map((d) => (
-                    <span key={d} className="py-1 text-center text-[11px] font-semibold uppercase text-cafe">{d}</span>
-                  ))}
+                  {Array.from({ length: 7 }, (_, i) => {
+                    const label = weekdayShortMonFirst(i, locale)
+                    return <span key={label} className="py-1 text-center text-[11px] font-semibold uppercase text-cafe">{label}</span>
+                  })}
                   {celdasCalendario().map((celda, i) => (
                     <div key={i}>
                       {celda.dia ? (

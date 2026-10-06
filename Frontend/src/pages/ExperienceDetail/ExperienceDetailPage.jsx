@@ -3,6 +3,15 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
+import { useFormatLocale } from '../../i18n/config.js'
+import {
+  formatDayMonthShort,
+  formatMonthLong,
+  formatMonthYear,
+  formatPrice,
+  weekdayLong,
+  weekdayShortMonFirst,
+} from '../../i18n/format.js'
 import { getExperienciaById } from '../../services/experiencias'
 import { getDisponibilidad } from '../../services/reservas'
 import FormularioReserva from '../../components/FormularioReserva'
@@ -17,16 +26,6 @@ const markerIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 })
-
-// F4 owns this Intl formatter and the manual day/month arrays below;
-// extraction leaves them untouched.
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
-
-const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
 function Galeria({ imagenes, titulo }) {
   const { t } = useTranslation('experiencia')
@@ -157,6 +156,7 @@ function Galeria({ imagenes, titulo }) {
 
 function InfoBox({ experiencia, onReservar }) {
   const { t } = useTranslation('experiencia')
+  const locale = useFormatLocale()
   const esHospedaje = experiencia.tipo === 'hospedaje'
   // Slash stays an inline glyph so the ES render remains byte-comparable.
   const unidad = esHospedaje ? t('card.perNight') : t('card.perPerson')
@@ -178,7 +178,7 @@ function InfoBox({ experiencia, onReservar }) {
       </div>
 
       <div className="mt-5 flex items-baseline gap-1.5 border-b border-neutral-100 pb-5">
-        <span className="text-4xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
+        <span className="text-4xl font-extrabold text-terracota">{formatPrice(experiencia.precio, locale)}</span>
         <span className="text-lg font-medium text-neutral-600"> /{unidad}</span>
       </div>
 
@@ -293,16 +293,11 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
 
 function Horarios({ horarios }) {
   const { t } = useTranslation('experiencia')
+  const locale = useFormatLocale()
   if (!horarios.length) return null
-  const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
   const conFecha = horarios.filter((h) => h.fecha).slice().sort((a, b) => a.fecha.localeCompare(b.fecha))
   const porDiaSemana = horarios.filter((h) => !h.fecha && h.diaSemana != null)
-
-  const formatearFecha = (fecha) => {
-    const [, m, d] = fecha.split('-')
-    return `${parseInt(d, 10)} ${MESES_CORTOS[parseInt(m, 10) - 1]}`
-  }
 
   if (conFecha.length > 0) {
     const rango = (h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`
@@ -313,7 +308,7 @@ function Horarios({ horarios }) {
         <div className="mt-4 flex flex-wrap gap-2">
           {conFecha.map((h, i) => (
             <div key={i} className="min-w-24 rounded-lg bg-crema px-4 py-2">
-              <p className="text-sm font-bold capitalize text-verde-bosque">{formatearFecha(h.fecha)}</p>
+              <p className="text-sm font-bold capitalize text-verde-bosque">{formatDayMonthShort(h.fecha, locale)}</p>
               <p className="text-xs font-medium text-cafe">{rango(h)}</p>
             </div>
           ))}
@@ -331,7 +326,7 @@ function Horarios({ horarios }) {
           const hs = porDiaSemana.filter((h) => h.diaSemana === dia)
           return (
             <div key={dia} className="min-w-28 rounded-lg bg-crema px-5 py-3">
-              <p className="text-base font-bold text-verde-bosque">{DIAS[dia]}</p>
+              <p className="text-base font-bold text-verde-bosque">{weekdayLong(dia, locale)}</p>
               <p className="mt-0.5 text-sm font-medium text-cafe">
                 {hs.map((h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`).join(' · ')}
               </p>
@@ -368,6 +363,7 @@ function Mapa({ latitud, longitud }) {
 
 function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCerrar }) {
   const { t } = useTranslation('experiencia')
+  const locale = useFormatLocale()
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const [mes, setMes] = useState(() => hoy.getMonth())
@@ -394,12 +390,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
     return () => { activo = false }
   }, [experiencia.id])
 
-  const nombreMeses = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  ]
-  const nombreDias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-
+  // F4 (AD-4): month/weekday labels come from the active-locale Intl helpers.
   const primerDia = new Date(anio, mes, 1)
   const diasEnMes = new Date(anio, mes + 1, 0).getDate()
   const offset = (primerDia.getDay() + 6) % 7
@@ -479,13 +470,13 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
         return t('calendar.rangeSelection', {
           from: fechaInicio.getDate(),
           to: fechaFin.getDate(),
-          month: nombreMeses[fechaFin.getMonth()],
+          month: formatMonthLong(fechaFin, locale),
         })
       }
       if (fechaInicio) {
         return t('calendar.startHint', {
           day: fechaInicio.getDate(),
-          month: nombreMeses[fechaInicio.getMonth()],
+          month: formatMonthLong(fechaInicio, locale),
         })
       }
       return t('calendar.pickArrival')
@@ -493,7 +484,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
     if (fechaInicio) {
       return t('calendar.daySelected', {
         day: fechaInicio.getDate(),
-        month: nombreMeses[fechaInicio.getMonth()],
+        month: formatMonthLong(fechaInicio, locale),
         year: fechaInicio.getFullYear(),
       })
     }
@@ -599,7 +590,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             </svg>
           </button>
           <p className="text-base font-bold text-verde-bosque">
-            {nombreMeses[mes]} {anio}
+            {formatMonthYear(new Date(anio, mes, 1), locale)}
           </p>
           <button
             type="button"
@@ -614,11 +605,14 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
         </div>
 
         <div className="mt-3 grid grid-cols-7 gap-1">
-          {nombreDias.map((d) => (
-            <div key={d} className="py-1 text-center text-xs font-semibold uppercase text-cafe">
-              {d}
-            </div>
-          ))}
+          {Array.from({ length: 7 }, (_, i) => {
+            const label = weekdayShortMonFirst(i, locale)
+            return (
+              <div key={label} className="py-1 text-center text-xs font-semibold uppercase text-cafe">
+                {label}
+              </div>
+            )
+          })}
           {Array.from({ length: offset }).map((_, i) => (
             <div key={`vacio-${i}`} />
           ))}

@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useFormatLocale } from '../../i18n/config.js'
+import { formatPrice } from '../../i18n/format.js'
 import { api } from '../../services/api.js'
 import { esAdmin } from '../../services/anfitriones.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
-
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
 
 // Tab ids stay internal UI state; labels resolve through the admin namespace.
 const pestanas = [
@@ -27,6 +23,7 @@ function obtenerSesion() {
 
 export default function AdminPanelPage() {
   const { t } = useTranslation('admin')
+  const locale = useFormatLocale()
   const usuario = obtenerSesion()
   const [pestana, setPestana] = useState('anfitriones')
   const [anfitriones, setAnfitriones] = useState([])
@@ -284,7 +281,7 @@ export default function AdminPanelPage() {
                       </td>
                       <td className="px-4 py-3 text-neutral-700">{p.anfitrion?.nombre ?? '—'}</td>
                       <td className="px-4 py-3 font-semibold text-terracota">
-                        {formatoPrecio.format(p.precioPorNoche)}
+                        {formatPrice(p.precioPorNoche, locale)}
                       </td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-verde-hoja/15 px-3 py-1 text-xs font-semibold text-verde-bosque">

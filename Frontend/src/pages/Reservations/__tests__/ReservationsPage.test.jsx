@@ -161,7 +161,8 @@ describe('EN active: reservations chrome comes from the reservas namespace', () 
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
     const dialog = await screen.findByRole('dialog', { name: 'Edit booking' })
-    expect(within(dialog).getByText('Current date: 15/01/2099')).toBeInTheDocument()
+    // F4: dd/mm -> mm/dd under en-US (spec "Formatting follows active locale").
+    expect(within(dialog).getByText('Current date: 01/15/2099')).toBeInTheDocument()
     expect(within(dialog).getByText('This experience has no available dates yet.')).toBeInTheDocument()
     expect(within(dialog).getByText('Maximum capacity: 4 guests')).toBeInTheDocument()
     // '·' glyph separator stays inline around the interpolated count.
@@ -205,7 +206,7 @@ describe('EN active: reservations chrome comes from the reservas namespace', () 
     expect(await screen.findByText('Cancel booking')).toBeInTheDocument()
     expect(screen.getByText('Are you sure you want to cancel this booking?')).toBeInTheDocument()
     expect(screen.getByText('Booking #2 — $25')).toBeInTheDocument()
-    expect(screen.getByText('Check-in: 20/02/2099')).toBeInTheDocument()
+    expect(screen.getByText('Check-in: 02/20/2099')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel booking' }))
     expect(await screen.findByRole('status')).toHaveTextContent('Booking cancelled successfully.')
@@ -226,7 +227,7 @@ describe('EN active: reservations chrome comes from the reservas namespace', () 
       within(dialog).getByText(
         (_, el) =>
           el?.textContent ===
-          'You are about to delete the booking of Ruta del café en Apan for 15/01/2099. This action cannot be undone.',
+          'You are about to delete the booking of Ruta del café en Apan for 01/15/2099. This action cannot be undone.',
       ),
     ).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Yes, delete' })).toBeInTheDocument()

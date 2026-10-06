@@ -148,12 +148,13 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     expect(screen.getByRole('button', { name: 'Book now' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'How to get there' })).toBeInTheDocument()
 
-    // The new scroll-section labels, dated chip (F4-owned formatting) untouched.
+    // The new scroll-section labels, dated chip (F4-owned formatting) now
+    // renders through Intl en-US: '5 ene' -> 'Jan 5'.
     expect(screen.getByText('Available dates')).toBeInTheDocument()
     expect(
       screen.getByText('Only the dates marked by the host can be booked.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('5 ene')).toBeInTheDocument()
+    expect(screen.getByText('Jan 5')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 3, name: 'Location' })).toBeInTheDocument()
     expect(screen.queryByText(/experiencia:/)).toBeNull()
   })

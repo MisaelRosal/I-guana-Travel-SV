@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
+import { useFormatLocale } from '../../i18n/config.js'
+import { formatDateDMY, formatMonthYear, formatPrice, weekdayShortMonFirst } from '../../i18n/format.js'
 import { actualizarReserva, eliminarReserva, getMisReservas, pagarReserva, cancelarReserva } from '../../services/reservas.js'
 import Toast from '../../components/Toast.jsx'
 
@@ -13,11 +15,9 @@ const CHIP_ESTADOS = {
   completada: 'chip.completada',
 }
 
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
+// F4 (AD-4): every Intl/format helper below reads the active-locale tag from
+// useFormatLocale(); dates, prices and calendar labels reformat in place on
+// toggle (es-SV keeps the pre-change rendering, en-US gets English order).
 
 const ESTILOS_ESTADO = {
   pendiente: 'bg-amber/10 text-amber',
@@ -32,12 +32,6 @@ const METODOS_PAGO = [
   { id: 'paypal', labelKey: 'pay.methods.paypal' },
 ]
 
-function formatearFecha(iso) {
-  if (!iso) return ''
-  const [anio, mes, dia] = iso.split('-')
-  return `${dia}/${mes}/${anio}`
-}
-
 function fechaBloqueada(iso) {
   if (!iso) return false
   const [anio, mes, dia] = iso.split('-').map(Number)
@@ -50,6 +44,7 @@ function fechaBloqueada(iso) {
 
 function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) {
   const { t } = useTranslation('reservas')
+  const locale = useFormatLocale()
   const multinoche = reserva.fechaFin && reserva.fechaFin !== reserva.fechaInicio
 
   const cancelada = reserva.estado === 'cancelada'
@@ -93,10 +88,10 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
             <dd className="mt-0.5 font-medium text-neutral-800">
               {multinoche ? (
                 <>
-                  {formatearFecha(reserva.fechaInicio)} → {formatearFecha(reserva.fechaFin)}
+                  {formatDateDMY(reserva.fechaInicio, locale)} → {formatDateDMY(reserva.fechaFin, locale)}
                 </>
               ) : (
-                formatearFecha(reserva.fechaInicio)
+                formatDateDMY(reserva.fechaInicio, locale)
               )}
             </dd>
           </div>
@@ -109,7 +104,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
           <div className="col-span-2 sm:col-span-1">
             <dt className="text-xs font-semibold uppercase text-cafe">{t('card.totalLabel')}</dt>
             <dd className="mt-0.5 text-lg font-extrabold text-terracota">
-              {formatoPrecio.format(reserva.precioTotal)}
+              {formatPrice(reserva.precioTotal, locale)}
             </dd>
           </div>
         </dl>
@@ -196,9 +191,7 @@ function todayISO() {
 
 function CalendarioFechas({ fechasDisponibles, seleccionada, onSeleccionar }) {
   const { t } = useTranslation('reservas')
-  // F4 owns these manual date arrays (Intl migration); they stay untouched here.
-  const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-  const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+  const locale = useFormatLocale()
 
   const inicial = seleccionada || fechasDisponibles[0] || null
   const [mes, setMes] = useState(() => inicial ? parseInt(inicial.slice(5, 7), 10) - 1 : new Date().getMonth())
@@ -231,16 +224,17 @@ function CalendarioFechas({ fechasDisponibles, seleccionada, onSeleccionar }) {
         <button type="button" onClick={() => cambiarMes(-1)} aria-label={t('common:calendar.prevMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <p className="text-sm font-bold text-verde-bosque">{MESES[mes]} {anio}</p>
+        <p className="text-sm font-bold text-verde-bosque">{formatMonthYear(new Date(anio, mes, 1), locale)}</p>
         <button type="button" onClick={() => cambiarMes(1)} aria-label={t('common:calendar.nextMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
         </button>
       </div>
 
       <div className="mt-2 grid grid-cols-7 gap-1">
-        {DIAS_CORTOS.map((d) => (
-          <span key={d} className="py-1 text-center text-[10px] font-semibold uppercase text-cafe">{d}</span>
-        ))}
+        {Array.from({ length: 7 }, (_, i) => {
+          const label = weekdayShortMonFirst(i, locale)
+          return <span key={label} className="py-1 text-center text-[10px] font-semibold uppercase text-cafe">{label}</span>
+        })}
         {celdas.map((dia, i) => {
           if (!dia) return <span key={`v-${i}`} className="block h-8" />
           const f = fechaISO(dia)
@@ -277,6 +271,7 @@ function CalendarioFechas({ fechasDisponibles, seleccionada, onSeleccionar }) {
 
 function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
   const { t } = useTranslation('reservas')
+  const locale = useFormatLocale()
   const esHospedaje = reserva.tipo === 'hospedaje'
   const fechasDisponibles = reserva.fechasDisponibles ?? []
   const [fechaInicio, setFechaInicio] = useState(reserva.fechaInicio)
@@ -354,7 +349,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
         <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
           <p className="text-sm font-semibold text-verde-bosque">{reserva.experienciaTitulo}</p>
           <p className="mt-1 text-sm text-cafe">
-            {formatoPrecio.format(precioTotal)}{' · '}
+            {formatPrice(precioTotal, locale)}{' · '}
             {esHospedaje ? t('edit.summaryNights', { count: noches }) : t('edit.summaryGuests', { count: personas })}
           </p>
         </div>
@@ -392,7 +387,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
             <div>
               <span className="text-sm font-semibold text-cafe">{t('card.dateLabel')}</span>
               <p className="mb-2 mt-0.5 text-xs text-neutral-500">
-                {t('edit.currentDate', { date: formatearFecha(reserva.fechaInicio) })}
+                {t('edit.currentDate', { date: formatDateDMY(reserva.fechaInicio, locale) })}
               </p>
               {fechasDisponibles.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-cafe-claro bg-neutral-50 px-3 py-4 text-center text-xs text-cafe">
@@ -467,6 +462,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
 
 function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
   const { t } = useTranslation('reservas')
+  const locale = useFormatLocale()
   const [eliminando, setEliminando] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -507,7 +503,7 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
           <Trans
             ns="reservas"
             i18nKey="deleteConfirm.body"
-            values={{ title: reserva.experienciaTitulo, date: formatearFecha(reserva.fechaInicio) }}
+            values={{ title: reserva.experienciaTitulo, date: formatDateDMY(reserva.fechaInicio, locale) }}
             components={{ b: <span className="font-semibold text-verde-bosque" /> }}
           />
         </p>
@@ -536,6 +532,7 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
 
 function ModalPago({ reserva, onCerrar, onExito }) {
   const { t } = useTranslation('reservas')
+  const locale = useFormatLocale()
   const [metodoPago, setMetodoPago] = useState('')
   const [numeroTarjeta, setNumeroTarjeta] = useState('')
   const [nombreTitular, setNombreTitular] = useState('')
@@ -589,7 +586,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
         <div className="mb-5 rounded-lg bg-neutral-50 p-4">
           <p className="text-sm text-cafe">{t('bookingRef', { id: reserva.id })}</p>
           <p className="text-lg font-bold text-terracota">
-            {formatoPrecio.format(reserva.precioTotal)}
+            {formatPrice(reserva.precioTotal, locale)}
           </p>
         </div>
 
@@ -684,6 +681,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
 
 function ModalCancelar({ reserva, onCerrar, onExito }) {
   const { t } = useTranslation('reservas')
+  const locale = useFormatLocale()
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -731,10 +729,10 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
             <>
               <p className="text-sm text-cafe">{t('cancel.question')}</p>
               <p className="mt-2 text-sm font-semibold text-verde-bosque">
-                {t('bookingRef', { id: reserva.id })} — {formatoPrecio.format(reserva.precioTotal)}
+                {t('bookingRef', { id: reserva.id })} — {formatPrice(reserva.precioTotal, locale)}
               </p>
               <p className="text-xs text-cafe mt-1">
-                {t('cancel.checkIn', { date: formatearFecha(reserva.fechaInicio) })}
+                {t('cancel.checkIn', { date: formatDateDMY(reserva.fechaInicio, locale) })}
               </p>
             </>
           )}

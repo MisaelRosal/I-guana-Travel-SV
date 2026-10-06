@@ -1,5 +1,5 @@
 import i18n from 'i18next'
-import { initReactI18next } from 'react-i18next'
+import { initReactI18next, useTranslation } from 'react-i18next'
 import esCommon from '../locales/es/common.json'
 import esHeader from '../locales/es/header.json'
 import esCatalog from '../locales/es/catalog.json'
@@ -34,6 +34,14 @@ export const LOCALE_STORAGE_KEY = 'iguana_locale'
 
 // Active UI language -> BCP 47 formatting tag for Intl consumers (AD-4/F4).
 export const FORMAT_LOCALES = { es: 'es-SV', en: 'en-US' }
+
+// F4 (AD-4): the Intl locale tag for the currently active UI language.
+// Reads through `useTranslation` so components calling it re-render (and
+// reformat) in place when the toggle changes the language.
+export function useFormatLocale() {
+  const { i18n: instance } = useTranslation()
+  return FORMAT_LOCALES[instance.language] || FORMAT_LOCALES.es
+}
 
 const SUPPORTED_LOCALES = ['es', 'en']
 

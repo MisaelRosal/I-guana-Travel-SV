@@ -82,7 +82,8 @@ describe('EN active: booking form chrome comes from the experiencia namespace', 
     expect(dialog).toBeInTheDocument()
     expect(screen.getByText('Complete your booking')).toBeInTheDocument()
     // Guest segment through the _one/_other contract (2 -> "people").
-    expect(screen.getByText('14/01/2099 · 2 people')).toBeInTheDocument()
+    // F4: dates reformat through Intl en-US (01/15 = Jan 15), logical day.
+    expect(screen.getByText('01/15/2099 · 2 people')).toBeInTheDocument()
     expect(screen.getByText("You'll be booking as:")).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Confirm booking' })).toBeInTheDocument()
@@ -99,12 +100,12 @@ describe('EN active: booking form chrome comes from the experiencia namespace', 
       numPersonas: 3,
     })
 
-    expect(screen.getByText('09/02/2099 → 12/02/2099 · 3 nights')).toBeInTheDocument()
+    expect(screen.getByText('02/10/2099 → 02/13/2099 · 3 nights')).toBeInTheDocument()
 
     cleanup()
     renderForm({ numPersonas: 1 })
     // Singular branch of the guest template.
-    expect(screen.getByText('14/01/2099 · 1 person')).toBeInTheDocument()
+    expect(screen.getByText('01/15/2099 · 1 person')).toBeInTheDocument()
   })
 
   it('shows the localized sign-in gate for anonymous visitors', async () => {
@@ -146,7 +147,10 @@ describe('ES active: extraction keeps the canonical Spanish form byte-comparable
 
     expect(await screen.findByRole('dialog', { name: 'Formulario de reserva' })).toBeInTheDocument()
     expect(screen.getByText('Completá tu reserva')).toBeInTheDocument()
-    expect(screen.getByText('14/01/2099 · 2 personas')).toBeInTheDocument()
+    // F4 pins the logical day: the old UTC-midnight parse rendered '2099-01-15'
+    // as 14/01 under UTC-minus zones (the documented TZ trap). dd/mm ordering
+    // is byte-identical to the pre-change formatearFechaCorta.
+    expect(screen.getByText('15/01/2099 · 2 personas')).toBeInTheDocument()
     expect(screen.getByText('Vas a reservar como:')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Volver' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeInTheDocument()
@@ -158,7 +162,7 @@ describe('ES active: extraction keeps the canonical Spanish form byte-comparable
       fechaFin: '2099-02-13',
       numPersonas: 3,
     })
-    expect(await screen.findByText('09/02/2099 → 12/02/2099 · 3 noches')).toBeInTheDocument()
+    expect(await screen.findByText('10/02/2099 → 13/02/2099 · 3 noches')).toBeInTheDocument()
   })
 
   it('renders the original Spanish sign-in gate', async () => {

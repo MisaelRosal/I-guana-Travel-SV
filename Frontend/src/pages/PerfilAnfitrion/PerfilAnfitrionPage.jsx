@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useFormatLocale } from '../../i18n/config.js'
+import { formatPrice } from '../../i18n/format.js'
 import { getAnfitrionPorId } from '../../services/anfitriones.js'
 import { getExperiencias } from '../../services/experiencias.js'
-
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
 
 function Avatar({ anfitrion, grande }) {
   const cls = grande
@@ -26,6 +22,7 @@ function Avatar({ anfitrion, grande }) {
 
 export default function PerfilAnfitrionPage() {
   const { id } = useParams()
+  const locale = useFormatLocale()
   const [anfitrion, setAnfitrion] = useState(null)
   const [publicaciones, setPublicaciones] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -130,7 +127,7 @@ export default function PerfilAnfitrionPage() {
                       <h3 className="mt-0.5 text-lg font-bold text-verde-bosque">{exp.titulo}</h3>
                       <p className="mt-1 text-sm text-cafe">{exp.municipio}, {exp.departamento}</p>
                       <p className="mt-2 font-bold text-terracota">
-                        {formatoPrecio.format(exp.precio)}
+                        {formatPrice(exp.precio, locale)}
                         <span className="text-sm font-medium text-cafe"> {exp.tipo === 'hospedaje' ? '/noche' : '/persona'}</span>
                       </p>
                     </div>
