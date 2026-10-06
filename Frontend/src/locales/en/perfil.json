@@ -1,0 +1,46 @@
+{
+  "title": "My profile",
+  "loading": "Loading profile…",
+  "back": "← Back to home",
+  "avatarAlt": "Profile photo",
+  "badge": {
+    "verified": "Verified",
+    "pending": "Pending verification"
+  },
+  "missing": {
+    "body": "We couldn't find your host profile.",
+    "cta": "Become a host"
+  },
+  "view": {
+    "email": "Contact email",
+    "phone": "Phone",
+    "publications": "Publications",
+    "location": "Location",
+    "description": "Short description"
+  },
+  "edit": "Edit my profile",
+  "form": {
+    "emailLabel": "Contact email *",
+    "emailPlaceholder": "email@example.com",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "Contact phone",
+    "deptoLabel": "Department *",
+    "deptoOption": "Select a department",
+    "muniLabel": "Municipality *",
+    "muniOption": "Select a municipality",
+    "descLabel": "Short description",
+    "descPlaceholder": "Tell us who you are and what experience you offer...",
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "saving": "Saving..."
+  },
+  "errors": {
+    "emailRequired": "Enter a contact email.",
+    "emailInvalid": "Enter a valid email address.",
+    "emailLength": "The email cannot exceed 150 characters.",
+    "phoneLength": "The phone cannot exceed 20 characters.",
+    "municipioRequired": "Select your municipality."
+  },
+  "savedToast": "Profile updated successfully.",
+  "updateError": "Couldn't update the profile."
+}

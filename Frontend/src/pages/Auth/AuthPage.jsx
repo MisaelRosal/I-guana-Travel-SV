@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api.js'
 import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
 
 export default function AuthPage() {
+  // F2a (i18n-es-en): all frontend-owned copy comes from the `auth` namespace.
+  // Backend `mensaje` values stay verbatim passthrough (localized-ui-content
+  // spec) — only the fallback copy and the required-credentials validation
+  // (frontend-owned) are resource keys here.
+  const { t } = useTranslation('auth')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [verPassword, setVerPassword] = useState(false)
@@ -17,7 +23,7 @@ export default function AuthPage() {
     e.preventDefault()
     setError('')
     if (!email.trim() || !password) {
-      const mensaje = 'Correo y contraseña son obligatorios.'
+      const mensaje = t('login.validation.required')
       setError(mensaje)
       setToast({ tipo: 'error', mensaje })
       return
@@ -31,10 +37,10 @@ export default function AuthPage() {
         password,
       })
       await restaurarSesion()
-      setToast({ tipo: 'exito', mensaje: '¡Iniciaste sesión con éxito!' })
+      setToast({ tipo: 'exito', mensaje: t('login.successToast') })
       setTimeout(() => navigate('/'), 1500)
     } catch (err) {
-      const mensajeError = err.mensaje || err.message || 'No se pudo iniciar sesión.'
+      const mensajeError = err.mensaje || err.message || t('login.genericError')
       setError(mensajeError)
       setToast({ tipo: 'error', mensaje: mensajeError })
     } finally {
@@ -46,20 +52,20 @@ export default function AuthPage() {
     <main className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
-          <h1 className="text-2xl font-bold text-verde-bosque">Iniciar sesión</h1>
-          <p className="mt-1 text-sm text-cafe">Bienvenido de nuevo a I Guana Travel SV</p>
+          <h1 className="text-2xl font-bold text-verde-bosque">{t('login.heading')}</h1>
+          <p className="mt-1 text-sm text-cafe">{t('login.welcome')}</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
             <div>
               <label htmlFor="email" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                Correo electrónico
+                {t('login.emailLabel')}
               </label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@correo.com"
+                placeholder={t('fields.emailPlaceholder')}
                 autoComplete="email"
                 required
                 className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
@@ -67,7 +73,7 @@ export default function AuthPage() {
             </div>
             <div>
               <label htmlFor="password" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                Contraseña
+                {t('login.passwordLabel')}
               </label>
 <div className="relative">
                 <input
@@ -75,7 +81,7 @@ export default function AuthPage() {
                   type={verPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('fields.passwordPlaceholder')}
                   autoComplete="current-password"
                   required
                   className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 pr-11 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
@@ -83,7 +89,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => setVerPassword((v) => !v)}
-                  aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={verPassword ? t('fields.hidePassword') : t('fields.showPassword')}
                   className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-neutral-400 transition-colors hover:text-verde-bosque"
                 >
                   {verPassword ? (
@@ -112,18 +118,18 @@ export default function AuthPage() {
               disabled={enviando}
               className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
-              {enviando ? 'Iniciando...' : 'Iniciar sesión'}
+              {enviando ? t('login.submitting') : t('login.submit')}
             </button>
           </form>
         </div>
 
         <p className="mt-5 text-center text-sm text-cafe">
-          No tienes cuenta,{' '}
+          {t('login.noAccount')}{' '}
           <Link
             to="/registro"
             className="cursor-pointer font-semibold text-terracota transition-colors hover:text-verde-bosque"
           >
-            Regístrate
+            {t('login.registerLink')}
           </Link>
         </p>
       </div>

@@ -4,10 +4,16 @@ import esCommon from '../locales/es/common.json'
 import esHeader from '../locales/es/header.json'
 import esCatalog from '../locales/es/catalog.json'
 import esFooter from '../locales/es/footer.json'
+import esAuth from '../locales/es/auth.json'
+import esPerfil from '../locales/es/perfil.json'
+import esPublicacion from '../locales/es/publicacion.json'
 import enCommon from '../locales/en/common.json'
 import enHeader from '../locales/en/header.json'
 import enCatalog from '../locales/en/catalog.json'
 import enFooter from '../locales/en/footer.json'
+import enAuth from '../locales/en/auth.json'
+import enPerfil from '../locales/en/perfil.json'
+import enPublicacion from '../locales/en/publicacion.json'
 
 // F0 (i18n-es-en): single shared i18n runtime (AD-2, AD-5).
 // Initialized once at module scope — module evaluation happens a single time
@@ -37,8 +43,24 @@ export function readStoredLocale() {
 const resources = {
   // ES is the canonical, complete set; EN is an overlay subset during rollout
   // (AD-3). A missing EN key falls back to Spanish, so raw keys never render.
-  es: { common: esCommon, header: esHeader, catalog: esCatalog, footer: esFooter },
-  en: { common: enCommon, header: enHeader, catalog: enCatalog, footer: enFooter },
+  es: {
+    common: esCommon,
+    header: esHeader,
+    catalog: esCatalog,
+    footer: esFooter,
+    auth: esAuth,
+    perfil: esPerfil,
+    publicacion: esPublicacion,
+  },
+  en: {
+    common: enCommon,
+    header: enHeader,
+    catalog: enCatalog,
+    footer: enFooter,
+    auth: enAuth,
+    perfil: enPerfil,
+    publicacion: enPublicacion,
+  },
 }
 
 if (!i18n.isInitialized) {
@@ -47,7 +69,7 @@ if (!i18n.isInitialized) {
     lng: readStoredLocale(),
     fallbackLng: 'es',
     defaultNS: 'common',
-    ns: ['common', 'header', 'catalog', 'footer'],
+    ns: ['common', 'header', 'catalog', 'footer', 'auth', 'perfil', 'publicacion'],
     // Resources are static JSON, so store setup is fully synchronous. The
     // restored startup language may still emit one deferred `languageChanged`
     // that reaches the persistence listener below; it rewrites the value just

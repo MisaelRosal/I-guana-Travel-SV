@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { getMunicipios, registrarAnfitrion, obtenerSesion, guardarSesion } from '../../services/anfitriones.js'
 import { api, readCsrfToken } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
@@ -8,6 +9,10 @@ const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2
 const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 export default function SerAnfitrionPage() {
+  // F2a (i18n-es-en): `publicacion` namespace owns the frontend copy. Session
+  // prefills (email/telefono from `usuario`) and DB option labels render
+  // verbatim — passthrough is out of scope for resources.
+  const { t } = useTranslation('publicacion')
   const navigate = useNavigate()
   const usuario = obtenerSesion()
   const [departamentos, setDepartamentos] = useState([])
@@ -61,7 +66,7 @@ export default function SerAnfitrionPage() {
       headers: { 'X-CSRF-Token': readCsrfToken() },
       body: formData,
     })
-    if (!res.ok) throw new Error('No se pudo subir la foto.')
+    if (!res.ok) throw new Error(t('uploadError'))
     const data = await res.json()
     const item = Array.isArray(data) ? data[0] : data
     return item?.url ?? ''
@@ -75,18 +80,18 @@ export default function SerAnfitrionPage() {
       return
     }
     if (!foto && !fotoUrl) {
-      setError('La foto de perfil es obligatoria.')
-      setToast({ tipo: 'error', mensaje: 'La foto de perfil es obligatoria.' })
+      setError(t('errors.photoRequired'))
+      setToast({ tipo: 'error', mensaje: t('errors.photoRequired') })
       return
     }
     if (!descripcion.trim()) {
-      setError('Cuéntanos una breve descripción sobre ti.')
-      setToast({ tipo: 'error', mensaje: 'Cuéntanos una breve descripción sobre ti.' })
+      setError(t('errors.descRequired'))
+      setToast({ tipo: 'error', mensaje: t('errors.descRequired') })
       return
     }
     if (!municipioId) {
-      setError('Seleccioná tu municipio.')
-      setToast({ tipo: 'error', mensaje: 'Seleccioná tu municipio.' })
+      setError(t('errors.municipioRequired'))
+      setToast({ tipo: 'error', mensaje: t('errors.municipioRequired') })
       return
     }
     setSubiendo(true)
@@ -102,11 +107,11 @@ export default function SerAnfitrionPage() {
         fotoPerfil: url,
       })
       guardarSesion({ ...usuario, rol: 'anfitrion', fotoPerfil: url })
-      setToast({ tipo: 'exito', mensaje: '¡Ya eres anfitrión!' })
+      setToast({ tipo: 'exito', mensaje: t('successToast') })
       setTimeout(() => navigate('/panel'), 1500)
       return anfitrion
     } catch (err) {
-      const mensajeError = err.mensaje || err.message || 'No se pudo completar el registro.'
+      const mensajeError = err.mensaje || err.message || t('genericError')
       setError(mensajeError)
       setToast({ tipo: 'error', mensaje: mensajeError })
     } finally {
@@ -119,15 +124,15 @@ export default function SerAnfitrionPage() {
     return (
       <main className="flex justify-center px-4 py-20">
         <div className="w-full max-w-md text-center">
-          <h1 className="text-2xl font-bold text-verde-bosque">Conviértete en anfitrión</h1>
+          <h1 className="text-2xl font-bold text-verde-bosque">{t('heading')}</h1>
           <p className="mt-3 text-cafe">
-            Para ofrecer tus experiencias necesitás iniciar sesión.
+            {t('loginRequired.body')}
           </p>
           <Link
             to="/login"
             className="cursor-pointer mt-6 inline-block rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
           >
-            Iniciar sesión
+            {t('loginRequired.cta')}
           </Link>
         </div>
       </main>
@@ -138,15 +143,15 @@ export default function SerAnfitrionPage() {
     <main className="flex justify-center px-4 py-12">
       <div className="w-full max-w-2xl">
         <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
-          <h1 className="text-2xl font-bold text-verde-bosque">Conviértete en anfitrión</h1>
+          <h1 className="text-2xl font-bold text-verde-bosque">{t('heading')}</h1>
           <p className="mt-1 text-sm text-cafe">
-            Crea tu perfil de anfitrión. Necesitamos una foto de tu persona.
+            {t('subtitle')}
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className={labelCls} htmlFor="anf-foto">Foto de perfil *</label>
+                <label className={labelCls} htmlFor="anf-foto">{t('photoLabel')}</label>
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
@@ -154,7 +159,7 @@ export default function SerAnfitrionPage() {
                     className="cursor-pointer flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-neutral-300 bg-crema text-3xl text-cafe hover:border-verde-hoja"
                   >
                     {foto || fotoUrl ? (
-                      <img src={foto ? URL.createObjectURL(foto) : fotoUrl} alt="Foto de perfil" className="h-full w-full object-cover" />
+                      <img src={foto ? URL.createObjectURL(foto) : fotoUrl} alt={t('photoAlt')} className="h-full w-full object-cover" />
                     ) : (
                       '+'
                     )}
@@ -165,9 +170,9 @@ export default function SerAnfitrionPage() {
                       onClick={() => fileRef.current?.click()}
                       className="cursor-pointer font-semibold text-terracota hover:text-verde-bosque"
                     >
-                      Elegir foto
+                      {t('choosePhoto')}
                     </button>
-                    <p className="mt-1">JPG o PNG. Será visible para tus huéspedes.</p>
+                    <p className="mt-1">{t('photoHint')}</p>
                   </div>
                   <input
                     ref={fileRef}
@@ -180,37 +185,37 @@ export default function SerAnfitrionPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className={labelCls} htmlFor="anf-email">Correo electrónico *</label>
+                <label className={labelCls} htmlFor="anf-email">{t('emailLabel')}</label>
                 <input id="anf-email" type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <div>
-                <label className={labelCls} htmlFor="anf-telefono">Teléfono</label>
-                <input id="anf-telefono" className={inputCls} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono de contacto" />
+                <label className={labelCls} htmlFor="anf-telefono">{t('phoneLabel')}</label>
+                <input id="anf-telefono" className={inputCls} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder={t('phonePlaceholder')} />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls} htmlFor="anf-descripcion">Breve descripción *</label>
+                <label className={labelCls} htmlFor="anf-descripcion">{t('descLabel')}</label>
                 <textarea
                   id="anf-descripcion"
                   className={inputCls + ' h-24 resize-none'}
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Cuéntanos quién eres y qué experiencia ofreces..."
+                  placeholder={t('descPlaceholder')}
                   required
                 />
               </div>
               <div>
-                <label className={labelCls} htmlFor="anf-departamento">Departamento *</label>
+                <label className={labelCls} htmlFor="anf-departamento">{t('deptoLabel')}</label>
                 <select id="anf-departamento" className={inputCls} value={departamentoId} onChange={(e) => { setDepartamentoId(e.target.value); setMunicipioId('') }} required>
-                  <option value="">Seleccioná un departamento</option>
+                  <option value="">{t('deptoOption')}</option>
                   {departamentos.map((d) => (
                     <option key={d.id} value={d.id}>{d.nombre}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelCls} htmlFor="anf-municipio">Municipio *</label>
+                <label className={labelCls} htmlFor="anf-municipio">{t('muniLabel')}</label>
                 <select id="anf-municipio" className={inputCls} value={municipioId} onChange={(e) => setMunicipioId(e.target.value)} required disabled={!departamentoId}>
-                  <option value="">Seleccioná un municipio</option>
+                  <option value="">{t('muniOption')}</option>
                   {municipios.map((m) => (
                     <option key={m.id} value={m.id}>{m.nombre}</option>
                   ))}
@@ -229,7 +234,7 @@ export default function SerAnfitrionPage() {
               disabled={enviando || subiendo}
               className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
-              {subiendo ? 'Subiendo foto...' : enviando ? 'Registrando...' : 'Crear perfil de anfitrión'}
+              {subiendo ? t('submittingPhoto') : enviando ? t('submitting') : t('submit')}
             </button>
           </form>
         </div>

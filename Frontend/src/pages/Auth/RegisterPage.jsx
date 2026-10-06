@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api.js'
 import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
@@ -11,6 +12,9 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/
 const soloTelefono = (valor) => valor.replace(/[^0-9+()\-\s]/g, '')
 
 export default function RegisterPage() {
+  // F2a (i18n-es-en): `auth` namespace (shared with AuthPage). Validation copy
+  // is frontend-owned and extracted; API `mensaje` passthrough stays verbatim.
+  const { t } = useTranslation('auth')
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
   const [telefono, setTelefono] = useState('')
@@ -29,44 +33,44 @@ export default function RegisterPage() {
     const nuevos = {}
 
     if (!nombre.trim()) {
-      nuevos.nombre = 'El nombre es obligatorio.'
+      nuevos.nombre = t('register.errors.nombreRequired')
     } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(nombre.trim())) {
-      nuevos.nombre = 'El nombre solo puede contener letras, sin números ni símbolos.'
+      nuevos.nombre = t('register.errors.nombreLetters')
     }
 
     if (!apellido.trim()) {
-      nuevos.apellido = 'El apellido es obligatorio.'
+      nuevos.apellido = t('register.errors.apellidoRequired')
     } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(apellido.trim())) {
-      nuevos.apellido = 'El apellido solo puede contener letras, sin números ni símbolos.'
+      nuevos.apellido = t('register.errors.apellidoLetters')
     }
 
     if (!telefono.trim()) {
-      nuevos.telefono = 'El número de teléfono es obligatorio.'
+      nuevos.telefono = t('register.errors.telefonoRequired')
     } else if (!/^[0-9+()\-\s]{7,}$/.test(telefono.trim())) {
-      nuevos.telefono = 'El teléfono solo puede tener números y símbolos como +, -, ( ) o espacios.'
+      nuevos.telefono = t('register.errors.telefonoChars')
     } else {
       const digitos = (telefono.match(/\d/g) ?? []).length
       if (digitos < 8) {
-        nuevos.telefono = 'El número de teléfono debe tener al menos 8 dígitos.'
+        nuevos.telefono = t('register.errors.telefonoDigits')
       }
     }
 
     if (!email.trim()) {
-      nuevos.email = 'El correo electrónico es obligatorio.'
+      nuevos.email = t('register.errors.emailRequired')
     } else if (!emailRegex.test(email.trim())) {
-      nuevos.email = 'Ingresa un correo válido con @ y un dominio (ej: nombre@dominio.com).'
+      nuevos.email = t('register.errors.emailInvalid')
     }
 
     if (!password) {
-      nuevos.password = 'La contraseña es obligatoria.'
+      nuevos.password = t('register.errors.passwordRequired')
     } else if (password.length < 6) {
-      nuevos.password = 'La contraseña debe tener al menos 6 caracteres.'
+      nuevos.password = t('register.errors.passwordLength')
     }
 
     if (!confirmar) {
-      nuevos.confirmar = 'Confirma tu contraseña.'
+      nuevos.confirmar = t('register.errors.confirmRequired')
     } else if (password !== confirmar) {
-      nuevos.confirmar = 'Las contraseñas no coinciden.'
+      nuevos.confirmar = t('register.errors.confirmMismatch')
     }
 
     setErrores(nuevos)
@@ -95,10 +99,10 @@ export default function RegisterPage() {
         password,
       })
       await restaurarSesion()
-      setToast({ tipo: 'exito', mensaje: '¡Cuenta creada con éxito!' })
+      setToast({ tipo: 'exito', mensaje: t('register.successToast') })
       setTimeout(() => navigate('/'), 1500)
     } catch (err) {
-      const mensajeError = err.mensaje || err.message || 'Error al crear la cuenta. Intentalo de nuevo.'
+      const mensajeError = err.mensaje || err.message || t('register.genericError')
       setError(mensajeError)
       setToast({ tipo: 'error', mensaje: mensajeError })
     } finally {
@@ -110,14 +114,14 @@ export default function RegisterPage() {
     <main className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
-          <h1 className="text-2xl font-bold text-verde-bosque">Regístrate</h1>
-          <p className="mt-1 text-sm text-cafe">Crea tu cuenta en I Guana Travel SV</p>
+          <h1 className="text-2xl font-bold text-verde-bosque">{t('register.heading')}</h1>
+          <p className="mt-1 text-sm text-cafe">{t('register.subtitle')}</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="nombre" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                  Nombre *
+                  {t('register.nombreLabel')}
                 </label>
                 <input
                   id="nombre"
@@ -127,7 +131,7 @@ export default function RegisterPage() {
                     setNombre(e.target.value)
                     if (errores.nombre) setErrores((prev) => ({ ...prev, nombre: '' }))
                   }}
-                  placeholder="Tu nombre"
+                  placeholder={t('register.nombrePlaceholder')}
                   autoComplete="given-name"
                   required
                   className={estilosInput}
@@ -136,7 +140,7 @@ export default function RegisterPage() {
               </div>
               <div>
                 <label htmlFor="apellido" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                  Apellido *
+                  {t('register.apellidoLabel')}
                 </label>
                 <input
                   id="apellido"
@@ -146,7 +150,7 @@ export default function RegisterPage() {
                     setApellido(e.target.value)
                     if (errores.apellido) setErrores((prev) => ({ ...prev, apellido: '' }))
                   }}
-                  placeholder="Tu apellido"
+                  placeholder={t('register.apellidoPlaceholder')}
                   autoComplete="family-name"
                   required
                   className={estilosInput}
@@ -156,7 +160,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label htmlFor="telefono" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                Número de teléfono *
+                {t('register.telefonoLabel')}
               </label>
               <input
                 id="telefono"
@@ -166,7 +170,7 @@ export default function RegisterPage() {
                   setTelefono(soloTelefono(e.target.value))
                   if (errores.telefono) setErrores((prev) => ({ ...prev, telefono: '' }))
                 }}
-                placeholder="+503 7000 0000"
+                placeholder={t('register.telefonoPlaceholder')}
                 autoComplete="tel"
                 required
                 className={estilosInput}
@@ -175,7 +179,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label htmlFor="email" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                Correo electrónico *
+                {t('register.emailLabel')}
               </label>
               <input
                 id="email"
@@ -185,7 +189,7 @@ export default function RegisterPage() {
                   setEmail(e.target.value.toLowerCase())
                   if (errores.email) setErrores((prev) => ({ ...prev, email: '' }))
                 }}
-                placeholder="tu@correo.com"
+                placeholder={t('fields.emailPlaceholder')}
                 autoComplete="email"
                 required
                 className={estilosInput}
@@ -194,7 +198,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label htmlFor="password" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                Contraseña *
+                {t('register.passwordLabel')}
               </label>
               <div className="relative">
                 <input
@@ -205,7 +209,7 @@ export default function RegisterPage() {
                     setPassword(e.target.value)
                     if (errores.password) setErrores((prev) => ({ ...prev, password: '' }))
                   }}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t('register.passwordPlaceholder')}
                   autoComplete="new-password"
                   required
                   className={estilosInput + ' pr-11'}
@@ -213,7 +217,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setVerPassword((v) => !v)}
-                  aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={verPassword ? t('fields.hidePassword') : t('fields.showPassword')}
                   className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-neutral-400 transition-colors hover:text-verde-bosque"
                 >
                   {verPassword ? (
@@ -233,7 +237,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label htmlFor="confirmar" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                Confirmar contraseña *
+                {t('register.confirmLabel')}
               </label>
               <div className="relative">
                 <input
@@ -244,7 +248,7 @@ export default function RegisterPage() {
                     setConfirmar(e.target.value)
                     if (errores.confirmar) setErrores((prev) => ({ ...prev, confirmar: '' }))
                   }}
-                  placeholder="Repite la contraseña"
+                  placeholder={t('register.confirmPlaceholder')}
                   autoComplete="new-password"
                   required
                   className={estilosInput + ' pr-11'}
@@ -252,7 +256,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setVerConfirmar((v) => !v)}
-                  aria-label={verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={verConfirmar ? t('fields.hidePassword') : t('fields.showPassword')}
                   className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-neutral-400 transition-colors hover:text-verde-bosque"
                 >
                   {verConfirmar ? (
@@ -282,18 +286,18 @@ export default function RegisterPage() {
               disabled={enviando}
               className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
-              {enviando ? 'Registrando...' : 'Registrarse'}
+              {enviando ? t('register.submitting') : t('register.submit')}
             </button>
           </form>
         </div>
 
         <p className="mt-5 text-center text-sm text-cafe">
-          ¿Ya tienes cuenta?,{' '}
+          {t('register.haveAccount')}{' '}
           <Link
             to="/login"
             className="cursor-pointer font-semibold text-terracota transition-colors hover:text-verde-bosque"
           >
-            Inicia sesión
+            {t('register.loginLink')}
           </Link>
         </p>
       </div>
