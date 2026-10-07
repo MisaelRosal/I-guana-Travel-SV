@@ -63,7 +63,7 @@ export default function RegisterPage() {
     if (!email.trim()) {
       nuevos.email = 'El correo electrónico es obligatorio.'
     } else if (!emailRegex.test(email.trim())) {
-      nuevos.email = 'Ingresá un correo válido con @ y un dominio (ej: nombre@dominio.com).'
+      nuevos.email = 'Ingresa un correo válido con @ y un dominio (ej: nombre@dominio.com).'
     }
 
     if (!password) {
@@ -73,7 +73,7 @@ export default function RegisterPage() {
     }
 
     if (!confirmar) {
-      nuevos.confirmar = 'Confirmá tu contraseña.'
+      nuevos.confirmar = 'Confirma tu contraseña.'
     } else if (password !== confirmar) {
       nuevos.confirmar = 'Las contraseñas no coinciden.'
     }

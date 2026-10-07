@@ -41,6 +41,10 @@ builder.Services.AddTransient<IEmailService, GmailEmailService>();
 builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
 builder.Services.AddScoped<VerificationCodeService>();
 
+// Background worker that auto-cancels short reservations whose one-hour grace
+// window lapsed without payment.
+builder.Services.AddHostedService<GraceExpirationService>();
+
 // --- AuthN (design TD4): short-lived JWT delivered in an HttpOnly cookie ---
 // The real signing key is injected via user-secrets (dev) or the Jwt__Key
 // environment variable (deploy); it is NEVER committed to the repository.

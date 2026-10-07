@@ -3,6 +3,7 @@ using System;
 using IguanaSV.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IguanaSV.Api.Migrations
 {
     [DbContext(typeof(IguanasDbContext))]
-    partial class IguanasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261002164648_AddReservaFechaExpiracionGracia")]
+    partial class AddReservaFechaExpiracionGracia
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -426,65 +429,6 @@ namespace IguanaSV.Api.Migrations
                     b.ToTable("municipios", (string)null);
                 });
 
-            modelBuilder.Entity("IguanaSV.Api.Entities.NotificacionEmail", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Asunto")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("asunto");
-
-                    b.Property<DateTime>("CreadoEn")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("creado_en")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("Destinatario")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("destinatario");
-
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("estado")
-                        .HasDefaultValueSql("'pendiente'::character varying");
-
-                    b.Property<string>("MensajeError")
-                        .HasColumnType("text")
-                        .HasColumnName("mensaje_error");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("tipo");
-
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("integer")
-                        .HasColumnName("usuario_id");
-
-                    b.HasKey("Id")
-                        .HasName("notificaciones_email_pkey");
-
-                    b.HasIndex(new[] { "Estado" }, "idx_notificaciones_email_estado");
-
-                    b.HasIndex(new[] { "UsuarioId" }, "idx_notificaciones_email_usuario");
-
-                    b.ToTable("notificaciones_email", (string)null);
-                });
-
             modelBuilder.Entity("IguanaSV.Api.Entities.Notificacione", b =>
                 {
                     b.Property<int>("Id")
@@ -837,12 +781,6 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("email");
 
-                    b.Property<bool>("EmailVerificado")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("email_verificado");
-
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -880,51 +818,6 @@ namespace IguanaSV.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("usuarios", (string)null);
-                });
-
-            modelBuilder.Entity("IguanaSV.Api.Entities.VerificacionEmail", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CodigoHash")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("codigo_hash");
-
-                    b.Property<DateTime>("CreadoEn")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("creado_en")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime>("ExpiraAt")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("expira_at");
-
-                    b.Property<bool>("Usado")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("usado");
-
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("integer")
-                        .HasColumnName("usuario_id");
-
-                    b.HasKey("Id")
-                        .HasName("verificaciones_email_pkey");
-
-                    b.HasIndex(new[] { "ExpiraAt" }, "idx_verificaciones_email_expira");
-
-                    b.HasIndex(new[] { "UsuarioId", "Usado" }, "idx_verificaciones_email_usuario_usado");
-
-                    b.ToTable("verificaciones_email", (string)null);
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.Anfitrione", b =>
@@ -993,17 +886,6 @@ namespace IguanaSV.Api.Migrations
                         .HasConstraintName("municipios_departamento_id_fkey");
 
                     b.Navigation("Departamento");
-                });
-
-            modelBuilder.Entity("IguanaSV.Api.Entities.NotificacionEmail", b =>
-                {
-                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("notificaciones_email_usuario_id_fkey");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.Notificacione", b =>
@@ -1106,18 +988,6 @@ namespace IguanaSV.Api.Migrations
                     b.Navigation("Horario");
 
                     b.Navigation("Reserva");
-                });
-
-            modelBuilder.Entity("IguanaSV.Api.Entities.VerificacionEmail", b =>
-                {
-                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("verificaciones_email_usuario_id_fkey");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.Amenidade", b =>

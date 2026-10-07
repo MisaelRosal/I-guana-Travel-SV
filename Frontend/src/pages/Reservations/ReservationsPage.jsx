@@ -52,7 +52,16 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
     : formatearFecha(reserva.fechaInicio)
 
   const cancelada = reserva.estado === 'cancelada'
-  const bloqueada = fechaBloqueada(reserva.fechaInicio)
+  const confirmada = reserva.estado === 'confirmada'
+  const pendiente = reserva.estado === 'pendiente'
+
+  // Short (<24h) reservation: the one-hour grace window governs every action.
+  const esCorta = !!reserva.fechaExpiracionGracia
+  const enGracia = esCorta && pendiente && Date.now() < new Date(reserva.fechaExpiracionGracia).getTime()
+  const graciaVencida = esCorta && pendiente && Date.now() >= new Date(reserva.fechaExpiracionGracia).getTime()
+
+  // Far reservation: the legacy "1 day or less" block still applies.
+  const bloqueadaLejana = !esCorta && fechaBloqueada(reserva.fechaInicio)
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md sm:flex-row">
@@ -107,7 +116,27 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
         <div className="mt-4 border-t border-neutral-100 pt-4">
           {cancelada ? (
             <p className="text-sm text-neutral-500">Esta reserva ya fue cancelada.</p>
-          ) : bloqueada ? (
+          ) : esCorta && confirmada ? (
+            <div className="flex items-start gap-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-2.5">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4M12 16h.01" />
+              </svg>
+              <p className="text-xs text-amber">
+                Pagaste: falta menos de un día, ya no se puede editar ni cancelar.
+              </p>
+            </div>
+          ) : esCorta && graciaVencida ? (
+            <div className="flex items-start gap-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-2.5">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4M12 16h.01" />
+              </svg>
+              <p className="text-xs text-amber">
+                La hora para pagar venció. Esta reserva se cancelará automáticamente.
+              </p>
+            </div>
+          ) : bloqueadaLejana ? (
             <div className="flex items-start gap-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-2.5">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
@@ -119,7 +148,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
             </div>
           ) : (
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {reserva.estado === 'pendiente' && onPagar && (
+              {pendiente && onPagar && (
                 <button
                   type="button"
                   onClick={() => onPagar(reserva.id)}
@@ -128,7 +157,7 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
                   Pagar
                 </button>
               )}
-              {reserva.estado === 'confirmada' && onCancelar && (
+              {(confirmada || (esCorta && pendiente)) && onCancelar && (
                 <button
                   type="button"
                   onClick={() => onCancelar(reserva)}
@@ -262,7 +291,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!fechaInicio) {
-      setErrorFecha('Elegí una fecha de inicio.')
+      setErrorFecha('Elige una fecha de inicio.')
       return
     }
     if (esHospedaje && fechaFin < fechaInicio) {
@@ -511,11 +540,11 @@ function ModalPago({ reserva, onCerrar, onExito }) {
       return
     }
     if (metodoPago !== 'paypal' && !numeroTarjeta.trim()) {
-      setError('Ingresá el número de tarjeta')
+      setError('Ingresa el número de tarjeta')
       return
     }
     if (metodoPago !== 'paypal' && !nombreTitular.trim()) {
-      setError('Ingresá el nombre del titular')
+      setError('Ingresa el nombre del titular')
       return
     }
 
@@ -833,9 +862,9 @@ export default function ReservationsPage() {
         <p className="mt-8 text-terracota">Error: {error}</p>
       ) : reservas.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-cafe-claro bg-white p-10 text-center">
-          <p className="text-lg font-semibold text-verde-bosque">Todavía no tenés reservas</p>
+          <p className="text-lg font-semibold text-verde-bosque">Todavía no tienes reservas</p>
           <p className="mt-1 text-sm text-cafe">
-            Cuando hagas una reserva, la vas a poder ver acá.
+            Cuando hagas una reserva, la vas a poder ver aquí.
           </p>
           <Link
             to="/"
@@ -845,16 +874,35 @@ export default function ReservationsPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-6 space-y-5">
-          {reservas.map((reserva) => (
-            <TarjetaReserva
-              key={reserva.id}
-              reserva={reserva}
-              onEditar={setReservaEditar}
-              onEliminar={setReservaEliminar}
-              onPagar={handleAbrirPago}
-              onCancelar={setReservaCancelar}
-            />
+        <div className="mt-6 space-y-8">
+          {[
+            { titulo: 'Futuras reservas', items: reservas.filter((r) => r.estado === 'pendiente' || r.estado === 'confirmada') },
+            { titulo: 'Reservas canceladas', items: reservas.filter((r) => r.estado === 'cancelada') },
+            { titulo: 'Reservas completadas', items: reservas.filter((r) => r.estado === 'completada') },
+          ].map((seccion) => (
+            <section key={seccion.titulo}>
+              <h2 className="mb-3 text-lg font-bold text-verde-bosque">
+                {seccion.titulo} <span className="text-sm font-normal text-cafe">({seccion.items.length})</span>
+              </h2>
+              {seccion.items.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-cafe-claro bg-white p-5 text-sm text-cafe">
+                  No tienes {seccion.titulo.toLowerCase()}.
+                </p>
+              ) : (
+                <div className="space-y-5">
+                  {seccion.items.map((reserva) => (
+                    <TarjetaReserva
+                      key={reserva.id}
+                      reserva={reserva}
+                      onEditar={setReservaEditar}
+                      onEliminar={setReservaEliminar}
+                      onPagar={handleAbrirPago}
+                      onCancelar={setReservaCancelar}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
           ))}
         </div>
       )}
