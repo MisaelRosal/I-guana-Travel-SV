@@ -2,6 +2,7 @@ using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,12 @@ namespace IguanaSV.Api.Controllers;
 public class ReservaController : ControllerBase
 {
     private readonly IguanasDbContext _context;
+    private readonly IEmailNotificationService _notificaciones;
 
-    public ReservaController(IguanasDbContext context)
+    public ReservaController(IguanasDbContext context, IEmailNotificationService notificaciones)
     {
         _context = context;
+        _notificaciones = notificaciones;
     }
 
     // Owner-scoped list (W4): a plain user sees only their own reservations;
@@ -267,6 +270,22 @@ public class ReservaController : ControllerBase
             // attempt the insert. The EXCLUDE is the tie-breaker, so the loser is
             // rejected by the database and surfaces here as a 409 (not a 500).
             return Conflict(OverlapConflict());
+        }
+
+        // Confirmation + simulated payment reminder to the guest address given in
+        // the booking form (not the account's login email: a guest can book for
+        // someone else). Fire-and-forget-safe: a failed email never fails the
+        // reservation itself.
+        if (!string.IsNullOrWhiteSpace(dto.EmailHuesped))
+        {
+            await _notificaciones.ReservaCreadaAsync(
+                dto.EmailHuesped!.Trim().ToLowerInvariant(),
+                dto.NombreHuesped ?? "huésped",
+                publicacion.Titulo ?? "tu reserva",
+                inicio,
+                fin,
+                dto.NumeroHuespedes,
+                reserva.PrecioTotal);
         }
 
         return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);

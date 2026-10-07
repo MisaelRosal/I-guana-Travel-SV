@@ -4,6 +4,10 @@ import ExperienceCard from '../../components/ExperienceCard.jsx'
 import LoadingIguana from '../../components/LoadingIguana.jsx'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
 
+// La pantalla de inicio (logo a pantalla completa) se mantiene este tiempo
+// minimo aunque la API responda antes, para que el splash siempre se vea.
+const CARGA_MINIMA_MS = 2000
+
 // Filtro desplegable con la estetica del sitio: pastilla redondeada con borde
 // cafe, panel de opciones estilo tarjeta (hover crema, seleccion verde-bosque
 // con tilde). Cierra con Escape o clic fuera. Sustituye al <select> nativo.
@@ -116,6 +120,7 @@ export default function CatalogPage() {
   // La pantalla de carga completa solo se muestra la primera vez que se entra.
   // Al cambiar filtros o escribir en el buscador la lista se actualiza sin tapar la pantalla.
   const primeraCarga = useRef(true)
+  const temporizadorCarga = useRef(null)
 
   const [busqueda, setBusqueda] = useState('')
   const [categoria, setCategoria] = useState('')
@@ -131,19 +136,23 @@ export default function CatalogPage() {
   useEffect(() => {
     let activo = true
     if (primeraCarga.current) setCargando(true)
+    const inicioCarga = Date.now()
 
     getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax })
       .then((datos) => { if (activo) setExperiencias(datos) })
       .catch(() => { if (activo) setExperiencias([]) })
       .finally(() => {
-        if (activo && primeraCarga.current) {
+        if (primeraCarga.current) {
           primeraCarga.current = false
-          setCargando(false)
+          const restante = Math.max(0, CARGA_MINIMA_MS - (Date.now() - inicioCarga))
+          temporizadorCarga.current = setTimeout(() => setCargando(false), restante)
         }
       })
 
     return () => { activo = false }
   }, [busqueda, categoria, zona, tipo, precioMax])
+
+  useEffect(() => () => clearTimeout(temporizadorCarga.current), [])
 
   useEffect(() => {
     getProximasExperiencias(3)

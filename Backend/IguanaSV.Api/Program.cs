@@ -7,6 +7,7 @@ using IguanaSV.Api.Middleware;
 using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text.Json.Serialization;
 
@@ -26,6 +27,19 @@ builder.Services.AddControllers(options =>
 builder.Services.AddDbContext<IguanasDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddSingleton<IMinioStorageService, MinioStorageService>();
+
+// --- Email saliente + verificación de correo (design: notificaciones) ---
+// Registration is held until the emailed code is entered while
+// Email:VerificacionHabilitada is true. The transport (IEmailService) is the
+// Gmail API when Email__GoogleClientId/Secret/RefreshToken are set; otherwise
+// SendAsync simply reports failure and the verification flow falls back to
+// activating the account without blocking the user.
+builder.Services.AddHttpClient("gmail");
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddTransient<IEmailService, GmailEmailService>();
+// Scoped: the audit log and the code table are written through the request DbContext.
+builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
+builder.Services.AddScoped<VerificationCodeService>();
 
 // --- AuthN (design TD4): short-lived JWT delivered in an HttpOnly cookie ---
 // The real signing key is injected via user-secrets (dev) or the Jwt__Key

@@ -3,6 +3,7 @@ using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,12 @@ namespace IguanaSV.Api.Controllers;
 public class PublicacioneController : ControllerBase
 {
     private readonly IguanasDbContext _context;
+    private readonly IEmailNotificationService _notificaciones;
 
-    public PublicacioneController(IguanasDbContext context)
+    public PublicacioneController(IguanasDbContext context, IEmailNotificationService notificaciones)
     {
         _context = context;
+        _notificaciones = notificaciones;
     }
 
     // Catalog reads stay anonymous (spec: "Public read, protected write").
@@ -326,6 +329,21 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
 
         _context.Publicaciones.Add(publicacione);
         await _context.SaveChangesAsync();
+
+        // Tell the account owner, resolved through the host row's usuario link —
+        // the anfitriones.email contact column is not the login mailbox.
+        var anfitrion = await _context.Anfitriones
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == publicacione.AnfitrionId);
+        if (anfitrion?.UsuarioId is int duenioId)
+        {
+            var duenio = await _context.Usuarios.FindAsync(duenioId);
+            if (duenio != null)
+            {
+                await _notificaciones.PublicacionCreadaAsync(
+                    duenio.Email, duenio.Nombre, publicacione.Titulo ?? "tu nueva publicación");
+            }
+        }
 
         return CreatedAtAction(nameof(GetPublicacione), new { id = publicacione.Id }, publicacione);
     }

@@ -23,7 +23,33 @@ public class UsuarioResponse
     public string? Telefono { get; set; }
     public string Email { get; set; } = null!;
     public string Rol { get; set; } = "usuario";
+    public bool EmailVerificado { get; set; }
     public DateTime? CreatedAt { get; set; }
+}
+
+/// <summary>
+/// What POST /api/auth/register returns. The account is created but NOT
+/// authenticated when <see cref="VerificacionRequerida"/> is true: the caller
+/// must hand back the emailed code through
+/// POST /api/auth/verificar-email before a session is issued.
+/// </summary>
+public class RegistroResponseDto
+{
+    public int Id { get; set; }
+    public string Email { get; set; } = null!;
+    public bool VerificacionRequerida { get; set; }
+    public string Mensaje { get; set; } = null!;
+}
+
+public class VerificarEmailRequest
+{
+    public string Email { get; set; } = null!;
+    public string Codigo { get; set; } = null!;
+}
+
+public class ReenviarVerificacionRequest
+{
+    public string Email { get; set; } = null!;
 }
 
 public class ActualizarPerfilAnfitrionRequest

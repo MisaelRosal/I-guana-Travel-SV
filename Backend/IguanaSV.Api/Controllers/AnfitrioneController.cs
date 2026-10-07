@@ -2,6 +2,7 @@ using IguanaSV.Api.Auth;
 using IguanaSV.Api.DTOs;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,12 @@ namespace IguanaSV.Api.Controllers;
 public class AnfitrioneController : ControllerBase
 {
     private readonly IguanasDbContext _context;
+    private readonly IEmailNotificationService _notificaciones;
 
-    public AnfitrioneController(IguanasDbContext context)
+    public AnfitrioneController(IguanasDbContext context, IEmailNotificationService notificaciones)
     {
         _context = context;
+        _notificaciones = notificaciones;
     }
 
     // PII bulk guard: the list is catalog data for anonymous/usuario callers,
@@ -135,6 +138,17 @@ public class AnfitrioneController : ControllerBase
 
         anfitrione.Verificado = verificado;
         await _context.SaveChangesAsync();
+
+        // Notify the account owner (not the anfitriones.email contact column):
+        // the login credential's mailbox is the one they actually read.
+        if (verificado && anfitrione.UsuarioId is int duenioId)
+        {
+            var duenio = await _context.Usuarios.FindAsync(duenioId);
+            if (duenio != null)
+            {
+                await _notificaciones.AnfitrionVerificadoAsync(duenio.Email, duenio.Nombre);
+            }
+        }
 
         return NoContent();
     }
@@ -278,6 +292,12 @@ public class AnfitrioneController : ControllerBase
                 .ThenInclude(m => m.Departamento)
             .FirstAsync(a => a.Id == anfitrione.Id);
 
+        var duenio = await _context.Usuarios.FindAsync(sub.Value);
+        if (duenio != null)
+        {
+            await _notificaciones.PerfilAnfitrionActualizadoAsync(duenio.Email, duenio.Nombre);
+        }
+
         return Ok(await ToMiPerfilAsync(actualizado));
     }
 
@@ -356,6 +376,8 @@ public class AnfitrioneController : ControllerBase
             usuario.Rol = "anfitrion";
         }
         await _context.SaveChangesAsync();
+
+        await _notificaciones.SeAnfitrionAsync(usuario.Email, usuario.Nombre);
 
         return CreatedAtAction(nameof(GetAnfitrione), new { id = anfitrione.Id }, anfitrione);
     }
