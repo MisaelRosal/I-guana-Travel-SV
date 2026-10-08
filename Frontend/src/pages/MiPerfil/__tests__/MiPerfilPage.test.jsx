@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter } from 'react-router-dom'
@@ -120,17 +121,30 @@ describe('EN active: profile chrome comes from the perfil namespace', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
 
-    // Frontend-owned validation copy resolves through the perfil namespace.
-    fireEvent.change(screen.getByLabelText('Contact email *'), { target: { value: '' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
-    expect(await screen.findByText('Enter a contact email.')).toBeInTheDocument()
+    // Timer-deterministic save/toast flow: Toast auto-dismisses with real
+    // timers (50ms in / 3500ms out / 300ms unmount), and under full-suite
+    // contention the wall clock could pass that window before findByRole ever
+    // polled the status node — the flake this isolation removes. Fake timers
+    // freeze the window; `act` flushes the mocked service promise chain
+    // (microtasks only), so every assertion below is synchronous against a
+    // guaranteed-mounted toast. Same expectations, identical behavior.
+    vi.useFakeTimers()
+    try {
+      // Frontend-owned validation copy resolves through the perfil namespace.
+      fireEvent.change(screen.getByLabelText('Contact email *'), { target: { value: '' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+      expect(screen.getByText('Enter a contact email.')).toBeInTheDocument()
 
-    // Successful save shows the localized toast; stored location names persist.
-    fireEvent.change(screen.getByLabelText('Contact email *'), { target: { value: 'nueva@correo.com' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Profile updated successfully.')
-    expect(screen.getByText('nueva@correo.com')).toBeInTheDocument()
-    expect(screen.getByText('Suchitoto, San Salvador')).toBeInTheDocument()
+      // Successful save shows the localized toast; stored location names persist.
+      fireEvent.change(screen.getByLabelText('Contact email *'), { target: { value: 'nueva@correo.com' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+      await act(async () => {})
+      expect(screen.getByRole('status')).toHaveTextContent('Profile updated successfully.')
+      expect(screen.getByText('nueva@correo.com')).toBeInTheDocument()
+      expect(screen.getByText('Suchitoto, San Salvador')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders the missing-profile state in EN', async () => {
