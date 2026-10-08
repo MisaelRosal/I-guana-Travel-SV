@@ -92,7 +92,7 @@ jobs:
       # "pull access denied / requested access denied" manifest lookups.
       - name: Pre-pull de imágenes externas (con reintento)
         run: |
-          for image in postgres:16-alpine minio/minio:RELEASE.2024-01-16T16-07-38Z; do
+          for image in postgres:16-alpine bitnamilegacy/minio:latest; do
             ok=0
             for attempt in 1 2 3 4 5; do
               echo "Pull $image intento $attempt..."
