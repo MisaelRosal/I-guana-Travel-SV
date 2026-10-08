@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { api } from '../../services/api.js'
 import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
@@ -27,6 +27,15 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [toast, setToast] = useState(null)
+
+  // Email-verification step. The account is created on the server but stays
+  // dormant until the code sent to `emailRegistro` is entered, so no session
+  // exists yet and nothing is cached locally.
+  const [paso, setPaso] = useState('registro')
+  const [emailRegistro, setEmailRegistro] = useState('')
+  const [codigo, setCodigo] = useState('')
+  const [reenviando, setReenviando] = useState(false)
+
   const navigate = useNavigate()
 
   const validar = () => {
@@ -89,18 +98,29 @@ export default function RegisterPage() {
     }
     setEnviando(true)
     try {
-      // Create the account, then rehydrate the session from GET /api/auth/me
-      // (server-authoritative) rather than trusting the POST body as a session.
-      await api.post('/Auth/register', {
+      // Create the account. Depending on the server's verification policy the
+      // response either completes registration (session cookies already set) or
+      // asks for the emailed code before any session exists.
+      const resultado = await api.post('/Auth/register', {
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         telefono: telefono.trim(),
         email: email.trim().toLowerCase(),
         password,
       })
-      await restaurarSesion()
-      setToast({ tipo: 'exito', mensaje: t('register.successToast') })
-      setTimeout(() => navigate('/'), 1500)
+      if (!resultado?.verificacionRequerida) {
+        // Server-authoritative rehydrate (POST body is not trusted as a session).
+        await restaurarSesion()
+        setToast({ tipo: 'exito', mensaje: resultado?.mensaje || t('register.successToast') })
+        setTimeout(() => navigate('/'), 1500)
+        return
+      }
+
+      setEmailRegistro(resultado.email)
+      setCodigo('')
+      setError('')
+      setPaso('verificar')
+      setToast({ tipo: 'exito', mensaje: resultado.mensaje })
     } catch (err) {
       const mensajeError = err.mensaje || err.message || t('register.genericError')
       setError(mensajeError)
@@ -110,10 +130,59 @@ export default function RegisterPage() {
     }
   }
 
+  const soloDigitos = (valor) => valor.replace(/[^0-9]/g, '').slice(0, 6)
+
+  const handleVerificar = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (codigo.length !== 6) {
+      const mensaje = t('register.verify.codeLengthError')
+      setError(mensaje)
+      setToast({ tipo: 'error', mensaje })
+      return
+    }
+    setEnviando(true)
+    try {
+      await api.post('/Auth/verificar-email', { email: emailRegistro, codigo })
+      await restaurarSesion()
+      setToast({ tipo: 'exito', mensaje: t('register.verify.verifiedToast') })
+      setTimeout(() => navigate('/'), 1500)
+    } catch (err) {
+      const mensajeError = err.mensaje || err.message || t('register.verify.verifyFailed')
+      setError(mensajeError)
+      setToast({ tipo: 'error', mensaje: mensajeError })
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const handleReenviar = async () => {
+    setError('')
+    setReenviando(true)
+    try {
+      const r = await api.post('/Auth/reenviar-verificacion', { email: emailRegistro })
+      setToast({ tipo: 'exito', mensaje: r?.mensaje || t('register.verify.resentToast') })
+    } catch (err) {
+      const mensajeError = err.mensaje || err.message || t('register.verify.resendFailed')
+      setError(mensajeError)
+      setToast({ tipo: 'error', mensaje: mensajeError })
+    } finally {
+      setReenviando(false)
+    }
+  }
+
+  const handleVolver = () => {
+    setPaso('registro')
+    setError('')
+    setCodigo('')
+  }
+
   return (
     <main className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+          {paso === 'registro' ? (
+            <>
           <h1 className="text-2xl font-bold text-verde-bosque">{t('register.heading')}</h1>
           <p className="mt-1 text-sm text-cafe">{t('register.subtitle')}</p>
 
@@ -289,6 +358,74 @@ export default function RegisterPage() {
               {enviando ? t('register.submitting') : t('register.submit')}
             </button>
           </form>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-verde-bosque">{t('register.verify.heading')}</h1>
+              <p className="mt-1 text-sm text-cafe">
+                <Trans
+                  ns="auth"
+                  i18nKey="register.verify.intro"
+                  values={{ email: emailRegistro }}
+                  components={{ strong: <span className="font-semibold break-all text-verde-bosque" /> }}
+                />
+              </p>
+
+              <form className="mt-6 space-y-4" onSubmit={handleVerificar} noValidate>
+                <div>
+                  <label htmlFor="codigo" className="mb-1 block text-sm font-semibold text-verde-bosque">
+                    {t('register.verify.codeLabel')}
+                  </label>
+                  <input
+                    id="codigo"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={codigo}
+                    onChange={(e) => {
+                      setCodigo(soloDigitos(e.target.value))
+                      if (error) setError('')
+                    }}
+                    placeholder="123456"
+                    maxLength={6}
+                    required
+                    className={estilosInput + ' text-center text-2xl font-semibold tracking-[0.5em]'}
+                  />
+                </div>
+
+                {error && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={enviando}
+                  className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+                >
+                  {enviando ? t('register.verify.submitting') : t('register.verify.submit')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleReenviar}
+                  disabled={reenviando}
+                  className="cursor-pointer w-full rounded-lg border border-cafe-claro/60 bg-white px-4 py-2.5 font-semibold text-verde-bosque hover:bg-cafe-claro/20 transition-colors disabled:opacity-50"
+                >
+                  {reenviando ? t('register.verify.resending') : t('register.verify.resend')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleVolver}
+                  className="cursor-pointer w-full text-center text-sm font-semibold text-cafe transition-colors hover:text-terracota"
+                >
+                  {t('register.verify.back')}
+                </button>
+              </form>
+            </>
+          )}
         </div>
 
         <p className="mt-5 text-center text-sm text-cafe">

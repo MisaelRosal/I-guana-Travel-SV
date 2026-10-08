@@ -95,8 +95,10 @@ describe('EN active: catalog chrome comes from the catalog namespace', () => {
     expect(screen.getByRole('button', { name: 'Stays' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeInTheDocument()
 
-    // Empty list (fixture) proves the empty state is localized too.
-    expect(await screen.findByText('No listings found')).toBeInTheDocument()
+    // Empty list (fixture) proves the empty state is localized too. The list
+    // area waits for the full-screen loading splash, which now holds a minimum
+    // visible time (CARGA_MINIMA_MS = 2000, pruebas logo feature), so poll past it.
+    expect(await screen.findByText('No listings found', {}, { timeout: 3000 })).toBeInTheDocument()
     expect(
       screen.getByText('Create the first listing from the operator panel.'),
     ).toBeInTheDocument()
