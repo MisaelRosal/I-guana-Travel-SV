@@ -150,6 +150,9 @@ describe('EN active: auth chrome comes from the auth namespace', () => {
     expect(screen.getByPlaceholderText('Repeat the password')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login')
+    // JD-INFO-3: the EN footer question ends with "?" only — the overlay had
+    // shipped a malformed "?,", rendered verbatim next to the Log in link.
+    expect(screen.getByText('Already have an account?')).toBeInTheDocument()
     expect(screen.queryByText(/auth:/)).toBeNull()
 
     // First validation rule (nombre required) fires in EN: inline field
