@@ -366,7 +366,7 @@ export default function CatalogPage() {
                   {t('upcoming.title')}
                 </h2>
                 <p className="mt-1 text-sm text-cafe">
-                  {t('upcoming.subtitle', { n: PROXIMAS_LIMITE })}
+                  {t('upcoming.subtitle', { count: proximasExperiencias.length })}
                 </p>
               </div>
             </div>

@@ -38,6 +38,11 @@ const fixtures = vi.hoisted(() => ({
     proximaFecha: null,
     popular: false,
   },
+  // Upcoming list served by getProximasExperiencias. The one-card default is
+  // re-armed in beforeEach; tests that need a different card count mutate
+  // this BEFORE render (JD-INFO-1 invariant: the section label interpolates
+  // the REAL list length, never the fetch cap PROXIMAS_LIMITE).
+  proximas: [],
 }))
 
 vi.mock('../../../services/experiencias.js', () => ({
@@ -45,8 +50,9 @@ vi.mock('../../../services/experiencias.js', () => ({
   getDepartamentos: vi.fn(async () => fixtures.departamentos),
   // Empty main list -> the localized empty-state copy renders.
   getExperiencias: vi.fn(async () => []),
-  // One upcoming card -> DB passthrough surface + localized section header.
-  getProximasExperiencias: vi.fn(async () => [fixtures.experiencia]),
+  // N upcoming cards -> DB passthrough surface + localized section header
+  // whose plural resolves from the same N through _one/_other.
+  getProximasExperiencias: vi.fn(async () => fixtures.proximas),
 }))
 
 function renderCatalog() {
@@ -61,6 +67,8 @@ function renderCatalog() {
 
 beforeEach(() => {
   localStorage.clear()
+  // Default: exactly one upcoming card (label MUST say "one", not the cap 3).
+  fixtures.proximas = [fixtures.experiencia]
 })
 
 afterEach(async () => {
@@ -130,9 +138,42 @@ describe('EN active: catalog chrome comes from the catalog namespace', () => {
     renderCatalog()
 
     expect(await screen.findByText('Upcoming experiences')).toBeInTheDocument()
+    // JD-INFO-1 invariant: the label count equals the rendered card count.
+    // One card -> EN _one, never the fetch cap PROXIMAS_LIMITE (3).
+    expect(screen.getByText('Ruta del café en Apan')).toBeInTheDocument()
     expect(
-      screen.getByText('The 3 experiences with availability coming up soon.'),
+      screen.getByText('The experience with availability coming up soon.'),
     ).toBeInTheDocument()
+  })
+
+  it('interpolates the EN _other plural with the real upcoming count', async () => {
+    // 2-item fixture: the label must follow the list length, not the cap of 3.
+    fixtures.proximas = [
+      fixtures.experiencia,
+      { ...fixtures.experiencia, id: 43, titulo: 'Surf en El Sunzal' },
+    ]
+    renderCatalog()
+
+    // Two cards render...
+    expect(await screen.findByText('Surf en El Sunzal')).toBeInTheDocument()
+    expect(screen.getByText('Ruta del café en Apan')).toBeInTheDocument()
+    // ...and the _other plural says 2: label count == card count.
+    expect(
+      screen.getByText('The 2 experiences with availability coming up soon.'),
+    ).toBeInTheDocument()
+  })
+
+  it('hides the upcoming section entirely when there are no experiences', async () => {
+    fixtures.proximas = []
+    renderCatalog()
+
+    // The main empty state resolves after CARGA_MINIMA_MS, by which time the
+    // upcoming fetch has settled: a zero-length list renders no section at
+    // all (CatalogPage.jsx guards `proximasExperiencias.length > 0`), so no
+    // count label can ever claim a plural for nothing.
+    expect(await screen.findByText('No listings found', {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Upcoming experiences' })).toBeNull()
+    expect(screen.queryByText(/with availability coming up soon/)).toBeNull()
   })
 
   it('keeps stored DB experience fields verbatim Spanish while the chrome is English', async () => {
@@ -167,8 +208,9 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(screen.getByRole('button', { name: 'Todos' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Limpiar filtros' })).toBeInTheDocument()
     expect(await screen.findByText('Próximas experiencias')).toBeInTheDocument()
+    // JD-INFO-1 (ES): one card -> _one, following the real list length.
     expect(
-      await screen.findByText('Las 3 experiencias con pronta disponibilidad por fecha.'),
+      await screen.findByText('La experiencia con pronta disponibilidad por fecha.'),
     ).toBeInTheDocument()
   })
 

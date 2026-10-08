@@ -35,6 +35,7 @@
   },
   "upcoming": {
     "title": "Próximas experiencias",
-    "subtitle": "Las {{n}} experiencias con pronta disponibilidad por fecha."
+    "subtitle_one": "La experiencia con pronta disponibilidad por fecha.",
+    "subtitle_other": "Las {{count}} experiencias con pronta disponibilidad por fecha."
   }
 }

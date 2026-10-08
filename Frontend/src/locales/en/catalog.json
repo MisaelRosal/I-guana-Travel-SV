@@ -35,6 +35,7 @@
   },
   "upcoming": {
     "title": "Upcoming experiences",
-    "subtitle": "The {{n}} experiences with availability coming up soon."
+    "subtitle_one": "The experience with availability coming up soon.",
+    "subtitle_other": "The {{count}} experiences with availability coming up soon."
   }
 }
