@@ -82,7 +82,25 @@ jobs:
           POSTGRES_DB=rutasv_test
           MINIO_ROOT_USER=minio_test
           MINIO_ROOT_PASSWORD=minio_test_123
+          Jwt__Key=ci-test-signing-key-0123456789abcdef0123456789abcdef
+          EMAIL_FROM=IguanaSV CI Test <no-reply@example.com>
+          EMAIL_VERIFICACION_HABILITADA=false
           EOF
+
+      # Docker Hub rate-limits anonymous pulls from the shared GitHub Actions
+      # runner IP pool; a pre-pull with backoff rides out the transient
+      # "pull access denied / requested access denied" manifest lookups.
+      - name: Pre-pull de imágenes externas (con reintento)
+        run: |
+          for image in postgres:16-alpine minio/minio:RELEASE.2024-01-16T16-07-38Z; do
+            ok=0
+            for attempt in 1 2 3 4 5; do
+              echo "Pull $image intento $attempt..."
+              docker pull "$image" && ok=1 && break
+              sleep $((attempt * 10))
+            done
+            [ "$ok" = "1" ] || { echo "::error::Pull definitivo fallido para $image"; exit 1; }
+          done
 
       - name: Construir imágenes
         run: docker compose build
