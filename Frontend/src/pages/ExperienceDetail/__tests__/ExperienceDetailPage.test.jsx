@@ -178,6 +178,8 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     expect(screen.getByText('Verified')).toBeInTheDocument()
     expect(screen.getByText("This host hasn't added a description yet.")).toBeInTheDocument()
     expect(screen.getByText('View full profile →')).toBeInTheDocument()
+    // F5 (task 6.4): the host card link emits the English-form alias URL under EN.
+    expect(screen.getByRole('link', { name: /Carlos Mendoza/ })).toHaveAttribute('href', '/hosts/7')
   })
 
   it('localizes gallery accessibility names and the lightbox', async () => {
@@ -296,6 +298,8 @@ describe('ES active: extraction keeps the canonical Spanish detail byte-comparab
     expect(screen.getByText('/persona')).toBeInTheDocument()
     // DB host name verbatim in the info dd and the host card.
     expect(screen.getAllByText('Carlos Mendoza')).toHaveLength(2)
+    // F5 approval: the ES host link stays on the canonical Spanish path.
+    expect(screen.getByRole('link', { name: /Carlos Mendoza/ })).toHaveAttribute('href', '/anfitriones/7')
     expect(screen.getByText('Este anfitrión aún no agregó una descripción.')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reservar ahora' }))

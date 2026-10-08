@@ -42,5 +42,16 @@
     "municipioRequired": "Select your municipality."
   },
   "savedToast": "Profile updated successfully.",
-  "updateError": "Couldn't update the profile."
+  "updateError": "Couldn't update the profile.",
+  "host": {
+    "notFound": "Host profile not found.",
+    "error": "Error: {{error}}",
+    "aboutMe": "About",
+    "noDescription": "This host hasn't added a description yet.",
+    "email": "Email",
+    "phone": "Phone",
+    "location": "Location",
+    "publications": "Publications by {{name}}",
+    "noImage": "No image"
+  }
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
+import { localePath } from '../i18n/routes.jsx'
 import { esAdmin } from '../services/anfitriones.js'
 
 const SESION_KEY = 'iguana_usuario'
@@ -49,15 +50,17 @@ export default function Footer() {
   }, [])
 
   const rol = usuario?.rol ?? ''
-  const explorar = [{ to: '/', label: t('header:nav.home') }]
-  explorar.push({ to: '/reservas', label: t('header:nav.reservations') })
+  // F5 (task 6.3, sibling of the Header nav): the Explore list emits
+  // locale-form URLs — the `key` stays the stable route key, not the URL.
+  const explorar = [{ key: 'catalog', to: localePath('catalog'), label: t('header:nav.home') }]
+  explorar.push({ key: 'reservations', to: localePath('reservations'), label: t('header:nav.reservations') })
   if (rol === 'anfitrion' || rol === 'administrador') {
-    explorar.push({ to: '/panel', label: t('header:nav.operatorPanel') })
+    explorar.push({ key: 'panel', to: localePath('panel'), label: t('header:nav.operatorPanel') })
   }
   if (esAdmin(rol)) {
-    explorar.push({ to: '/admin', label: t('header:nav.adminPanel') })
+    explorar.push({ key: 'admin', to: localePath('admin'), label: t('header:nav.adminPanel') })
   }
-  explorar.push({ to: '/hacerse-anfitrion', label: t('becomeHost') })
+  explorar.push({ key: 'becomeHost', to: localePath('becomeHost'), label: t('becomeHost') })
 
   return (
     <footer className="bg-cafe-oscuro text-crema/75 mt-16">
@@ -73,7 +76,7 @@ export default function Footer() {
           <h3 className="text-white font-semibold mb-3">{t('explore.heading')}</h3>
           <ul className="space-y-2">
             {explorar.map((item) => (
-              <li key={item.to}>
+              <li key={item.key}>
                 <Link
                   to={item.to}
                   className="cursor-pointer transition-colors hover:text-verde-hoja"
@@ -90,7 +93,7 @@ export default function Footer() {
           <p className="leading-relaxed">
             {t('hosts.prompt')}{' '}
             <Link
-              to="/hacerse-anfitrion"
+              to={localePath('becomeHost')}
               className="cursor-pointer font-medium text-verde-hoja transition-colors hover:text-white"
             >
               {t('becomeHost')}

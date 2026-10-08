@@ -87,7 +87,7 @@ describe('EN active: profile chrome comes from the perfil namespace', () => {
     // The h1 is the stored host name — passthrough, never a resource lookup.
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Ana Pérez')
     expect(screen.getByRole('img', { name: 'Profile photo' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '← Back to home' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '← Back to home' })).toHaveAttribute('href', '/')
     expect(screen.getByText('Verified')).toBeInTheDocument()
     expect(screen.getByText('Contact email')).toBeInTheDocument()
     expect(screen.getByText('ana@correo.com')).toBeInTheDocument()
@@ -153,7 +153,8 @@ describe('EN active: profile chrome comes from the perfil namespace', () => {
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('My profile')
     expect(screen.getByText("We couldn't find your host profile.")).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Become a host' })).toBeInTheDocument()
+    // F5 (task 6.4): the CTA emits the English-form signup URL under EN.
+    expect(screen.getByRole('link', { name: 'Become a host' })).toHaveAttribute('href', '/become-a-host')
     expect(screen.queryByText(/perfil:/)).toBeNull()
   })
 })
@@ -164,7 +165,7 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Ana Pérez')
     expect(screen.getByRole('img', { name: 'Foto de perfil' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '← Volver al inicio' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '← Volver al inicio' })).toHaveAttribute('href', '/')
     expect(screen.getByText('Verificado')).toBeInTheDocument()
     expect(screen.getByText('Correo de contacto')).toBeInTheDocument()
     expect(screen.getByText('Teléfono')).toBeInTheDocument()
@@ -180,6 +181,6 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Mi perfil')
     expect(screen.getByText('No encontramos tu perfil de anfitrión.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Conviértete en anfitrión' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Conviértete en anfitrión' })).toHaveAttribute('href', '/hacerse-anfitrion')
   })
 })

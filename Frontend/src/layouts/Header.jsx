@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
+import { localePath } from '../i18n/routes.jsx'
 import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
 
@@ -128,15 +129,17 @@ export default function Header() {
   }, [usuario?.rol, usuario?.id, usuario?.fotoPerfil])
 
   const rol = usuario?.rol ?? ''
+  // F5 (task 6.3): nav targets resolve through the locale route table, so EN
+  // users navigate to English-form URLs while ES keeps the canonical paths.
   const links = [
-    { to: '/', label: t('nav.home') },
+    { to: localePath('catalog'), label: t('nav.home') },
   ]
-  links.push({ to: '/reservas', label: t('nav.reservations') })
+  links.push({ to: localePath('reservations'), label: t('nav.reservations') })
   if (rol === 'anfitrion') {
-    links.push({ to: '/panel', label: t('nav.operatorPanel') })
+    links.push({ to: localePath('panel'), label: t('nav.operatorPanel') })
   }
   if (esAdmin(rol)) {
-    links.push({ to: '/admin', label: t('nav.adminPanel') })
+    links.push({ to: localePath('admin'), label: t('nav.adminPanel') })
   }
 
   const cerrarSesion = async () => {
@@ -145,7 +148,7 @@ export default function Header() {
     setUsuario(null)
     setMenuAbierto(false)
     setMenuMovilAbierto(false)
-    navigate('/')
+    navigate(localePath('catalog'))
   }
 
   const claseNavLink = ({ isActive }) =>
@@ -158,7 +161,7 @@ export default function Header() {
   return (
     <header className="bg-verde-bosque text-white sticky top-0 z-20 shadow-md">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4" data-menu-movil>
-        <Link to="/" aria-label={t('brand.ariaLabel')}>
+        <Link to={localePath('catalog')} aria-label={t('brand.ariaLabel')}>
           <Logo />
         </Link>
 
@@ -203,7 +206,7 @@ export default function Header() {
                 <div role="menu" className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-lg border border-cafe-claro/40 bg-white shadow-lg">
                   {rol === 'anfitrion' && (
                     <Link
-                      to="/mi-perfil"
+                      to={localePath('miPerfil')}
                       role="menuitem"
                       onClick={() => setMenuAbierto(false)}
                       className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-cafe transition-colors hover:bg-crema hover:text-verde-bosque"
@@ -231,7 +234,7 @@ export default function Header() {
             </div>
           ) : (
             <Link
-              to="/login"
+              to={localePath('login')}
               className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-[#00B4D8] hover:text-verde-bosque transition-colors"
             >
               {t('session.signIn')}
@@ -305,7 +308,7 @@ export default function Header() {
                 </div>
                 {rol === 'anfitrion' && (
                   <Link
-                    to="/mi-perfil"
+                    to={localePath('miPerfil')}
                     onClick={() => setMenuMovilAbierto(false)}
                     className="text-sm px-3 py-2 rounded-md text-crema/85 hover:text-white hover:bg-white/10"
                   >
@@ -322,7 +325,7 @@ export default function Header() {
               </div>
             ) : (
               <Link
-                to="/login"
+                to={localePath('login')}
                 onClick={() => setMenuMovilAbierto(false)}
                 className="block cursor-pointer text-center text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold transition-colors"
               >

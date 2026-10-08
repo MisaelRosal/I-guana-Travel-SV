@@ -108,6 +108,9 @@ describe('EN active: card unit and badge labels come from the experiencia namesp
     expect(screen.getByText('Playa')).toBeInTheDocument()
     expect(screen.getByText('San Diego, La Libertad')).toBeInTheDocument()
 
+    // F5 (task 6.4): the card link emits the English-form detail URL under EN.
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/experiences/10')
+
     // Partial-rollout guarantee: raw keys never surface.
     expect(screen.queryByText(/experiencia:/)).toBeNull()
     expect(screen.queryByText(/reservas:/)).toBeNull()
@@ -136,6 +139,8 @@ describe('ES active: extraction keeps the canonical Spanish card byte-comparable
     renderCard(fixtures.hospedaje)
     expect(screen.getByText('2 hab · 4 huéspedes')).toBeInTheDocument()
     expect(screen.getByText('/ noche')).toBeInTheDocument()
+    // F5 approval: the ES form is byte-identical to today's literal.
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/experiencias/10')
 
     cleanup()
     renderCard(fixtures.experiencia)

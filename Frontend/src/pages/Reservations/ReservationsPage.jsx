@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../../i18n/config.js'
+import { localePath } from '../../i18n/routes.jsx'
 import { formatDateDMY, formatMonthYear, formatPrice, weekdayShortMonFirst } from '../../i18n/format.js'
 import { actualizarReserva, eliminarReserva, getMisReservas, pagarReserva, cancelarReserva } from '../../services/reservas.js'
 import Toast from '../../components/Toast.jsx'
@@ -850,7 +851,7 @@ export default function ReservationsPage() {
         <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
         <p className="mt-1 text-cafe">{t('gate.body')}</p>
         <Link
-          to="/login"
+          to={localePath('login')}
           className="mt-5 inline-block cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
         >
           {t('gate.cta')}
@@ -875,7 +876,7 @@ export default function ReservationsPage() {
             {t('status.emptyBody')}
           </p>
           <Link
-            to="/"
+            to={localePath('catalog')}
             className="mt-5 inline-block cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
           >
             {t('status.exploreCta')}

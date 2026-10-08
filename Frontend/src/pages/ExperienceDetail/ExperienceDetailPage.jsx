@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
 import { useFormatLocale } from '../../i18n/config.js'
+import { localePath } from '../../i18n/routes.jsx'
 import {
   formatDayMonthShort,
   formatMonthLong,
@@ -260,7 +261,7 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
     <section className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">{t('host.title')}</h3>
       <Link
-        to={`/anfitriones/${anfitrionId}`}
+        to={localePath('hostProfile', { id: anfitrionId })}
         className="mt-4 flex items-start gap-4 rounded-xl p-1 transition-colors hover:bg-neutral-50"
       >
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-crema text-2xl font-bold text-cafe">
@@ -719,12 +720,13 @@ export default function ExperienceDetailPage() {
   const manejarReservaCreada = () => {
     setPasoReserva('inicio')
     setToast({ tipo: 'exito', mensaje: t('page.toastBooked') })
-    setTimeout(() => navigate('/reservas'), 2000)
+    // F5 (task 6.4): post-booking landing follows the locale route table.
+    setTimeout(() => navigate(localePath('reservations')), 2000)
   }
 
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-8">
-      <Link to="/" className="mb-4 block font-medium text-azul hover:text-azul-cielo">
+      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
         ← {t('page.backToCatalog')}
       </Link>
 

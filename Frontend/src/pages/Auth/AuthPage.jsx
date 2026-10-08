@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { localePath } from '../../i18n/routes.jsx'
 import { api } from '../../services/api.js'
 import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
@@ -38,7 +39,8 @@ export default function AuthPage() {
       })
       await restaurarSesion()
       setToast({ tipo: 'exito', mensaje: t('login.successToast') })
-      setTimeout(() => navigate('/'), 1500)
+      // F5 (task 6.5): post-login landing follows the locale route table.
+      setTimeout(() => navigate(localePath('catalog')), 1500)
     } catch (err) {
       const mensajeError = err.mensaje || err.message || t('login.genericError')
       setError(mensajeError)
@@ -126,7 +128,7 @@ export default function AuthPage() {
         <p className="mt-5 text-center text-sm text-cafe">
           {t('login.noAccount')}{' '}
           <Link
-            to="/registro"
+            to={localePath('register')}
             className="cursor-pointer font-semibold text-terracota transition-colors hover:text-verde-bosque"
           >
             {t('login.registerLink')}

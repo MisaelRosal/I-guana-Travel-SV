@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { localePath } from '../../i18n/routes.jsx'
 import { getMiPerfil, actualizarMiPerfilAnfitrion, getMunicipios, obtenerSesion } from '../../services/anfitriones.js'
 import { api } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
@@ -53,7 +54,7 @@ export default function MiPerfilPage() {
 
   useEffect(() => {
     if (usuario?.rol !== 'anfitrion') {
-      navigate('/')
+      navigate(localePath('catalog'))
       return
     }
     let activo = true
@@ -152,7 +153,7 @@ export default function MiPerfilPage() {
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('title')}</h1>
           <p className="mt-3 text-cafe">{t('missing.body')}</p>
-          <Link to="/hacerse-anfitrion" className="cursor-pointer mt-6 inline-block rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors">
+          <Link to={localePath('becomeHost')} className="cursor-pointer mt-6 inline-block rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors">
             {t('missing.cta')}
           </Link>
         </div>
@@ -162,7 +163,7 @@ export default function MiPerfilPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
-      <Link to="/" className="mb-4 block font-medium text-azul hover:text-azul-cielo">
+      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
         {t('back')}
       </Link>
 

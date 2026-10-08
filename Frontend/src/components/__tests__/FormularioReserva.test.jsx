@@ -116,8 +116,9 @@ describe('EN active: booking form chrome comes from the experiencia namespace', 
     expect(
       screen.getByText('Sign in or create an account to confirm your booking.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign up' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login')
+    // F5 (task 6.4): the gate emits the English-form signup URL under EN.
+    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/register')
   })
 
   it('renders success, verbatim backend error and localized fallback toasts', async () => {
@@ -173,7 +174,8 @@ describe('ES active: extraction keeps the canonical Spanish form byte-comparable
     expect(
       screen.getByText('Inicia sesión o crea una cuenta para poder confirmar tu reserva.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Registrarse' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute('href', '/login')
+    // ES approval: localePath keeps the canonical Spanish forms untouched.
+    expect(screen.getByRole('link', { name: 'Registrarse' })).toHaveAttribute('href', '/registro')
   })
 })

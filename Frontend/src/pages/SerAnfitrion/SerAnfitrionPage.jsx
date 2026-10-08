@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { localePath } from '../../i18n/routes.jsx'
 import { getMunicipios, registrarAnfitrion, obtenerSesion, guardarSesion } from '../../services/anfitriones.js'
 import { api, readCsrfToken } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
@@ -76,7 +77,7 @@ export default function SerAnfitrionPage() {
     e.preventDefault()
     setError('')
     if (!usuario) {
-      navigate('/login')
+      navigate(localePath('login'))
       return
     }
     if (!foto && !fotoUrl) {
@@ -108,7 +109,7 @@ export default function SerAnfitrionPage() {
       })
       guardarSesion({ ...usuario, rol: 'anfitrion', fotoPerfil: url })
       setToast({ tipo: 'exito', mensaje: t('successToast') })
-      setTimeout(() => navigate('/panel'), 1500)
+      setTimeout(() => navigate(localePath('panel')), 1500)
       return anfitrion
     } catch (err) {
       const mensajeError = err.mensaje || err.message || t('genericError')
@@ -129,7 +130,7 @@ export default function SerAnfitrionPage() {
             {t('loginRequired.body')}
           </p>
           <Link
-            to="/login"
+            to={localePath('login')}
             className="cursor-pointer mt-6 inline-block rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
           >
             {t('loginRequired.cta')}

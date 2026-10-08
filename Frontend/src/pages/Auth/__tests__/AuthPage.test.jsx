@@ -89,7 +89,8 @@ describe('EN active: auth chrome comes from the auth namespace', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Show password' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign up' })).toBeInTheDocument()
+    // F5 (task 6.5): the register cross-link emits the English-form URL under EN.
+    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/register')
 
     // Partial-rollout guarantee: raw keys never surface.
     expect(screen.queryByText(/auth:/)).toBeNull()
@@ -148,7 +149,7 @@ describe('EN active: auth chrome comes from the auth namespace', () => {
     expect(screen.getByLabelText('Confirm password *')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Repeat the password')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login')
     expect(screen.queryByText(/auth:/)).toBeNull()
 
     // First validation rule (nombre required) fires in EN: inline field
@@ -170,7 +171,8 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(screen.getByRole('button', { name: 'Mostrar contraseña' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument()
     expect(screen.getByText('No tienes cuenta,')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Regístrate' })).toBeInTheDocument()
+    // F5 approval: ES keeps the canonical Spanish cross-links byte-identical.
+    expect(screen.getByRole('link', { name: 'Regístrate' })).toHaveAttribute('href', '/registro')
 
     fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
     expect(screen.getAllByText('Correo y contraseña son obligatorios.')).toHaveLength(2)

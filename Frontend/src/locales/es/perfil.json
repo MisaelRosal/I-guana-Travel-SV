@@ -42,5 +42,16 @@
     "municipioRequired": "Seleccioná tu municipio."
   },
   "savedToast": "Perfil actualizado correctamente.",
-  "updateError": "No se pudo actualizar el perfil."
+  "updateError": "No se pudo actualizar el perfil.",
+  "host": {
+    "notFound": "No se encontró el anfitrión.",
+    "error": "Error: {{error}}",
+    "aboutMe": "Sobre mí",
+    "noDescription": "Este anfitrión aún no agregó una descripción.",
+    "email": "Correo",
+    "phone": "Teléfono",
+    "location": "Ubicación",
+    "publications": "Publicaciones de {{name}}",
+    "noImage": "Sin imagen"
+  }
 }

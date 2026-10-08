@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
+import { localePath } from '../../i18n/routes.jsx'
 import { api } from '../../services/api.js'
 import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
@@ -112,7 +113,7 @@ export default function RegisterPage() {
         // Server-authoritative rehydrate (POST body is not trusted as a session).
         await restaurarSesion()
         setToast({ tipo: 'exito', mensaje: resultado?.mensaje || t('register.successToast') })
-        setTimeout(() => navigate('/'), 1500)
+        setTimeout(() => navigate(localePath('catalog')), 1500)
         return
       }
 
@@ -146,7 +147,7 @@ export default function RegisterPage() {
       await api.post('/Auth/verificar-email', { email: emailRegistro, codigo })
       await restaurarSesion()
       setToast({ tipo: 'exito', mensaje: t('register.verify.verifiedToast') })
-      setTimeout(() => navigate('/'), 1500)
+      setTimeout(() => navigate(localePath('catalog')), 1500)
     } catch (err) {
       const mensajeError = err.mensaje || err.message || t('register.verify.verifyFailed')
       setError(mensajeError)
@@ -431,7 +432,7 @@ export default function RegisterPage() {
         <p className="mt-5 text-center text-sm text-cafe">
           {t('register.haveAccount')}{' '}
           <Link
-            to="/login"
+            to={localePath('login')}
             className="cursor-pointer font-semibold text-terracota transition-colors hover:text-verde-bosque"
           >
             {t('register.loginLink')}

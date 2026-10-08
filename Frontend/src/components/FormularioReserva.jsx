@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../i18n/config.js'
+import { localePath } from '../i18n/routes.jsx'
 import { formatDateDMY, formatPrice } from '../i18n/format.js'
 import { crearReserva } from '../services/reservas.js'
 import Toast from './Toast.jsx'
@@ -115,13 +116,13 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
             </p>
             <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
-                to="/login"
+                to={localePath('login')}
                 className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
               >
                 {t('form.loginCta')}
               </Link>
               <Link
-                to="/registro"
+                to={localePath('register')}
                 className="cursor-pointer rounded-lg border border-terracota px-6 py-2.5 text-sm font-bold text-terracota transition-colors hover:bg-terracota/10"
               >
                 {t('form.registerCta')}

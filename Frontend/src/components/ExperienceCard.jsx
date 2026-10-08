@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../i18n/config.js'
+import { localePath } from '../i18n/routes.jsx'
 import { formatDayMonthYear, formatPrice } from '../i18n/format.js'
 
 // F4 (AD-4): Intl comes from format.js through the active-locale hook; the
@@ -20,8 +21,9 @@ export default function ExperienceCard({ experiencia, proximaFecha }) {
     : t('reservas:cupos', { count: experiencia.capacidad })
 
   return (
+    // F5 (task 6.4): the card link follows the active locale's detail form.
     <Link
-      to={`/experiencias/${experiencia.id}`}
+      to={localePath('experienceDetail', { id: experiencia.id })}
       className="group flex flex-col overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow"
     >
       <div className="relative h-52 overflow-hidden">

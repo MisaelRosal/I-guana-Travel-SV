@@ -124,7 +124,8 @@ describe('EN active: reservations chrome comes from the reservas namespace', () 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('My bookings')
     // `gate.body` exists only in es/reservas.json — fallbackLng 'es' resolves it.
     expect(screen.getByText('Debes iniciar sesión para ver tus reservas.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument()
+    // F5 approval: /login is locale-invariant; the converted site must not drift.
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login')
     // Partial-rollout guarantee: raw keys never surface.
     expect(screen.queryByText(/reservas:/)).toBeNull()
   })

@@ -98,7 +98,8 @@ describe('EN active: host-signup chrome comes from the publicacion namespace', (
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Become a host')
     expect(screen.getByText('To offer your experiences you need to sign in.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument()
+    // F5 approval: /login is locale-invariant; the converted site must not drift.
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login')
   })
 })
 
