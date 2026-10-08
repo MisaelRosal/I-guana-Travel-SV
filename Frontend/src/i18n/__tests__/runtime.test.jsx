@@ -176,6 +176,44 @@ describe('cross-tab synchronization via storage events', () => {
     // The pill and the auth control coexist in the new locale.
     expect(screen.getByRole('button', { name: 'Switch to Spanish' })).toBeInTheDocument()
   })
+
+  it('a locale change from another tab does not reset open Header UI state', async () => {
+    // JD-INFO-2: the legacy Header `storage` handler ran for EVERY key, so a
+    // locale toggle in another tab re-read the session cache, cleared the
+    // avatar photo and force-closed the open dropdown. `iguana_locale` is
+    // owned by the i18n runtime (its own cross-tab listener above): the
+    // Header must ignore it and keep its UI state intact.
+    const ANFITRION = {
+      ...USER,
+      id: 7,
+      rol: 'anfitrion',
+      fotoPerfil: 'https://cdn.example.test/ana.jpg',
+    }
+    // Empty session cache on mount: the host user and the avatar arrive only
+    // through the /Auth/me revalidation, so no `auth-change` (a legitimate
+    // reset signal) races with the storage event asserted below.
+    globalThis.fetch = vi.fn(async (url) =>
+      String(url).includes('/Auth/me') ? jsonResponse(ANFITRION) : jsonResponse([]),
+    )
+    const { container } = render(<App />)
+
+    const avatarButton = await screen.findByRole('button', { name: /Ana Test/ })
+    await waitFor(() => {
+      expect(container.querySelector(`img[src="${ANFITRION.fotoPerfil}"]`)).not.toBeNull()
+    })
+
+    fireEvent.click(avatarButton)
+    expect(await screen.findByRole('menu')).toBeInTheDocument()
+
+    // Tab B toggles the language: this tab receives the iguana_locale event.
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: 'en' }))
+    await waitFor(() => expect(i18n.language).toBe('en'))
+
+    // The runtime synced the language, while the Header kept its state: the
+    // dropdown is still open and the avatar photo was not cleared.
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(container.querySelector(`img[src="${ANFITRION.fotoPerfil}"]`)).not.toBeNull()
+  })
 })
 
 describe('ES/EN toggle pill in the Header (mobile)', () => {

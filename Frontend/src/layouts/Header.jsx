@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
 import { localePath } from '../i18n/routes.jsx'
+import { LOCALE_STORAGE_KEY } from '../i18n/config.js'
 import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
 
@@ -64,7 +65,13 @@ export default function Header() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const actualizar = () => {
+    // JD-INFO-2: `iguana_locale` is owned by the i18n runtime (config.js has
+    // its own single cross-tab listener). Reacting to that key here would
+    // re-read the session cache, clear the avatar and force-close the open
+    // dropdown on every locale toggle made in another tab. Skip it; any other
+    // storage key (and the `auth-change` event) keeps the legacy behavior.
+    const actualizar = (event) => {
+      if (event && event.key === LOCALE_STORAGE_KEY) return
       setUsuario(leerSesionCache())
       setFotoPerfil('')
       setMenuAbierto(false)
