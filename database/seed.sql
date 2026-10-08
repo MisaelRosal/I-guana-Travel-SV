@@ -79,3 +79,36 @@ ON CONFLICT (nombre) DO NOTHING;
 INSERT INTO amenidades (nombre)
 VALUES ('Wi-Fi'),('Piscina'),('Estacionamiento'),('Aire acondicionado'),('Cocina'),('Lavadora'),('TV'),('Desayuno incluido'),('Pet Friendly'),('Terraza')
 ON CONFLICT (nombre) DO NOTHING;
+
+[Fact]
+[Trait("Category", "Schema")]
+public void SeedSql_ContainsNoSchemaDdl_AndEveryInsertIsExistenceGuarded()
+{
+    var seedPath = Path.Combine(Guard.GuardScan.RepoRoot, "database", "seed.sql");
+    Assert.True(File.Exists(seedPath), "database/seed.sql must exist and carry the reference data.");
+
+    var text = File.ReadAllText(seedPath);
+
+    string[] forbidden =
+    [
+        "CREATE TABLE", "ALTER TABLE", "DROP TABLE",
+        "CREATE INDEX", "CREATE UNIQUE INDEX", "DROP INDEX",
+        "CREATE EXTENSION",
+    ];
+
+    foreach (var token in forbidden)
+    {
+        Assert.False(
+            text.Contains(token, StringComparison.OrdinalIgnoreCase),
+            $"database/seed.sql must not contain schema DDL (found \"{token}\"): " +
+            "EF migrations are the single source of truth for the schema.");
+    }
+
+    // Reference data must still be present and idempotent.
+    Assert.Contains("INSERT INTO departamentos", text, StringComparison.OrdinalIgnoreCase);
+    Assert.Contains("INSERT INTO municipios", text, StringComparison.OrdinalIgnoreCase);
+    Assert.Contains("INSERT INTO categorias", text, StringComparison.OrdinalIgnoreCase);
+    Assert.Contains("INSERT INTO amenidades", text, StringComparison.OrdinalIgnoreCase);
+    Assert.Contains("ON CONFLICT", text, StringComparison.OrdinalIgnoreCase);
+    Assert.DoesNotContain("IF NOT EXISTS (SELECT 1 FROM publicaciones", text, StringComparison.OrdinalIgnoreCase);
+}
