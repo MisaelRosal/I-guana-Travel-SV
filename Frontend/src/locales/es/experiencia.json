@@ -2,7 +2,10 @@
   "card": {
     "perNight": "noche",
     "perPerson": "persona",
-    "stayDetail": "{{rooms}} hab · {{guests}} huéspedes",
+    "stayRooms_one": "{{count}} hab",
+    "stayRooms_other": "{{count}} hab",
+    "stayGuests_one": "{{count}} huésped",
+    "stayGuests_other": "{{count}} huéspedes",
     "popular": "Popular"
   },
   "form": {

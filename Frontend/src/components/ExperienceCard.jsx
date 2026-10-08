@@ -16,8 +16,15 @@ export default function ExperienceCard({ experiencia, proximaFecha }) {
   // Capacity badge (spec "Enum, unit, and badge labels localized"): consumed
   // from the `reservas:cupos` plural contract F2b-1 established — single
   // source of truth for `{{count}} cupo(s)`, so no duplicate key lands here.
+  // JD-INFO-4: the stay detail is two count-driven plural sub-keys (the
+  // repo's `_one/_other` convention) joined with the ` · ` separator, so
+  // "1 room"/"2 rooms" and "1 huésped"/"N huéspedes" each agree with their
+  // own count instead of a hardcoded template.
   const detalle = esHospedaje
-    ? t('card.stayDetail', { rooms: experiencia.habitaciones ?? 1, guests: experiencia.capacidad })
+    ? [
+        t('card.stayRooms', { count: experiencia.habitaciones ?? 1 }),
+        t('card.stayGuests', { count: experiencia.capacidad }),
+      ].join(' · ')
     : t('reservas:cupos', { count: experiencia.capacidad })
 
   return (

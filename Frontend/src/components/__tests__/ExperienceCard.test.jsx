@@ -67,6 +67,21 @@ const fixtures = vi.hoisted(() => ({
     proximaFecha: null,
     popular: false,
   },
+  soloStay: {
+    id: 13,
+    titulo: 'Cabaña en Suchitoto',
+    tipo: 'hospedaje',
+    categoria: 'Cabaña',
+    descripcion: 'Cabaña de una habitación para un huésped.',
+    municipio: 'Suchitoto',
+    departamento: 'San Salvador',
+    precio: 60,
+    capacidad: 1,
+    habitaciones: 1,
+    imagenes: [],
+    proximaFecha: null,
+    popular: false,
+  },
 }))
 
 function renderCard(experiencia) {
@@ -99,8 +114,11 @@ describe('EN active: card unit and badge labels come from the experiencia namesp
   it('renders the stay detail interpolation and the EN per-night unit', () => {
     renderCard(fixtures.hospedaje)
 
-    // AD-3 template pair: "{{rooms}} hab · {{guests}} huéspedes" <-> EN overlay.
-    expect(screen.getByText('2 room · 4 guests')).toBeInTheDocument()
+    // JD-INFO-4: the compound stay label splits into two count-driven
+    // plural sub-keys (card.stayRooms/card.stayGuests `_one/_other`), joined
+    // at the call site with the existing ` · ` separator, so both nouns agree
+    // with their own count in every locale.
+    expect(screen.getByText('2 rooms · 4 guests')).toBeInTheDocument()
     expect(screen.getByText('/ night')).toBeInTheDocument()
 
     // DB passthrough under English chrome.
@@ -114,6 +132,17 @@ describe('EN active: card unit and badge labels come from the experiencia namesp
     // Partial-rollout guarantee: raw keys never surface.
     expect(screen.queryByText(/experiencia:/)).toBeNull()
     expect(screen.queryByText(/reservas:/)).toBeNull()
+  })
+
+  it('pluralizes both stay counts independently for the 1-room 1-guest stay (JD-INFO-4)', () => {
+    // The compound stay label is two _one/_other sub-keys joined by ` · `, so
+    // each count picks its own English plural form: "1 room"/"2 rooms",
+    // "1 guest"/"4 guests".
+    renderCard(fixtures.soloStay)
+
+    expect(screen.getByText('1 room · 1 guest')).toBeInTheDocument()
+    expect(screen.queryByText('1 room · 1 guests')).toBeNull()
+    expect(screen.queryByText('1 rooms · 1 guest')).toBeNull()
   })
 
   it('renders the capacity badge through the reservas:cupos consumer contract', () => {
@@ -153,5 +182,13 @@ describe('ES active: extraction keeps the canonical Spanish card byte-comparable
     renderCard(fixtures.oneSpot)
     expect(screen.getByText('1 cupo')).toBeInTheDocument()
     expect(screen.queryByText('1 cupos')).toBeNull()
+  })
+
+  it('keeps the canonical multi-item stay label byte-stable and fixes the singular ES pair (JD-INFO-4)', () => {
+    // N>=2 / M>=2 stays byte-identical to the approved 'N hab · M huéspedes';
+    // the singular pair must read "1 hab · 1 huésped", never "1 huéspedes".
+    renderCard(fixtures.soloStay)
+    expect(screen.getByText('1 hab · 1 huésped')).toBeInTheDocument()
+    expect(screen.queryByText('1 hab · 1 huéspedes')).toBeNull()
   })
 })
