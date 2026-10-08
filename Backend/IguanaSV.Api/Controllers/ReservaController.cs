@@ -278,22 +278,6 @@ public class ReservaController : ControllerBase
             reserva.FechaExpiracionGracia = DateTime.Now.AddHours(1);
         }
 
-        var reserva = new Reserva
-        {
-            PublicacionId = dto.PublicacionId,
-            UsuarioId = User.GetSubjectId(),
-            NombreHuesped = dto.NombreHuesped,
-            EmailHuesped = dto.EmailHuesped,
-            TelefonoHuesped = dto.TelefonoHuesped,
-            FechaInicio = inicio,
-            FechaFin = fin,
-            NumeroHuespedes = dto.NumeroHuespedes,
-            PrecioTotal = CalcularPrecioTotal(
-                publicacion, await GetPrecioAdicionalExperienciaAsync(publicacion),
-                inicio, fin, dto.NumeroHuespedes),
-            Estado = "pendiente",
-        };
-
         _context.Reservas.Add(reserva);
 
         try
