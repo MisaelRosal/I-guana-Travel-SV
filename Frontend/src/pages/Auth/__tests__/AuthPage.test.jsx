@@ -26,12 +26,28 @@ const fixtures = vi.hoisted(() => ({
   // When set, api.post rejects with this object (simulating the API error
   // shape `err.mensaje` consumed by both pages).
   reject: null,
+  // JD-INFO-6 (disclosed W-5): per-endpoint overrides so the register flow
+  // can arm the verification step and then fail ONLY the verify/resend
+  // calls. `{ reject }` throws that object from api.post for the path,
+  // `{ resolve }` replaces the default `{ ok: true }` payload.
+  routes: {},
+  // Server answer when the email-verification policy is on: the account is
+  // created but dormant, and RegisterPage switches to paso === 'verificar'.
+  verifyRequired: {
+    verificacionRequerida: true,
+    email: 'ana@correo.com',
+    // Backend passthrough copy (Spanish), rendered verbatim in any locale.
+    mensaje: 'Te enviamos un código de verificación.',
+  },
 }))
 
 vi.mock('../../../services/api.js', () => ({
   api: {
-    post: vi.fn(async () => {
+    post: vi.fn(async (path) => {
       if (fixtures.reject) throw fixtures.reject
+      const route = fixtures.routes[path]
+      if (route?.reject) throw route.reject
+      if (route?.resolve !== undefined) return route.resolve
       return { ok: true }
     }),
   },
@@ -61,9 +77,32 @@ function renderRegisterPage() {
   )
 }
 
+// JD-INFO-6: drive the register form through client validation and submit it,
+// so the mocked POST can arm the verification step. Labels are asserted
+// against the same localized chrome the flow must render.
+const registerLabels = {
+  en: ['First name *', 'Last name *', 'Phone number *', 'Email address *', 'Password *', 'Confirm password *'],
+  es: ['Nombre *', 'Apellido *', 'Número de teléfono *', 'Correo electrónico *', 'Contraseña *', 'Confirmar contraseña *'],
+}
+const registerValues = ['Ana', 'Pérez', '+503 7000 1234', 'ana@correo.com', 'secreta1', 'secreta1']
+
+async function submitRegisterAndWaitVerifyStep(lang) {
+  const submitName = lang === 'en' ? 'Create account' : 'Registrarse'
+  registerLabels[lang].forEach((label, i) => {
+    fireEvent.change(screen.getByLabelText(label), { target: { value: registerValues[i] } })
+  })
+  fireEvent.click(screen.getByRole('button', { name: submitName }))
+  // Paso 'verificar' swaps the h1: the register form is gone.
+  await screen.findByRole('heading', {
+    level: 1,
+    name: lang === 'en' ? 'Verify your email' : 'Verificá tu correo',
+  })
+}
+
 beforeEach(() => {
   localStorage.clear()
   fixtures.reject = null
+  fixtures.routes = {}
 })
 
 afterEach(async () => {
@@ -160,6 +199,83 @@ describe('EN active: auth chrome comes from the auth namespace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     expect(screen.getAllByText('First name is required.')).toHaveLength(3)
   })
+
+  it('transitions a verification-required register to the localized verify chrome (JD-INFO-6)', async () => {
+    fixtures.routes['/Auth/register'] = { resolve: fixtures.verifyRequired }
+    renderRegisterPage()
+
+    await submitRegisterAndWaitVerifyStep('en')
+
+    // register.verify.* chrome: code input, submit/resend/back buttons.
+    expect(screen.getByLabelText('Verification code *')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verify email' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Resend code' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back to sign-up' })).toBeInTheDocument()
+
+    // Trans interpolation: the server-echoed email lands inside the <strong>
+    // slot mapped to the styled span, framed by the EN intro copy.
+    const strongSlot = screen.getByText('ana@correo.com')
+    expect(strongSlot.tagName).toBe('SPAN')
+    expect(strongSlot).toHaveClass('break-all')
+    expect(strongSlot.parentElement.tagName).toBe('P')
+    expect(strongSlot.parentElement.textContent).toContain('We sent a 6-digit code to')
+    expect(strongSlot.parentElement.textContent).toContain('. Enter it to complete your sign-up.')
+
+    // The register form chrome is gone (paso switched, not merely hidden).
+    expect(screen.queryByRole('button', { name: 'Create account' })).toBeNull()
+
+    // Partial-rollout guarantee: raw keys never surface.
+    expect(screen.queryByText(/auth:/)).toBeNull()
+  })
+
+  it('completes email verification with the localized success toast', async () => {
+    fixtures.routes['/Auth/register'] = { resolve: fixtures.verifyRequired }
+    renderRegisterPage()
+
+    await submitRegisterAndWaitVerifyStep('en')
+    fireEvent.change(screen.getByLabelText('Verification code *'), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }))
+
+    expect(await screen.findByText('Email verified! Your account is active.')).toBeInTheDocument()
+  })
+
+  it('renders a failed verify server mensaje verbatim next to the EN chrome', async () => {
+    fixtures.routes['/Auth/register'] = { resolve: fixtures.verifyRequired }
+    fixtures.routes['/Auth/verificar-email'] = {
+      reject: { mensaje: 'El código ingresado no es válido.' },
+    }
+    renderRegisterPage()
+
+    await submitRegisterAndWaitVerifyStep('en')
+    fireEvent.change(screen.getByLabelText('Verification code *'), { target: { value: '000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }))
+
+    // 'mensaje never stripped' contract: inline error + toast, untouched.
+    expect(await screen.findAllByText('El código ingresado no es válido.')).toHaveLength(2)
+  })
+
+  it('falls back to the localized verify error when the failure carries no mensaje', async () => {
+    fixtures.routes['/Auth/register'] = { resolve: fixtures.verifyRequired }
+    fixtures.routes['/Auth/verificar-email'] = { reject: {} }
+    renderRegisterPage()
+
+    await submitRegisterAndWaitVerifyStep('en')
+    fireEvent.change(screen.getByLabelText('Verification code *'), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }))
+
+    expect(await screen.findAllByText("Couldn't verify the code. Try again.")).toHaveLength(2)
+  })
+
+  it('surfaces the localized error when resending the code fails', async () => {
+    fixtures.routes['/Auth/register'] = { resolve: fixtures.verifyRequired }
+    fixtures.routes['/Auth/reenviar-verificacion'] = { reject: {} }
+    renderRegisterPage()
+
+    await submitRegisterAndWaitVerifyStep('en')
+    fireEvent.click(screen.getByRole('button', { name: 'Resend code' }))
+
+    expect(await screen.findAllByText("Couldn't resend the code.")).toHaveLength(2)
+  })
 })
 
 describe('ES active: extraction keeps the canonical Spanish UI byte-comparable', () => {
@@ -202,5 +318,28 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     fireEvent.click(screen.getByRole('button', { name: 'Registrarse' }))
     // Field error + summary + toast render the same canonical literal.
     expect(screen.getAllByText('El nombre es obligatorio.')).toHaveLength(3)
+  })
+
+  it('transitions a verification-required register to the canonical ES verify chrome (JD-INFO-6)', async () => {
+    fixtures.routes['/Auth/register'] = { resolve: fixtures.verifyRequired }
+    renderRegisterPage()
+
+    await submitRegisterAndWaitVerifyStep('es')
+
+    // register.verify.* chrome in the canonical Spanish copy.
+    expect(screen.getByLabelText('Código de verificación *')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verificar correo' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reenviar código' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Volver a completar el registro' })).toBeInTheDocument()
+
+    // Trans interpolation: same <strong> slot, canonical ES frame.
+    const strongSlot = screen.getByText('ana@correo.com')
+    expect(strongSlot.tagName).toBe('SPAN')
+    expect(strongSlot).toHaveClass('break-all')
+    expect(strongSlot.parentElement.textContent).toContain('Te enviamos un código de 6 dígitos a')
+    expect(strongSlot.parentElement.textContent).toContain('. Ingresalo para completar tu registro.')
+
+    // No raw keys surface in the canonical locale either.
+    expect(screen.queryByText(/auth:/)).toBeNull()
   })
 })
