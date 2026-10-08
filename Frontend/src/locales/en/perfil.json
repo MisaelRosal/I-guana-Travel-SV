@@ -14,7 +14,7 @@
   "view": {
     "email": "Contact email",
     "phone": "Phone",
-    "publications": "Publications",
+    "publications": "Listings",
     "location": "Location",
     "description": "Short description"
   },
@@ -51,7 +51,7 @@
     "email": "Email",
     "phone": "Phone",
     "location": "Location",
-    "publications": "Publications by {{name}}",
+    "publications": "Listings by {{name}}",
     "noImage": "No image"
   }
 }

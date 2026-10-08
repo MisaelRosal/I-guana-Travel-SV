@@ -93,7 +93,9 @@ describe('EN active: profile chrome comes from the perfil namespace', () => {
     expect(screen.getByText('ana@correo.com')).toBeInTheDocument()
     expect(screen.getByText('Phone')).toBeInTheDocument()
     expect(screen.getByText('+503 7000 1234')).toBeInTheDocument()
-    expect(screen.getByText('Publications')).toBeInTheDocument()
+    // JD-INFO-5: the EN overlay calls the DB entity `listing(s)` everywhere
+    // (admin/panel/catalog); the perfil block had drifted to "Publications".
+    expect(screen.getByText('Listings')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('Location')).toBeInTheDocument()
     expect(screen.getByText('Suchitoto, San Salvador')).toBeInTheDocument()

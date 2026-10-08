@@ -88,7 +88,7 @@ describe('EN active: host-profile chrome comes from the perfil namespace', () =>
     await i18n.changeLanguage('en')
   })
 
-  it('renders labels, badge and publications heading in EN with DB data verbatim', async () => {
+  it('renders labels, badge and listings heading in EN with DB data verbatim', async () => {
     renderHostProfile()
 
     // Loading state is localized from the first paint.
@@ -107,7 +107,9 @@ describe('EN active: host-profile chrome comes from the perfil namespace', () =>
     expect(screen.getByText('Location')).toBeInTheDocument()
     // The DB location renders twice by design: under the name and in the row.
     expect(screen.getAllByText('Suchitoto, San Salvador')).toHaveLength(2)
-    expect(screen.getByRole('heading', { level: 2, name: 'Publications by Ana' })).toBeInTheDocument()
+    // JD-INFO-5: EN overlay normalizes the entity to `listing(s)`; the ES
+    // canonical "Publicaciones de {{name}}" twin below stays untouched.
+    expect(screen.getByRole('heading', { level: 2, name: 'Listings by Ana' })).toBeInTheDocument()
 
     // Raw keys never surface (overlay subset guarantee).
     expect(screen.queryByText(/perfil:/)).toBeNull()
