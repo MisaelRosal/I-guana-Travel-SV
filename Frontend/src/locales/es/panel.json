@@ -1,0 +1,30 @@
+{
+  "heading": "Panel del operador",
+  "subtitle": "Gestión de publicaciones del anfitrión.",
+  "create": "Crear publicación",
+  "status": {
+    "loading": "Cargando publicaciones…",
+    "emptyTitle": "Aún no hay publicaciones",
+    "emptyBody": "Usa el botón «Crear publicación» para agregar la primera."
+  },
+  "table": {
+    "listing": "Publicación",
+    "category": "Categoría",
+    "price": "Precio",
+    "capacity": "Capacidad",
+    "images": "Imágenes",
+    "status": "Estado",
+    "actions": "Acciones"
+  },
+  "capacity_one": "{{count}} persona",
+  "capacity_other": "{{count}} personas",
+  "action": {
+    "editTitle": "Editar publicación",
+    "deleteTitle": "Eliminar publicación"
+  },
+  "toast": {
+    "created": "Publicación creada exitosamente.",
+    "updated": "Publicación actualizada exitosamente.",
+    "deleted": "«{{title}}» eliminada exitosamente."
+  }
+}

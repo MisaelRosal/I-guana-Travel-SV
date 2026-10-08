@@ -125,9 +125,11 @@ public sealed class SchemaMigrationsIntegrationTests
 
             var applied = await db.ScalarAsync<long>(
                 "SELECT count(*) FROM \"__EFMigrationsHistory\";");
-            // Six migrations through W2 (M2 AddReservaUsuarioOwnership) plus the
-            // W5 M3 ReplaceRacyIndexesWithExclusions = seven applied at head.
-            Assert.Equal(7, applied);
+            // Six migrations through W2 (M2 AddReservaUsuarioOwnership), plus the
+            // W5 M3 ReplaceRacyIndexesWithExclusions, plus the grace-window
+            // AddReservaFechaExpiracionGracia, plus the email-verification
+            // AddVerificacionEmailYNotificaciones = nine applied at head.
+            Assert.Equal(9, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""
@@ -152,6 +154,26 @@ public sealed class SchemaMigrationsIntegrationTests
             Assert.Equal(14, departments);
             var users = await db.ScalarAsync<long>("SELECT count(*) FROM usuarios;");
             Assert.Equal(0, users);
+        }
+
+        // Fixture rows: the reference-data-only seed (v0.6) carries no demo content,
+        // so the drift-Down reversibility check below provisions its own reservations.
+        await using (var db = new NpgsqlConnection(conn))
+        {
+            await db.OpenAsync();
+            await db.ExecuteAsync("""
+                INSERT INTO anfitriones (municipio_id, nombre, email)
+                    SELECT (SELECT id FROM municipios LIMIT 1), 'Fixture Host', 'fixture-host@test.local';
+                INSERT INTO publicaciones (anfitrion_id, categoria_id, titulo, precio_por_noche, capacidad_maxima)
+                    SELECT a.id, (SELECT id FROM categorias LIMIT 1), 'Fixture Pub', 10.00, 2 FROM anfitriones a
+                    WHERE a.email = 'fixture-host@test.local';
+                INSERT INTO reservas
+                    (publicacion_id, nombre_huesped, email_huesped, fecha_inicio, fecha_fin, numero_huespedes, precio_total)
+                VALUES
+                    (1, 'F1', 'f1@fixture.test', '2050-01-01', '2050-01-05', 1, 40.00),
+                    (1, 'F2', 'f2@fixture.test', '2050-02-01', '2050-02-05', 1, 40.00),
+                    (1, 'F3', 'f3@fixture.test', '2050-03-01', '2050-03-05', 1, 40.00);
+                """);
         }
 
         // Reversibility: rolling back to the pre-W2 migration removes the absorbed

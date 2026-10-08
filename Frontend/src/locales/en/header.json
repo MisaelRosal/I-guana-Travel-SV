@@ -1,0 +1,29 @@
+{
+  "langToggle": {
+    "switchToEs": "Switch to Spanish",
+    "switchToEn": "Switch to English"
+  },
+  "brand": {
+    "ariaLabel": "I Guana Travel SV"
+  },
+  "nav": {
+    "mainAria": "Main navigation",
+    "home": "Home",
+    "reservations": "My bookings",
+    "operatorPanel": "Operator panel",
+    "adminPanel": "Admin panel"
+  },
+  "user": {
+    "profilePhotoAlt": "Profile photo",
+    "myProfile": "My profile",
+    "signOut": "Sign out"
+  },
+  "session": {
+    "signIn": "Sign in"
+  },
+  "mobileMenu": {
+    "open": "Open menu",
+    "close": "Close menu",
+    "label": "Mobile menu"
+  }
+}

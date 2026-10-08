@@ -1,0 +1,57 @@
+{
+  "title": "Mi perfil",
+  "loading": "Cargando perfil…",
+  "back": "← Volver al inicio",
+  "avatarAlt": "Foto de perfil",
+  "badge": {
+    "verified": "Verificado",
+    "pending": "Pendiente de verificación"
+  },
+  "missing": {
+    "body": "No encontramos tu perfil de anfitrión.",
+    "cta": "Conviértete en anfitrión"
+  },
+  "view": {
+    "email": "Correo de contacto",
+    "phone": "Teléfono",
+    "publications": "Publicaciones",
+    "location": "Ubicación",
+    "description": "Breve descripción"
+  },
+  "edit": "Editar mi perfil",
+  "form": {
+    "emailLabel": "Correo de contacto *",
+    "emailPlaceholder": "correo@ejemplo.com",
+    "phoneLabel": "Teléfono",
+    "phonePlaceholder": "Teléfono de contacto",
+    "deptoLabel": "Departamento *",
+    "deptoOption": "Seleccioná un departamento",
+    "muniLabel": "Municipio *",
+    "muniOption": "Seleccioná un municipio",
+    "descLabel": "Breve descripción",
+    "descPlaceholder": "Cuéntanos quién eres y qué experiencia ofreces...",
+    "cancel": "Cancelar",
+    "save": "Guardar cambios",
+    "saving": "Guardando..."
+  },
+  "errors": {
+    "emailRequired": "Ingresa un correo de contacto.",
+    "emailInvalid": "Ingresa un correo electrónico válido.",
+    "emailLength": "El correo no puede exceder los 150 caracteres.",
+    "phoneLength": "El teléfono no puede exceder los 20 caracteres.",
+    "municipioRequired": "Seleccioná tu municipio."
+  },
+  "savedToast": "Perfil actualizado correctamente.",
+  "updateError": "No se pudo actualizar el perfil.",
+  "host": {
+    "notFound": "No se encontró el anfitrión.",
+    "error": "Error: {{error}}",
+    "aboutMe": "Sobre mí",
+    "noDescription": "Este anfitrión aún no agregó una descripción.",
+    "email": "Correo",
+    "phone": "Teléfono",
+    "location": "Ubicación",
+    "publications": "Publicaciones de {{name}}",
+    "noImage": "Sin imagen"
+  }
+}

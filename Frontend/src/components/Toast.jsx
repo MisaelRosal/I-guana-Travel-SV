@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export default function Toast({ mensaje, tipo, onCerrar }) {
+  // `mensaje` is backend/user content: it renders verbatim in every locale
+  // (passthrough MUST). Only the close control's accessible name is ours.
+  const { t } = useTranslation('common')
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function Toast({ mensaje, tipo, onCerrar }) {
         type="button"
         onClick={() => { setVisible(false); setTimeout(onCerrar, 300) }}
         className="ml-2 cursor-pointer rounded p-0.5 opacity-80 transition-opacity hover:opacity-100"
-        aria-label="Cerrar"
+        aria-label={t('toast.close')}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
           <path d="M18 6 6 18M6 6l12 12" />

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
-import { api } from '../services/api.js'
-import { esAdmin } from '../services/anfitriones.js'
+import { localePath } from '../i18n/routes.jsx'
+import { LOCALE_STORAGE_KEY } from '../i18n/config.js'
+import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
 
 // NOTE (W3a): the role/name read from the session here drives VISIBILITY only
@@ -16,7 +18,46 @@ function iniciales(nombre, apellido) {
   return ((n.charAt(0) || '') + (a.charAt(0) || '')).toUpperCase()
 }
 
+// F0 (i18n-es-en): ES/EN language pill (AD-5), rendered in both the desktop
+// and the mobile nav. Reuses the nav-link styling classes; accessible names
+// come from the `header` namespace. The handler is just changeLanguage —
+// persistence and cross-tab sync are handled by the single listeners in
+// src/i18n/config.js, so the toggle never writes storage or reloads itself.
+function ToggleIdioma() {
+  const { t, i18n } = useTranslation('header')
+  const activo = i18n.language === 'en' ? 'en' : 'es'
+  const clasePill = (lng) =>
+    `cursor-pointer text-sm px-3 py-2 rounded-md transition-colors ${
+      lng === activo
+        ? 'bg-white/15 text-white'
+        : 'text-crema/85 hover:text-white hover:bg-white/10'
+    }`
+  return (
+    <div role="group" aria-label={t('langToggle.group')} className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => { i18n.changeLanguage('es') }}
+        aria-pressed={activo === 'es'}
+        aria-label={t('langToggle.switchToEs')}
+        className={clasePill('es')}
+      >
+        ES
+      </button>
+      <button
+        type="button"
+        onClick={() => { i18n.changeLanguage('en') }}
+        aria-pressed={activo === 'en'}
+        aria-label={t('langToggle.switchToEn')}
+        className={clasePill('en')}
+      >
+        EN
+      </button>
+    </div>
+  )
+}
+
 export default function Header() {
+  const { t } = useTranslation('header')
   const [usuario, setUsuario] = useState(leerSesionCache)
   const [fotoPerfil, setFotoPerfil] = useState('')
   const [menuAbierto, setMenuAbierto] = useState(false)
@@ -24,7 +65,13 @@ export default function Header() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const actualizar = () => {
+    // JD-INFO-2: `iguana_locale` is owned by the i18n runtime (config.js has
+    // its own single cross-tab listener). Reacting to that key here would
+    // re-read the session cache, clear the avatar and force-close the open
+    // dropdown on every locale toggle made in another tab. Skip it; any other
+    // storage key (and the `auth-change` event) keeps the legacy behavior.
+    const actualizar = (event) => {
+      if (event && event.key === LOCALE_STORAGE_KEY) return
       setUsuario(leerSesionCache())
       setFotoPerfil('')
       setMenuAbierto(false)
@@ -72,12 +119,13 @@ export default function Header() {
       if (usuario.fotoPerfil) {
         setFotoPerfil(usuario.fotoPerfil)
       } else {
-        api.get('/Anfitrione')
-          .then((anfitriones) => {
-            if (activo) {
-              const propio = anfitriones.find((a) => a.usuarioId === usuario.id)
-              setFotoPerfil(propio?.fotoPerfil || '')
-            }
+        // W4: the own row is resolved server-side through GET mi-perfil; the
+        // public /Anfitrione list no longer exposes usuarioId, so the old
+        // list+find lookup is gone. A 404 (no host row) keeps the initials
+        // fallback — same end state as the previous find returning undefined.
+        getMiPerfil()
+          .then((perfil) => {
+            if (activo) setFotoPerfil(perfil?.fotoPerfil || '')
           })
           .catch(() => {})
       }
@@ -88,15 +136,17 @@ export default function Header() {
   }, [usuario?.rol, usuario?.id, usuario?.fotoPerfil])
 
   const rol = usuario?.rol ?? ''
+  // F5 (task 6.3): nav targets resolve through the locale route table, so EN
+  // users navigate to English-form URLs while ES keeps the canonical paths.
   const links = [
-    { to: '/', label: 'Inicio' },
+    { to: localePath('catalog'), label: t('nav.home') },
   ]
-  links.push({ to: '/reservas', label: 'Mis reservas' })
+  links.push({ to: localePath('reservations'), label: t('nav.reservations') })
   if (rol === 'anfitrion') {
-    links.push({ to: '/panel', label: 'Panel operador' })
+    links.push({ to: localePath('panel'), label: t('nav.operatorPanel') })
   }
   if (esAdmin(rol)) {
-    links.push({ to: '/admin', label: 'Panel admin' })
+    links.push({ to: localePath('admin'), label: t('nav.adminPanel') })
   }
 
   const cerrarSesion = async () => {
@@ -105,7 +155,7 @@ export default function Header() {
     setUsuario(null)
     setMenuAbierto(false)
     setMenuMovilAbierto(false)
-    navigate('/')
+    navigate(localePath('catalog'))
   }
 
   const claseNavLink = ({ isActive }) =>
@@ -118,11 +168,11 @@ export default function Header() {
   return (
     <header className="bg-verde-bosque text-white sticky top-0 z-20 shadow-md">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4" data-menu-movil>
-        <Link to="/" aria-label="I Guana Travel SV">
+        <Link to={localePath('catalog')} aria-label={t('brand.ariaLabel')}>
           <Logo />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-4" aria-label="Navegación principal">
+        <nav className="hidden md:flex items-center gap-4" aria-label={t('nav.mainAria')}>
           {links.map((link) => (
             <NavLink
               key={link.to}
@@ -132,6 +182,7 @@ export default function Header() {
               {link.label}
             </NavLink>
           ))}
+          <ToggleIdioma />
           {usuario ? (
             <div className="relative flex items-center gap-3" data-menu-usuario>
               <button
@@ -148,7 +199,7 @@ export default function Header() {
                   {esAdmin(rol) ? (
                     <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
                   ) : rol === 'anfitrion' && fotoPerfil ? (
-                    <img src={fotoPerfil} alt="Foto de perfil" className="h-full w-full object-cover" />
+                    <img src={fotoPerfil} alt={t('user.profilePhotoAlt')} className="h-full w-full object-cover" />
                   ) : (
                     iniciales(usuario.nombre, usuario.apellido)
                   )}
@@ -162,7 +213,7 @@ export default function Header() {
                 <div role="menu" className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-lg border border-cafe-claro/40 bg-white shadow-lg">
                   {rol === 'anfitrion' && (
                     <Link
-                      to="/mi-perfil"
+                      to={localePath('miPerfil')}
                       role="menuitem"
                       onClick={() => setMenuAbierto(false)}
                       className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-cafe transition-colors hover:bg-crema hover:text-verde-bosque"
@@ -171,7 +222,7 @@ export default function Header() {
                         <circle cx="12" cy="8" r="4" />
                         <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
                       </svg>
-                      Mi perfil
+                      {t('user.myProfile')}
                     </Link>
                   )}
                   <button
@@ -183,17 +234,17 @@ export default function Header() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
                     </svg>
-                    Cerrar sesión
+                    {t('user.signOut')}
                   </button>
                 </div>
               )}
             </div>
           ) : (
             <Link
-              to="/login"
+              to={localePath('login')}
               className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-[#00B4D8] hover:text-verde-bosque transition-colors"
             >
-              Iniciar sesión
+              {t('session.signIn')}
             </Link>
           )}
         </nav>
@@ -203,7 +254,7 @@ export default function Header() {
           onClick={() => setMenuMovilAbierto((v) => !v)}
           aria-expanded={menuMovilAbierto}
           aria-controls="menu-movil"
-          aria-label={menuMovilAbierto ? 'Cerrar menú' : 'Abrir menú'}
+          aria-label={menuMovilAbierto ? t('mobileMenu.close') : t('mobileMenu.open')}
           className="md:hidden flex cursor-pointer items-center justify-center rounded-lg p-2 text-white/90 transition-colors hover:bg-white/10"
         >
           {menuMovilAbierto ? (
@@ -221,7 +272,7 @@ export default function Header() {
       {menuMovilAbierto && (
         <nav
           id="menu-movil"
-          aria-label="Menú móvil"
+          aria-label={t('mobileMenu.label')}
           className="md:hidden border-t border-white/10 bg-verde-bosque px-4 pb-4 pt-3 shadow-lg"
         >
           <div className="flex flex-col gap-1">
@@ -238,6 +289,10 @@ export default function Header() {
             ))}
           </div>
 
+          <div className="mt-3">
+            <ToggleIdioma />
+          </div>
+
           <div className="mt-3 border-t border-white/10 pt-3">
             {usuario ? (
               <div className="flex flex-col gap-1">
@@ -249,7 +304,7 @@ export default function Header() {
                     {esAdmin(rol) ? (
                       <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
                     ) : rol === 'anfitrion' && fotoPerfil ? (
-                      <img src={fotoPerfil} alt="Foto de perfil" className="h-full w-full object-cover" />
+                      <img src={fotoPerfil} alt={t('user.profilePhotoAlt')} className="h-full w-full object-cover" />
                     ) : (
                       iniciales(usuario.nombre, usuario.apellido)
                     )}
@@ -260,11 +315,11 @@ export default function Header() {
                 </div>
                 {rol === 'anfitrion' && (
                   <Link
-                    to="/mi-perfil"
+                    to={localePath('miPerfil')}
                     onClick={() => setMenuMovilAbierto(false)}
                     className="text-sm px-3 py-2 rounded-md text-crema/85 hover:text-white hover:bg-white/10"
                   >
-                    Mi perfil
+                    {t('user.myProfile')}
                   </Link>
                 )}
                 <button
@@ -272,16 +327,16 @@ export default function Header() {
                   onClick={cerrarSesion}
                   className="cursor-pointer text-sm px-3 py-2 rounded-md text-left text-crema/85 hover:text-white hover:bg-white/10"
                 >
-                  Cerrar sesión
+                  {t('user.signOut')}
                 </button>
               </div>
             ) : (
               <Link
-                to="/login"
+                to={localePath('login')}
                 onClick={() => setMenuMovilAbierto(false)}
                 className="block cursor-pointer text-center text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold transition-colors"
               >
-                Iniciar sesión
+                {t('session.signIn')}
               </Link>
             )}
           </div>

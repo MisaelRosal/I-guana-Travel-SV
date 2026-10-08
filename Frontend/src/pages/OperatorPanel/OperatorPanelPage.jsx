@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useFormatLocale } from '../../i18n/config.js'
+import { formatPrice } from '../../i18n/format.js'
 import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
-import { obtenerSesion, esAdmin } from '../../services/anfitriones.js'
-
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
+import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.js'
 
 export default function OperatorPanelPage() {
+  const { t } = useTranslation('panel')
+  const locale = useFormatLocale()
   const usuario = obtenerSesion()
   const [publicaciones, setPublicaciones] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -25,11 +24,22 @@ export default function OperatorPanelPage() {
     try {
       if (esAdmin(usuario?.rol)) {
         setPublicaciones(await api.get('/Publicacione'))
-      } else {
-        const anfitriones = await api.get('/Anfitrione')
-        const propio = anfitriones.find((a) => a.usuarioId === usuario?.id) ?? null
+      } else if (usuario?.rol === 'anfitrion') {
+        // W4: the own row is resolved server-side through GET mi-perfil; the
+        // public /Anfitrione list no longer exposes usuarioId. A 404 (no host
+        // record) ends in the same propio===null state the old find produced.
+        let propio = null
+        try {
+          propio = await getMiPerfil()
+        } catch {
+          propio = null
+        }
         setAnfitrionPropio(propio)
         setPublicaciones(propio ? await api.get(`/Publicacione/anfitrion/${propio.id}`) : [])
+      } else {
+        // Plain usuarios never own a host row: skip the call, keep the null.
+        setAnfitrionPropio(null)
+        setPublicaciones([])
       }
     } catch {
       setPublicaciones([])
@@ -44,7 +54,7 @@ export default function OperatorPanelPage() {
 
   const alCrear = () => {
     setModalAbierto(false)
-    setMensaje('Publicación creada exitosamente.')
+    setMensaje(t('toast.created'))
     cargar()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -58,7 +68,7 @@ export default function OperatorPanelPage() {
   const alGuardarEdicion = () => {
     setModalAbierto(false)
     setPubEditando(null)
-    setMensaje('Publicación actualizada exitosamente.')
+    setMensaje(t('toast.updated'))
     cargar()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -68,7 +78,7 @@ export default function OperatorPanelPage() {
     setConfirmando(null)
     try {
       await api.delete(`/Publicacione/${p.id}`)
-      setMensaje(`«${p.titulo}» eliminada exitosamente.`)
+      setMensaje(t('toast.deleted', { title: p.titulo }))
       cargar()
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
@@ -80,8 +90,8 @@ export default function OperatorPanelPage() {
     <main className="mx-auto max-w-7xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-verde-bosque">Panel del operador</h1>
-          <p className="mt-1 text-cafe">Gestión de publicaciones del anfitrión.</p>
+          <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
+          <p className="mt-1 text-cafe">{t('subtitle')}</p>
         </div>
         <button
           type="button"
@@ -91,7 +101,7 @@ export default function OperatorPanelPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Crear publicación
+          {t('create')}
         </button>
       </div>
 
@@ -101,7 +111,7 @@ export default function OperatorPanelPage() {
           <button
             type="button"
             onClick={() => setMensaje(null)}
-            aria-label="Descartar mensaje"
+            aria-label={t('common:banner.dismiss')}
             className="cursor-pointer text-verde-bosque/60 transition-colors hover:text-verde-bosque"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
@@ -113,12 +123,12 @@ export default function OperatorPanelPage() {
 
       <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white shadow-sm">
         {cargando ? (
-          <p className="px-6 py-14 text-center text-cafe">Cargando publicaciones…</p>
+          <p className="px-6 py-14 text-center text-cafe">{t('status.loading')}</p>
         ) : publicaciones.length === 0 ? (
           <div className="px-6 py-14 text-center">
-            <p className="text-lg font-semibold text-verde-bosque">Aún no hay publicaciones</p>
+            <p className="text-lg font-semibold text-verde-bosque">{t('status.emptyTitle')}</p>
             <p className="mt-1 text-sm text-cafe">
-              Usa el botón «Crear publicación» para agregar la primera.
+              {t('status.emptyBody')}
             </p>
           </div>
         ) : (
@@ -126,13 +136,13 @@ export default function OperatorPanelPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-verde-bosque text-white">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Publicación</th>
-                  <th className="px-4 py-3 font-semibold">Categoría</th>
-                  <th className="px-4 py-3 font-semibold">Precio</th>
-                  <th className="px-4 py-3 font-semibold">Capacidad</th>
-                  <th className="px-4 py-3 font-semibold">Imágenes</th>
-                  <th className="px-4 py-3 font-semibold">Estado</th>
-                  <th className="px-4 py-3 font-semibold">Acciones</th>
+                  <th className="px-4 py-3 font-semibold">{t('table.listing')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('table.category')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('table.price')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('table.capacity')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('table.images')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('table.status')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('table.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-cafe-claro/30">
@@ -149,9 +159,9 @@ export default function OperatorPanelPage() {
                     </td>
                     <td className="px-4 py-3 text-neutral-700">{p.categoria?.nombre ?? '—'}</td>
                     <td className="px-4 py-3 font-semibold text-terracota">
-                      {formatoPrecio.format(p.precioPorNoche)}
+                      {formatPrice(p.precioPorNoche, locale)}
                     </td>
-                    <td className="px-4 py-3 text-neutral-700">{p.capacidadMaxima} personas</td>
+                    <td className="px-4 py-3 text-neutral-700">{t('capacity', { count: p.capacidadMaxima })}</td>
                     <td className="px-4 py-3 text-neutral-700">{p.imagenesPublicacions?.length ?? 0}</td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-verde-hoja/15 px-3 py-1 text-xs font-semibold text-verde-bosque">
@@ -161,20 +171,20 @@ export default function OperatorPanelPage() {
                     <td className="px-4 py-3">
                       {confirmando === p.id ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-cafe">¿Eliminar?</span>
+                          <span className="text-xs text-cafe">{t('common:actions.deleteQuestion')}</span>
                           <button
                             type="button"
                             onClick={() => alEliminar(p)}
                             className="cursor-pointer rounded bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
                           >
-                            Sí, eliminar
+                            {t('common:actions.deleteYes')}
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmando(null)}
                             className="cursor-pointer rounded bg-neutral-200 px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-300"
                           >
-                            Cancelar
+                            {t('common:actions.cancel')}
                           </button>
                         </div>
                       ) : (
@@ -183,7 +193,7 @@ export default function OperatorPanelPage() {
                             type="button"
                             onClick={() => alEditar(p)}
                             className="cursor-pointer rounded p-1.5 text-cafe transition-colors hover:bg-cafe/10 hover:text-cafe-oscuro"
-                            title="Editar publicación"
+                            title={t('action.editTitle')}
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                               <path d="M12 20h9" />
@@ -195,7 +205,7 @@ export default function OperatorPanelPage() {
                             onClick={() => setConfirmando(p.id)}
                             disabled={eliminando === p.id}
                             className="cursor-pointer rounded p-1.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
-                            title="Eliminar publicación"
+                            title={t('action.deleteTitle')}
                           >
                             {eliminando === p.id ? (
                               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">

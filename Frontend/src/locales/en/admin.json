@@ -1,0 +1,60 @@
+{
+  "heading": "Administration panel",
+  "subtitle": "General platform management.",
+  "restricted": {
+    "title": "Restricted access",
+    "body": "This section is exclusive to system administrators."
+  },
+  "tabs": {
+    "hosts": "Hosts",
+    "listings": "Listings",
+    "reviews": "Reviews"
+  },
+  "chip": {
+    "verified": "Verified",
+    "pending": "Pending"
+  },
+  "action": {
+    "verify": "Verify",
+    "unverify": "Unverify",
+    "verifyProfileTitle": "Verify profile",
+    "removeVerificationTitle": "Remove verification",
+    "deleteProfileTitle": "Delete profile",
+    "editListingTitle": "Edit listing",
+    "deleteListingTitle": "Delete listing"
+  },
+  "hosts": {
+    "loading": "Loading hosts…",
+    "empty": "No hosts registered yet.",
+    "table": {
+      "host": "Host",
+      "contact": "Contact",
+      "location": "Location",
+      "listings": "Listings",
+      "verified": "Verified",
+      "actions": "Actions"
+    }
+  },
+  "listings": {
+    "loading": "Loading listings…",
+    "empty": "No listings yet.",
+    "table": {
+      "listing": "Listing",
+      "host": "Host",
+      "price": "Price",
+      "status": "Status",
+      "actions": "Actions"
+    }
+  },
+  "reviews": {
+    "title": "Review management",
+    "soon": "This section will be available soon."
+  },
+  "toast": {
+    "hostDeleted": "The profile of \"{{name}}\" was deleted.",
+    "hostDeleteError": "The host profile could not be deleted.",
+    "hostStateError": "The host status could not be updated.",
+    "listingDeleted": "\"{{title}}\" was deleted.",
+    "listingDeleteError": "The listing could not be deleted."
+  }
+}
