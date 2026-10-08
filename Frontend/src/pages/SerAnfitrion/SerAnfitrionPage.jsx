@@ -14,10 +14,12 @@ export default function SerAnfitrionPage() {
   const [municipios, setMunicipios] = useState([])
   const [departamentoId, setDepartamentoId] = useState('')
   const [municipioId, setMunicipioId] = useState('')
-  const [nombre, setNombre] = useState(usuario ? `${usuario.nombre} ${usuario.apellido}`.trim() : '')
+  // El nombre publicable del anfitrion NO se edita aqui: se deriva siempre
+  // del nombre y apellido de la cuenta (usuarios). La direccion dejo de
+  // solicitarse en el formulario; puede completarse por otro medio si se desea.
+  const nombreAnfitrion = usuario ? `${usuario.nombre} ${usuario.apellido}`.trim() : ''
   const [email, setEmail] = useState(usuario?.email ?? '')
   const [telefono, setTelefono] = useState(usuario?.telefono ?? '')
-  const [direccion, setDireccion] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [foto, setFoto] = useState(null)
   const [fotoUrl, setFotoUrl] = useState('')
@@ -78,8 +80,8 @@ export default function SerAnfitrionPage() {
       return
     }
     if (!descripcion.trim()) {
-      setError('Contanos una breve descripción sobre vos.')
-      setToast({ tipo: 'error', mensaje: 'Contanos una breve descripción sobre vos.' })
+      setError('Cuéntanos una breve descripción sobre ti.')
+      setToast({ tipo: 'error', mensaje: 'Cuéntanos una breve descripción sobre ti.' })
       return
     }
     if (!municipioId) {
@@ -93,15 +95,14 @@ export default function SerAnfitrionPage() {
       const url = fotoUrl || (await subirFoto())
       const anfitrion = await registrarAnfitrion({
         municipioId,
-        nombre: nombre.trim(),
+        nombre: nombreAnfitrion,
         email: email.trim(),
         telefono: telefono.trim(),
-        direccion: direccion.trim(),
         descripcion: descripcion.trim(),
         fotoPerfil: url,
       })
       guardarSesion({ ...usuario, rol: 'anfitrion', fotoPerfil: url })
-      setToast({ tipo: 'exito', mensaje: '¡Ya sos anfitrión!' })
+      setToast({ tipo: 'exito', mensaje: '¡Ya eres anfitrión!' })
       setTimeout(() => navigate('/panel'), 1500)
       return anfitrion
     } catch (err) {
@@ -139,7 +140,7 @@ export default function SerAnfitrionPage() {
         <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
           <h1 className="text-2xl font-bold text-verde-bosque">Conviértete en anfitrión</h1>
           <p className="mt-1 text-sm text-cafe">
-            Creá tu perfil de anfitrión. Necesitamos una foto de tu persona.
+            Crea tu perfil de anfitrión. Necesitamos una foto de tu persona.
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
@@ -179,20 +180,12 @@ export default function SerAnfitrionPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className={labelCls} htmlFor="anf-nombre">Nombre *</label>
-                <input id="anf-nombre" className={inputCls} value={nombre} onChange={(e) => setNombre(e.target.value)} required />
-              </div>
-              <div className="sm:col-span-2">
                 <label className={labelCls} htmlFor="anf-email">Correo electrónico *</label>
                 <input id="anf-email" type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <div>
                 <label className={labelCls} htmlFor="anf-telefono">Teléfono</label>
                 <input id="anf-telefono" className={inputCls} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono de contacto" />
-              </div>
-              <div>
-                <label className={labelCls} htmlFor="anf-direccion">Dirección</label>
-                <input id="anf-direccion" className={inputCls} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Dirección (opcional)" />
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls} htmlFor="anf-descripcion">Breve descripción *</label>
@@ -201,7 +194,7 @@ export default function SerAnfitrionPage() {
                   className={inputCls + ' h-24 resize-none'}
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Contanos quién sos y qué experiencia ofrecés..."
+                  placeholder="Cuéntanos quién eres y qué experiencia ofreces..."
                   required
                 />
               </div>

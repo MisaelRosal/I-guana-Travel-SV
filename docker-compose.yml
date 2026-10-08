@@ -19,7 +19,7 @@ services:
       retries: 10
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: minio/minio:latest
     container_name: rutasv-minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -68,6 +68,12 @@ services:
       dockerfile: Dockerfile
     image: i-guana-travel-sv-backend:latest
     container_name: rutasv-backend
+    # Docker Desktop's embedded resolver (127.0.0.11 -> host DNS) fails
+    # intermittently for external hosts, which broke the Gmail API calls.
+    # Query public resolvers directly from the container instead.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "5000:8080"
     environment:
@@ -77,6 +83,13 @@ services:
       - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
       - Minio__BucketName=rutasv
       - Minio__PublicEndpoint=http://localhost:9000
+      - Jwt__Key=${Jwt__Key}
+      - Email__From=${EMAIL_FROM}
+      - Email__VerificacionHabilitada=${EMAIL_VERIFICACION_HABILITADA:-true}
+      - Email__GoogleClientId=${GOOGLE_OAUTH_CLIENT_ID:-}
+      - Email__GoogleClientSecret=${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      - Email__GoogleRefreshToken=${GOOGLE_OAUTH_REFRESH_TOKEN:-}
+      - Email__GoogleRedirectUri=${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:5000/oauth2callback}
     depends_on:
       postgres:
         condition: service_healthy

@@ -119,7 +119,7 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
               Necesitás iniciar sesión para reservar
             </p>
             <p className="mt-1 text-sm text-cafe">
-              Iniciá sesión o creá una cuenta para poder confirmar tu reserva.
+              Inicia sesión o crea una cuenta para poder confirmar tu reserva.
             </p>
             <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
               <Link

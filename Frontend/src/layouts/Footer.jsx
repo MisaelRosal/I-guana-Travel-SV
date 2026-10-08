@@ -61,7 +61,7 @@ export default function Footer() {
         <div>
           <Logo />
           <p className="mt-4 max-w-xs leading-relaxed">
-            Turismo y experiencias en El Salvador. Explorá, reservá y viví el país con
+            Turismo y experiencias en El Salvador. Explora, reserva y vive el país con
             anfitriones locales.
           </p>
         </div>

@@ -3,6 +3,7 @@ using System;
 using IguanaSV.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IguanaSV.Api.Migrations
 {
     [DbContext(typeof(IguanasDbContext))]
-    partial class IguanasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261006151628_AddVerificacionEmailYNotificaciones")]
+    partial class AddVerificacionEmailYNotificaciones
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -709,10 +712,6 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("estado")
                         .HasDefaultValueSql("'pendiente'::character varying");
-
-                    b.Property<DateTime?>("FechaExpiracionGracia")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("fecha_expiracion_gracia");
 
                     b.Property<DateOnly>("FechaFin")
                         .HasColumnType("date")

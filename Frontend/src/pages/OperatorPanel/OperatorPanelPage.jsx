@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
-import { obtenerSesion, esAdmin } from '../../services/anfitriones.js'
+import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.js'
 
 const formatoPrecio = new Intl.NumberFormat('es-SV', {
   style: 'currency',
@@ -25,11 +25,22 @@ export default function OperatorPanelPage() {
     try {
       if (esAdmin(usuario?.rol)) {
         setPublicaciones(await api.get('/Publicacione'))
-      } else {
-        const anfitriones = await api.get('/Anfitrione')
-        const propio = anfitriones.find((a) => a.usuarioId === usuario?.id) ?? null
+      } else if (usuario?.rol === 'anfitrion') {
+        // W4: the own row is resolved server-side through GET mi-perfil; the
+        // public /Anfitrione list no longer exposes usuarioId. A 404 (no host
+        // record) ends in the same propio===null state the old find produced.
+        let propio = null
+        try {
+          propio = await getMiPerfil()
+        } catch {
+          propio = null
+        }
         setAnfitrionPropio(propio)
         setPublicaciones(propio ? await api.get(`/Publicacione/anfitrion/${propio.id}`) : [])
+      } else {
+        // Plain usuarios never own a host row: skip the call, keep the null.
+        setAnfitrionPropio(null)
+        setPublicaciones([])
       }
     } catch {
       setPublicaciones([])

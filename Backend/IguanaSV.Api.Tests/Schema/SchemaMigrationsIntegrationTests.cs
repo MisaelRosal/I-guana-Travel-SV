@@ -125,9 +125,11 @@ public sealed class SchemaMigrationsIntegrationTests
 
             var applied = await db.ScalarAsync<long>(
                 "SELECT count(*) FROM \"__EFMigrationsHistory\";");
-            // Six migrations through W2 (M2 AddReservaUsuarioOwnership) plus the
-            // W5 M3 ReplaceRacyIndexesWithExclusions = seven applied at head.
-            Assert.Equal(7, applied);
+            // Six migrations through W2 (M2 AddReservaUsuarioOwnership), plus the
+            // W5 M3 ReplaceRacyIndexesWithExclusions, plus the grace-window
+            // AddReservaFechaExpiracionGracia, plus the email-verification
+            // AddVerificacionEmailYNotificaciones = nine applied at head.
+            Assert.Equal(9, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""

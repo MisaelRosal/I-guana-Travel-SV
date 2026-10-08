@@ -48,16 +48,16 @@ export default function ExperienceCard({ experiencia, proximaFecha }) {
 
       <div className="flex flex-1 flex-col p-4">
         <h3 className="text-lg font-bold text-verde-bosque line-clamp-1">{experiencia.titulo}</h3>
-        <p className="mt-1 text-sm text-cafe">
+        <p className="mt-1 text-base text-cafe">
           {experiencia.municipio}, {experiencia.departamento}
         </p>
-        <p className="mt-2 text-sm text-neutral-600 line-clamp-2 flex-1">{experiencia.descripcion}</p>
+        <p className="mt-2 text-base text-neutral-600 line-clamp-2 flex-1">{experiencia.descripcion}</p>
         <div className="mt-3 flex items-end justify-between gap-2 border-t border-neutral-100 pt-3">
           <div className="min-w-0">
-            <span className="text-xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
-            <span className="text-xs text-cafe"> / {unidad}</span>
+            <span className="text-3xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
+            <span className="text-sm text-cafe"> / {unidad}</span>
           </div>
-          <span className="text-xs text-cafe whitespace-nowrap">{detalle}</span>
+          <span className="text-sm text-cafe whitespace-nowrap">{detalle}</span>
         </div>
       </div>
     </Link>
