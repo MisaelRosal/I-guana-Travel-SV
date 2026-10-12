@@ -1,0 +1,32 @@
+{
+  "heading": "Become a host",
+  "subtitle": "Create your host profile. We need a photo of you.",
+  "loginRequired": {
+    "body": "To offer your experiences you need to sign in.",
+    "cta": "Sign in"
+  },
+  "photoLabel": "Profile photo *",
+  "photoAlt": "Profile photo",
+  "choosePhoto": "Choose photo",
+  "photoHint": "JPG or PNG. It will be visible to your guests.",
+  "emailLabel": "Email address *",
+  "phoneLabel": "Phone",
+  "phonePlaceholder": "Contact phone",
+  "descLabel": "Short description *",
+  "descPlaceholder": "Tell us who you are and what experience you offer...",
+  "deptoLabel": "Department *",
+  "deptoOption": "Select a department",
+  "muniLabel": "Municipality *",
+  "muniOption": "Select a municipality",
+  "submit": "Create host profile",
+  "submitting": "Signing up...",
+  "submittingPhoto": "Uploading photo...",
+  "errors": {
+    "photoRequired": "Profile photo is required.",
+    "descRequired": "Tell us a brief description about yourself.",
+    "municipioRequired": "Select your municipality."
+  },
+  "successToast": "You're a host now!",
+  "genericError": "Couldn't complete the sign-up.",
+  "uploadError": "Couldn't upload the photo."
+}

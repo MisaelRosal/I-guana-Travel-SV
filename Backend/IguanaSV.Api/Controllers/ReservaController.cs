@@ -2,6 +2,7 @@ using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
+using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,12 @@ namespace IguanaSV.Api.Controllers;
 public class ReservaController : ControllerBase
 {
     private readonly IguanasDbContext _context;
+    private readonly IEmailNotificationService _notificaciones;
 
-    public ReservaController(IguanasDbContext context)
+    public ReservaController(IguanasDbContext context, IEmailNotificationService notificaciones)
     {
         _context = context;
+        _notificaciones = notificaciones;
     }
 
     // Owner-scoped list (W4): a plain user sees only their own reservations;
@@ -121,7 +124,21 @@ public class ReservaController : ControllerBase
             return Forbid();
         }
 
-        if (existente.FechaInicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
+        if (existente.FechaExpiracionGracia != null)
+        {
+            // Short reservation: edit is governed by the grace window, not by the
+            // "1 day or less" rule. Paying locks the row; a lapsed grace blocks it.
+            if (existente.Estado == "confirmada")
+            {
+                return BadRequest("Ya pagaste, no se puede editar.");
+            }
+
+            if (!EstaEnGracia(existente))
+            {
+                return BadRequest("La hora para editar venció.");
+            }
+        }
+        else if (existente.FechaInicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
         {
             return BadRequest("No es posible editar una reserva cuando falta un día o menos para la fecha de entrada.");
         }
@@ -254,6 +271,13 @@ public class ReservaController : ControllerBase
             Estado = "pendiente",
         };
 
+        // Short reservation (<24h): check-in is today or tomorrow, so the guest
+        // gets a one-hour grace window to pay before the row auto-cancels.
+        if (inicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
+        {
+            reserva.FechaExpiracionGracia = DateTime.Now.AddHours(1);
+        }
+
         _context.Reservas.Add(reserva);
 
         try
@@ -267,6 +291,22 @@ public class ReservaController : ControllerBase
             // attempt the insert. The EXCLUDE is the tie-breaker, so the loser is
             // rejected by the database and surfaces here as a 409 (not a 500).
             return Conflict(OverlapConflict());
+        }
+
+        // Confirmation + simulated payment reminder to the guest address given in
+        // the booking form (not the account's login email: a guest can book for
+        // someone else). Fire-and-forget-safe: a failed email never fails the
+        // reservation itself.
+        if (!string.IsNullOrWhiteSpace(dto.EmailHuesped))
+        {
+            await _notificaciones.ReservaCreadaAsync(
+                dto.EmailHuesped!.Trim().ToLowerInvariant(),
+                dto.NombreHuesped ?? "huésped",
+                publicacion.Titulo ?? "tu reserva",
+                inicio,
+                fin,
+                dto.NumeroHuespedes,
+                reserva.PrecioTotal);
         }
 
         return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);
@@ -329,6 +369,13 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden pagar reservas pendientes." });
         }
 
+        // Short reservation whose grace has already lapsed is about to be
+        // auto-cancelled; refuse the payment before the service marks it.
+        if (reserva.FechaExpiracionGracia != null && !EstaEnGracia(reserva))
+        {
+            return BadRequest(new { mensaje = "La reserva venció y se cancelará." });
+        }
+
         reserva.Estado = "confirmada";
         reserva.MetodoPago = dto.MetodoPago;
         reserva.FechaPago = DateTime.Now;
@@ -382,7 +429,21 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = "No se puede cancelar una reserva ya completada." });
         }
 
-        if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today))
+        if (reserva.FechaExpiracionGracia != null)
+        {
+            // Short reservation: cancel is allowed only while pending and inside
+            // grace. A paid reservation and an expired grace both lock the row.
+            if (reserva.Estado == "confirmada")
+            {
+                return BadRequest(new { mensaje = "Ya pagaste, no se puede cancelar." });
+            }
+
+            if (!EstaEnGracia(reserva))
+            {
+                return BadRequest(new { mensaje = "La hora para cancelar venció." });
+            }
+        }
+        else if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today))
         {
             return BadRequest(new { mensaje = "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy." });
         }
@@ -418,7 +479,21 @@ public class ReservaController : ControllerBase
             return Forbid();
         }
 
-        if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
+        if (reserva.FechaExpiracionGracia != null)
+        {
+            // Short reservation: delete mirrors the edit gate (grace window, not
+            // the "1 day or less" rule).
+            if (reserva.Estado == "confirmada")
+            {
+                return BadRequest("Ya pagaste, no se puede eliminar.");
+            }
+
+            if (!EstaEnGracia(reserva))
+            {
+                return BadRequest("La hora para eliminar venció.");
+            }
+        }
+        else if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
         {
             return BadRequest("No es posible eliminar una reserva cuando falta un día o menos para la fecha de entrada.");
         }
@@ -513,6 +588,15 @@ public class ReservaController : ControllerBase
             .Select(e => e.PrecioAdicional)
             .FirstOrDefaultAsync();
     }
+
+    /// <summary>
+    /// True while a short reservation's one-hour grace window has not yet
+    /// elapsed. Short reservations carry a non-null <c>FechaExpiracionGracia</c>;
+    /// a normal (far-future) reservation always returns false here and is
+    /// governed by the legacy date-based rules instead.
+    /// </summary>
+    private static bool EstaEnGracia(Reserva r) =>
+        r.FechaExpiracionGracia != null && DateTime.Now < r.FechaExpiracionGracia.Value;
 
     /// <summary>
     /// Owner-or-admin gate for reservation mutations. Owner means the token

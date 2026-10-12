@@ -282,6 +282,206 @@ public sealed class AuthzIntegrationTests
         Assert.Equal(HttpStatusCode.OK, ownerRes.StatusCode);
     }
 
+    // ---- Requirement: host self-profile (mi-perfil) and PII projections ---------
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_AnonymousGetAndPut_Returns401()
+    {
+        var get = await Client().GetAsync("/api/Anfitrione/mi-perfil");
+        Assert.Equal(HttpStatusCode.Unauthorized, get.StatusCode);
+
+        var put = await Client().PutAsync("/api/Anfitrione/mi-perfil", Json(new { descripcion = "anon" }));
+        Assert.Equal(HttpStatusCode.Unauthorized, put.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_OwnerGetAndPut_PersistsAllFieldsAndPreservesVerificationAndOwner()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+
+        // Flip verification ON through the admin path first: editing the
+        // profile must never reset verificado (locked decision mirrors the
+        // PUT /{id} guard — self-service edits leave Verificado/UsuarioId out).
+        var verif = await AuthedClient(AdminSession())
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.NoContent, verif.StatusCode);
+
+        // A second municipio proves the location reassignment really writes.
+        var (otroMunicipioId, _) = await SeedGeoAndCategoryAsync();
+
+        var client = AuthedClient(owner);
+        var get = await client.GetAsync("/api/Anfitrione/mi-perfil");
+        Assert.Equal(HttpStatusCode.OK, get.StatusCode);
+        using (var doc = JsonDocument.Parse(await get.Content.ReadAsStringAsync()))
+        {
+            // Resolved from the token sub, not from any id in the request.
+            Assert.Equal(seed.AnfitrionId, doc.RootElement.GetProperty("id").GetInt32());
+            Assert.True(doc.RootElement.GetProperty("verificado").GetBoolean());
+        }
+
+        var nuevoEmail = NewEmail();
+        var put = await client.PutAsync("/api/Anfitrione/mi-perfil", Json(new
+        {
+            email = nuevoEmail,
+            telefono = "7777-8888",
+            municipioId = otroMunicipioId,
+            descripcion = "Editado por el propio anfitrión.",
+        }));
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        using (var doc = JsonDocument.Parse(await put.Content.ReadAsStringAsync()))
+        {
+            // The response is re-read fresh: after the FK reassign it must
+            // carry the NEW municipio nav, not the tracked entity's stale one
+            // (the SPA syncs both cascade selects from this body).
+            Assert.Equal(otroMunicipioId, doc.RootElement.GetProperty("municipioId").GetInt32());
+            Assert.Equal(otroMunicipioId,
+                doc.RootElement.GetProperty("municipio").GetProperty("id").GetInt32());
+        }
+
+        await using (var db = NewDb())
+        {
+            var host = await db.Anfitriones.AsNoTracking().FirstAsync(a => a.Id == seed.AnfitrionId);
+            Assert.Equal(nuevoEmail, host.Email);
+            Assert.Equal("7777-8888", host.Telefono);
+            Assert.Equal(otroMunicipioId, host.MunicipioId);
+            Assert.Equal("Editado por el propio anfitrión.", host.Descripcion);
+        }
+
+        Assert.True(await ReadHostVerifiedAsync(seed.AnfitrionId));
+        Assert.Equal(owner.UserId, await ReadHostOwnerAsync(seed.AnfitrionId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_UsuarioWithoutHostRow_Returns404()
+    {
+        var user = await RegisterUserAsync();
+        var client = AuthedClient(user);
+
+        var get = await client.GetAsync("/api/Anfitrione/mi-perfil");
+        Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
+
+        var put = await client.PutAsync("/api/Anfitrione/mi-perfil", Json(new { descripcion = "sin host" }));
+        Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_EmailTakenByAnotherHost_Returns409()
+    {
+        var owner = await RegisterUserAsync();
+        var (municipioId, _) = await SeedGeoAndCategoryAsync();
+        var ownHostId = await SeedHostAsync(owner.UserId, municipioId);
+
+        var emailOtro = NewEmail();
+        await SeedHostAsync((await RegisterUserAsync()).UserId, municipioId, email: emailOtro);
+
+        var res = await AuthedClient(owner)
+            .PutAsync("/api/Anfitrione/mi-perfil", Json(new { email = emailOtro }));
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        Assert.False(string.IsNullOrWhiteSpace(doc.RootElement.GetProperty("mensaje").GetString()));
+
+        // The friendly pre-check must not have mutated the row either.
+        await using var db = NewDb();
+        var host = await db.Anfitriones.AsNoTracking().FirstAsync(a => a.Id == ownHostId);
+        Assert.NotEqual(emailOtro, host.Email);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_UnknownMunicipio_Returns400AndKeepsCurrent()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+
+        var res = await AuthedClient(owner)
+            .PutAsync("/api/Anfitrione/mi-perfil", Json(new { municipioId = 987654 }));
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+
+        await using var db = NewDb();
+        var host = await db.Anfitriones.AsNoTracking().FirstAsync(a => a.Id == seed.AnfitrionId);
+        Assert.Equal(seed.MunicipioId, host.MunicipioId);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task HostList_AnonymousProjectionStripsPii_AdminKeepsFullRows()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+
+        var anon = await Client().GetAsync("/api/Anfitrione");
+        Assert.Equal(HttpStatusCode.OK, anon.StatusCode);
+        using (var doc = JsonDocument.Parse(await anon.Content.ReadAsStringAsync()))
+        {
+            // Every row of the bulk response is projected: no contact PII and
+            // no internal user link (the historical leak of the full list).
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                Assert.False(item.TryGetProperty("email", out _));
+                Assert.False(item.TryGetProperty("telefono", out _));
+                Assert.False(item.TryGetProperty("usuarioId", out _));
+            }
+
+            var seeded = doc.RootElement.EnumerateArray()
+                .First(i => i.GetProperty("id").GetInt32() == seed.AnfitrionId);
+            Assert.True(seeded.TryGetProperty("nombre", out _));
+            Assert.True(seeded.TryGetProperty("municipio", out _));
+        }
+
+        // Admin keeps the unprojected rows: AdminPanelPage reads email/telefono.
+        var admin = await AuthedClient(AdminSession()).GetAsync("/api/Anfitrione");
+        Assert.Equal(HttpStatusCode.OK, admin.StatusCode);
+        using (var doc = JsonDocument.Parse(await admin.Content.ReadAsStringAsync()))
+        {
+            var seeded = doc.RootElement.EnumerateArray()
+                .First(i => i.GetProperty("id").GetInt32() == seed.AnfitrionId);
+            Assert.True(seeded.TryGetProperty("email", out _));
+            Assert.True(seeded.TryGetProperty("telefono", out _));
+            Assert.True(seeded.TryGetProperty("usuarioId", out _));
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task HostDetail_StripsUsuarioIdForAnonymous_OwnerAndAdminKeepIt()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+
+        var anon = await Client().GetAsync($"/api/Anfitrione/{seed.AnfitrionId}");
+        Assert.Equal(HttpStatusCode.OK, anon.StatusCode);
+        using (var doc = JsonDocument.Parse(await anon.Content.ReadAsStringAsync()))
+        {
+            // Email/telefono remain public by product decision (perfil page).
+            Assert.True(doc.RootElement.TryGetProperty("email", out _));
+            Assert.True(doc.RootElement.TryGetProperty("telefono", out _));
+            // The internal user link has no product need for strangers.
+            Assert.False(doc.RootElement.TryGetProperty("usuarioId", out _));
+        }
+
+        var owner = await RegisterUserAsync();
+        var (municipioId, _) = await SeedGeoAndCategoryAsync();
+        var ownedHostId = await SeedHostAsync(owner.UserId, municipioId);
+
+        var ownerRes = await AuthedClient(owner).GetAsync($"/api/Anfitrione/{ownedHostId}");
+        Assert.Equal(HttpStatusCode.OK, ownerRes.StatusCode);
+        using (var doc = JsonDocument.Parse(await ownerRes.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(owner.UserId, doc.RootElement.GetProperty("usuarioId").GetInt32());
+        }
+
+        var adminRes = await AuthedClient(AdminSession()).GetAsync($"/api/Anfitrione/{seed.AnfitrionId}");
+        Assert.Equal(HttpStatusCode.OK, adminRes.StatusCode);
+        using (var doc = JsonDocument.Parse(await adminRes.Content.ReadAsStringAsync()))
+        {
+            // Key present (even when NULL for an orphan row) = full entity.
+            Assert.True(doc.RootElement.TryGetProperty("usuarioId", out _));
+        }
+    }
+
     // ---- Requirement: Registrar binds identity from the token --------------------
 
     [SkippableFact]
@@ -512,7 +712,7 @@ public sealed class AuthzIntegrationTests
         return (municipio.Id, categoria.Id);
     }
 
-    private async Task<int> SeedHostAsync(int? usuarioId, int municipioId)
+    private async Task<int> SeedHostAsync(int? usuarioId, int municipioId, string? email = null)
     {
         await using var db = NewDb();
         var host = new Anfitrione
@@ -520,7 +720,7 @@ public sealed class AuthzIntegrationTests
             UsuarioId = usuarioId,
             MunicipioId = municipioId,
             Nombre = $"Host {Guid.NewGuid():N}",
-            Email = NewEmail(),
+            Email = email ?? NewEmail(),
             Verificado = false,
         };
         db.Anfitriones.Add(host);

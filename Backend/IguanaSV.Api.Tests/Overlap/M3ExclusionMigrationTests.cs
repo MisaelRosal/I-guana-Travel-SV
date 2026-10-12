@@ -70,7 +70,7 @@ public sealed class M3ExclusionMigrationTests
             var history = await ScalarAsync<long>(db, """
                 SELECT count(*) FROM "__EFMigrationsHistory";
                 """);
-            Assert.Equal(7, history);
+            Assert.Equal(9, history);
         }
 
         // Roll back M3 (one step, to M2). The constraint and hygiene index must

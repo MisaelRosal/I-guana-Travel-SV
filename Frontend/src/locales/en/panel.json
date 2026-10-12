@@ -1,0 +1,29 @@
+{
+  "heading": "Operator panel",
+  "subtitle": "Host listing management.",
+  "create": "Create listing",
+  "status": {
+    "loading": "Loading listings…",
+    "emptyTitle": "No listings yet"
+  },
+  "table": {
+    "listing": "Listing",
+    "category": "Category",
+    "price": "Price",
+    "capacity": "Capacity",
+    "images": "Images",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "capacity_one": "{{count}} person",
+  "capacity_other": "{{count}} people",
+  "action": {
+    "editTitle": "Edit listing",
+    "deleteTitle": "Delete listing"
+  },
+  "toast": {
+    "created": "Listing created successfully.",
+    "updated": "Listing updated successfully.",
+    "deleted": "\"{{title}}\" deleted successfully."
+  }
+}

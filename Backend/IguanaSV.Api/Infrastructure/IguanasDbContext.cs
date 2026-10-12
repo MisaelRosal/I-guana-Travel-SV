@@ -28,6 +28,8 @@ public class IguanasDbContext : DbContext
 
     public virtual DbSet<Notificacione> Notificaciones { get; set; }
 
+    public virtual DbSet<NotificacionEmail> NotificacionesEmail { get; set; }
+
     public virtual DbSet<PublicacionAmenidad> PublicacionAmenidads { get; set; }
 
     public virtual DbSet<Publicacione> Publicaciones { get; set; }
@@ -37,6 +39,8 @@ public class IguanasDbContext : DbContext
     public virtual DbSet<ReservaHorario> ReservaHorarios { get; set; }
 
     public virtual DbSet<Usuario> Usuarios { get; set; }
+
+    public virtual DbSet<VerificacionEmail> VerificacionesEmail { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -326,6 +330,34 @@ public class IguanasDbContext : DbContext
                 .HasConstraintName("notificaciones_reserva_id_fkey");
         });
 
+        modelBuilder.Entity<NotificacionEmail>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("notificaciones_email_pkey");
+
+            entity.ToTable("notificaciones_email");
+
+            entity.HasIndex(e => e.Estado, "idx_notificaciones_email_estado");
+
+            entity.HasIndex(e => e.UsuarioId, "idx_notificaciones_email_usuario");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Asunto).HasMaxLength(200).HasColumnName("asunto");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+            entity.Property(e => e.Destinatario).HasMaxLength(150).HasColumnName("destinatario");
+            entity.Property(e => e.Estado).HasMaxLength(20).HasDefaultValueSql("'pendiente'::character varying").HasColumnName("estado");
+            entity.Property(e => e.MensajeError).HasColumnName("mensaje_error");
+            entity.Property(e => e.Tipo).HasMaxLength(40).HasColumnName("tipo");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+
+            entity.HasOne(d => d.Usuario).WithMany()
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("notificaciones_email_usuario_id_fkey");
+        });
+
         modelBuilder.Entity<PublicacionAmenidad>(entity =>
         {
             entity.HasKey(e => new { e.PublicacionId, e.AmenidadId }).HasName("publicacion_amenidad_pkey");
@@ -467,6 +499,9 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.FechaPago)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("fecha_pago");
+            entity.Property(e => e.FechaExpiracionGracia)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("fecha_expiracion_gracia");
             entity.Property(e => e.IdTransaccion)
                 .HasMaxLength(100)
                 .HasColumnName("id_transaccion");
@@ -532,6 +567,9 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Email)
                 .HasMaxLength(150)
                 .HasColumnName("email");
+            entity.Property(e => e.EmailVerificado)
+                .HasDefaultValue(false)
+                .HasColumnName("email_verificado");
             entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
             entity.Property(e => e.Rol)
                 .HasMaxLength(20)
@@ -544,6 +582,34 @@ public class IguanasDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<VerificacionEmail>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("verificaciones_email_pkey");
+
+            entity.ToTable("verificaciones_email");
+
+            entity.HasIndex(e => new { e.UsuarioId, e.Usado }, "idx_verificaciones_email_usuario_usado");
+
+            entity.HasIndex(e => e.ExpiraAt, "idx_verificaciones_email_expira");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CodigoHash).HasMaxLength(128).HasColumnName("codigo_hash");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+            entity.Property(e => e.ExpiraAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("expira_at");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Usado).HasDefaultValue(false).HasColumnName("usado");
+
+            entity.HasOne(d => d.Usuario).WithMany()
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("verificaciones_email_usuario_id_fkey");
         });
 
         // Fake "no overlap" plain GiST indexes (horarios_no_overlap / reservas_no_overlap)

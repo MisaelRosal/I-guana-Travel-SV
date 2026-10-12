@@ -31,6 +31,12 @@ public partial class Reserva
 
     public DateTime? FechaPago { get; set; }
 
+    // One-hour grace window for short (<24h) reservations: while it has not
+    // expired and the reservation is still "pendiente", edit/cancel/pay stay
+    // allowed even though check-in is today or tomorrow. NULL for normal
+    // reservations, which keep the legacy "1 day or less" blocking rules.
+    public DateTime? FechaExpiracionGracia { get; set; }
+
     public string? IdTransaccion { get; set; }
 
     public DateTime? CreatedAt { get; set; }

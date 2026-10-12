@@ -38,6 +38,7 @@ export async function getMisReservas() {
       personas: r.numeroHuespedes ?? 1,
       precioTotal: r.precioTotal ?? 0,
       estado: r.estado ?? 'pendiente',
+      fechaExpiracionGracia: r.fechaExpiracionGracia ?? null,
       nombreHuesped: r.nombreHuesped ?? '',
       emailHuesped: r.emailHuesped ?? '',
       telefonoHuesped: r.telefonoHuesped ?? '',

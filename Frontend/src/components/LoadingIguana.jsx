@@ -1,6 +1,11 @@
+import { useTranslation } from 'react-i18next'
 import logoCarga from '../assets/logo_de_carga_transparente.webp'
 
-export default function LoadingIguana({ message = 'Cargando…', fullscreen = false }) {
+export default function LoadingIguana({ message, fullscreen = false }) {
+  const { t } = useTranslation('common')
+  // An explicit caller message always wins; null/undefined falls back to the
+  // localized default. An empty string stays "no copy" (original contract).
+  const texto = message ?? t('loading.default')
   const contenido = (
     <>
       <img
@@ -9,7 +14,7 @@ export default function LoadingIguana({ message = 'Cargando…', fullscreen = fa
         className="h-36 w-auto sm:h-48"
         draggable={false}
       />
-      {message && <p className="mt-4 text-sm text-cafe">{message}</p>}
+      {texto && <p className="mt-4 text-sm text-cafe">{texto}</p>}
     </>
   )
 

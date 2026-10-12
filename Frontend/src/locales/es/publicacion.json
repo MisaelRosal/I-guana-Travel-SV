@@ -1,0 +1,32 @@
+{
+  "heading": "Conviértete en anfitrión",
+  "subtitle": "Crea tu perfil de anfitrión. Necesitamos una foto de tu persona.",
+  "loginRequired": {
+    "body": "Para ofrecer tus experiencias necesitás iniciar sesión.",
+    "cta": "Iniciar sesión"
+  },
+  "photoLabel": "Foto de perfil *",
+  "photoAlt": "Foto de perfil",
+  "choosePhoto": "Elegir foto",
+  "photoHint": "JPG o PNG. Será visible para tus huéspedes.",
+  "emailLabel": "Correo electrónico *",
+  "phoneLabel": "Teléfono",
+  "phonePlaceholder": "Teléfono de contacto",
+  "descLabel": "Breve descripción *",
+  "descPlaceholder": "Cuéntanos quién eres y qué experiencia ofreces...",
+  "deptoLabel": "Departamento *",
+  "deptoOption": "Seleccioná un departamento",
+  "muniLabel": "Municipio *",
+  "muniOption": "Seleccioná un municipio",
+  "submit": "Crear perfil de anfitrión",
+  "submitting": "Registrando...",
+  "submittingPhoto": "Subiendo foto...",
+  "errors": {
+    "photoRequired": "La foto de perfil es obligatoria.",
+    "descRequired": "Cuéntanos una breve descripción sobre ti.",
+    "municipioRequired": "Seleccioná tu municipio."
+  },
+  "successToast": "¡Ya eres anfitrión!",
+  "genericError": "No se pudo completar el registro.",
+  "uploadError": "No se pudo subir la foto."
+}
