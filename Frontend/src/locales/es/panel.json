@@ -44,5 +44,44 @@
     "editReply": "Editar respuesta",
     "updated": "Respuesta publicada correctamente.",
     "error": "No se pudo publicar la respuesta."
+  },
+  "dashboard": {
+    "tab": "Dashboard",
+    "period": {
+      "label": "Período",
+      "dia": "Día",
+      "semana": "Semana",
+      "mes": "Mes"
+    },
+    "publication": {
+      "label": "Publicación",
+      "all": "Todas las publicaciones"
+    },
+    "adminNote": "Ves las ganancias de todas las publicaciones.",
+    "loading": "Calculando ganancias…",
+    "error": "No se pudieron cargar las ganancias.",
+    "card": {
+      "total": "Total del período",
+      "reservas": "Reservas",
+      "promedio": "Promedio por reserva",
+      "general": "Total histórico"
+    },
+    "chart": {
+      "title": "Evolución de las ganancias",
+      "empty": "No hay ganancias en este período.",
+      "tooltip": "{{count}} reservas"
+    },
+    "table": {
+      "title": "Ganancias por publicación",
+      "listing": "Publicación",
+      "type": "Tipo",
+      "reservas": "Reservas",
+      "total": "Ganancias",
+      "empty": "Sin ganancias en este período."
+    },
+    "type": {
+      "hospedaje": "Hospedaje",
+      "experiencia": "Experiencia"
+    }
   }
 }

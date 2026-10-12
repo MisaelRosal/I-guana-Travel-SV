@@ -854,8 +854,6 @@ export default function ExperienceDetailPage() {
             </p>
           </section>
 
-          <SeccionResenas data={resenas} />
-
           <CardAnfitrion
             anfitrionId={experiencia.anfitrionId}
             nombre={experiencia.anfitrion}
@@ -885,6 +883,8 @@ export default function ExperienceDetailPage() {
           <Horarios horarios={experiencia.horarios} />
 
           <Mapa latitud={experiencia.latitud} longitud={experiencia.longitud} />
+
+          <SeccionResenas data={resenas} />
         </div>
       )}
 

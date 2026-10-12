@@ -43,5 +43,44 @@
     "editReply": "Edit response",
     "updated": "Response posted successfully.",
     "error": "The response could not be posted."
+  },
+  "dashboard": {
+    "tab": "Dashboard",
+    "period": {
+      "label": "Period",
+      "dia": "Day",
+      "semana": "Week",
+      "mes": "Month"
+    },
+    "publication": {
+      "label": "Listing",
+      "all": "All listings"
+    },
+    "adminNote": "You are viewing the earnings of every listing.",
+    "loading": "Calculating earnings…",
+    "error": "The earnings could not be loaded.",
+    "card": {
+      "total": "Period total",
+      "reservas": "Reservations",
+      "promedio": "Average per reservation",
+      "general": "All-time total"
+    },
+    "chart": {
+      "title": "Earnings over time",
+      "empty": "No earnings in this period.",
+      "tooltip": "{{count}} reservations"
+    },
+    "table": {
+      "title": "Earnings by listing",
+      "listing": "Listing",
+      "type": "Type",
+      "reservas": "Reservations",
+      "total": "Earnings",
+      "empty": "No earnings in this period."
+    },
+    "type": {
+      "hospedaje": "Lodging",
+      "experiencia": "Experience"
+    }
   }
 }

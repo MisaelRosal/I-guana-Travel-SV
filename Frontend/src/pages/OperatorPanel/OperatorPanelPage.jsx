@@ -7,6 +7,7 @@ import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
 import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.js'
 import { getMisResenas, responderResena } from '../../services/resenas.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
+import DashboardGanancias from '../../components/DashboardGanancias.jsx'
 
 export default function OperatorPanelPage() {
   const { t } = useTranslation('panel')
@@ -173,6 +174,7 @@ export default function OperatorPanelPage() {
       <div className="mb-6 flex gap-2 border-b border-neutral-200">
         {[
           { id: 'publicaciones', etiqueta: t('tabs.publications') },
+          { id: 'dashboard', etiqueta: t('dashboard.tab') },
           { id: 'resenas', etiqueta: t('reviews.tab', { count: listaResenas.length }) },
         ].map((tab) => (
           <button
@@ -191,7 +193,7 @@ export default function OperatorPanelPage() {
         ))}
       </div>
 
-      {pestana === 'publicaciones' ? (
+      {pestana === 'publicaciones' && (
       <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white shadow-sm">
         {cargando ? (
           <p className="px-6 py-14 text-center text-cafe">{t('status.loading')}</p>
@@ -299,7 +301,13 @@ export default function OperatorPanelPage() {
           </div>
         )}
       </div>
-      ) : (
+      )}
+
+      {pestana === 'dashboard' && (
+        <DashboardGanancias publicaciones={publicaciones} esAdmin={esAdmin(usuario?.rol)} />
+      )}
+
+      {pestana === 'resenas' && (
         <div className="space-y-5">
           {resumenesResenas.length > 0 && (
             <div className="flex flex-wrap gap-2">
