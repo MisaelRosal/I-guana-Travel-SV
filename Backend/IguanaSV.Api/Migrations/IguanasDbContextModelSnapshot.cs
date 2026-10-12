@@ -682,6 +682,69 @@ namespace IguanaSV.Api.Migrations
                     b.ToTable("publicaciones", (string)null);
                 });
 
+            modelBuilder.Entity("IguanaSV.Api.Entities.Resena", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ActualizadoEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("actualizado_en");
+
+                    b.Property<short>("Calificacion")
+                        .HasColumnType("smallint")
+                        .HasColumnName("calificacion");
+
+                    b.Property<string>("Comentario")
+                        .HasColumnType("text")
+                        .HasColumnName("comentario");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("creado_en")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("FechaRespuesta")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("fecha_respuesta");
+
+                    b.Property<int>("PublicacionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("publicacion_id");
+
+                    b.Property<int>("ReservaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("reserva_id");
+
+                    b.Property<string>("RespuestaAnfitrion")
+                        .HasColumnType("text")
+                        .HasColumnName("respuesta_anfitrion");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id")
+                        .HasName("resenas_pkey");
+
+                    b.HasIndex(new[] { "PublicacionId" }, "idx_resenas_publicacion");
+
+                    b.HasIndex(new[] { "UsuarioId" }, "idx_resenas_usuario");
+
+                    b.HasIndex(new[] { "ReservaId" }, "resenas_reserva_id_key")
+                        .IsUnique();
+
+                    b.ToTable("resenas", null, t =>
+                        {
+                            t.HasCheckConstraint("resenas_calificacion_check", "calificacion >= 0 AND calificacion <= 5");
+                        });
+                });
+
             modelBuilder.Entity("IguanaSV.Api.Entities.Reserva", b =>
                 {
                     b.Property<int>("Id")
@@ -754,6 +817,10 @@ namespace IguanaSV.Api.Migrations
                     b.Property<int>("PublicacionId")
                         .HasColumnType("integer")
                         .HasColumnName("publicacion_id");
+
+                    b.Property<DateTime?>("ResenasNotificadasEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("resenas_notificadas_en");
 
                     b.Property<string>("TelefonoHuesped")
                         .HasMaxLength(20)
@@ -1067,6 +1134,36 @@ namespace IguanaSV.Api.Migrations
                     b.Navigation("Municipio");
                 });
 
+            modelBuilder.Entity("IguanaSV.Api.Entities.Resena", b =>
+                {
+                    b.HasOne("IguanaSV.Api.Entities.Publicacione", "Publicacion")
+                        .WithMany("Resenas")
+                        .HasForeignKey("PublicacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("resenas_publicacion_id_fkey");
+
+                    b.HasOne("IguanaSV.Api.Entities.Reserva", "Reserva")
+                        .WithOne("Resena")
+                        .HasForeignKey("IguanaSV.Api.Entities.Resena", "ReservaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("resenas_reserva_id_fkey");
+
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
+                        .WithMany("Resenas")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("resenas_usuario_id_fkey");
+
+                    b.Navigation("Publicacion");
+
+                    b.Navigation("Reserva");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("IguanaSV.Api.Entities.Reserva", b =>
                 {
                     b.HasOne("IguanaSV.Api.Entities.Publicacione", "Publicacion")
@@ -1160,6 +1257,8 @@ namespace IguanaSV.Api.Migrations
 
                     b.Navigation("PublicacionAmenidads");
 
+                    b.Navigation("Resenas");
+
                     b.Navigation("Reservas");
                 });
 
@@ -1167,7 +1266,14 @@ namespace IguanaSV.Api.Migrations
                 {
                     b.Navigation("Notificaciones");
 
+                    b.Navigation("Resena");
+
                     b.Navigation("ReservaHorarios");
+                });
+
+            modelBuilder.Entity("IguanaSV.Api.Entities.Usuario", b =>
+                {
+                    b.Navigation("Resenas");
                 });
 #pragma warning restore 612, 618
         }

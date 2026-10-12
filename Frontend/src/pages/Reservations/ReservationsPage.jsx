@@ -4,8 +4,9 @@ import { Trans, useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
 import { formatDateDMY, formatMonthYear, formatPrice, weekdayShortMonFirst } from '../../i18n/format.js'
-import { actualizarReserva, eliminarReserva, getMisReservas, pagarReserva, cancelarReserva } from '../../services/reservas.js'
+import { actualizarReserva, crearResena, eliminarReserva, getMisReservas, pagarReserva, cancelarReserva } from '../../services/reservas.js'
 import Toast from '../../components/Toast.jsx'
+import { Estrellas, SelectorEstrellas } from '../../components/Estrellas.jsx'
 
 // Display-only mapping DB estado -> reservas chip key (localized-ui-content spec:
 // the stored value is never rewritten; unknown values render verbatim passthrough).
@@ -43,7 +44,7 @@ function fechaBloqueada(iso) {
   return diasRestantes <= 1
 }
 
-function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) {
+function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar, onResenar }) {
   const { t } = useTranslation('reservas')
   const locale = useFormatLocale()
   const multinoche = reserva.fechaFin && reserva.fechaFin !== reserva.fechaInicio
@@ -51,6 +52,13 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
   const cancelada = reserva.estado === 'cancelada'
   const confirmada = reserva.estado === 'confirmada'
   const pendiente = reserva.estado === 'pendiente'
+  const completada = reserva.estado === 'completada'
+
+  // Review eligibility mirrors the server rule: paid (confirmed/completed)
+  // reservation, arrival day reached, one review per reservation.
+  const yaReseno = !!reserva.resena
+  const llegoLaFecha = !!reserva.fechaInicio && reserva.fechaInicio <= todayISO()
+  const puedeResenar = !cancelada && !pendiente && (confirmada || completada) && llegoLaFecha && !yaReseno
 
   // Short (<24h) reservation: the one-hour grace window governs every action.
   const esCorta = !!reserva.fechaExpiracionGracia
@@ -180,6 +188,28 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar }) 
             </div>
           )}
         </div>
+
+        {(puedeResenar || yaReseno) && (
+          <div className="mt-3 border-t border-neutral-100 pt-3">
+            {yaReseno ? (
+              <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-3 py-1.5 text-xs font-semibold text-amber">
+                <Estrellas valor={reserva.resena.calificacion} className="h-3.5 w-3.5" />
+                {t('reviews.sent', { rating: reserva.resena.calificacion })}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onResenar(reserva)}
+                className="flex cursor-pointer items-center gap-2 rounded-lg bg-terracota px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                {t('reviews.button')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </article>
   )
@@ -768,6 +798,104 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
   )
 }
 
+function ModalResena({ reserva, onCerrar, onExito }) {
+  const { t } = useTranslation('reservas')
+  const locale = useFormatLocale()
+  const [calificacion, setCalificacion] = useState(0)
+  const [comentario, setComentario] = useState('')
+  const [procesando, setProcesando] = useState(false)
+  const [error, setError] = useState(null)
+
+  const etiquetas = [0, 1, 2, 3, 4, 5].map((n) => t(`reviews.rating.${n}`))
+  const multinoche = reserva.fechaFin && reserva.fechaFin !== reserva.fechaInicio
+
+  const handleEnviar = async () => {
+    setProcesando(true)
+    setError(null)
+    try {
+      const resena = await crearResena({ reservaId: reserva.id, calificacion, comentario })
+      onExito(resena)
+    } catch (err) {
+      setError(err.mensaje || err.message || t('reviews.error'))
+      setProcesando(false)
+    }
+  }
+
+  return (
+    <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+      <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-terracota">{t('reviews.modalTitle')}</h2>
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={procesando}
+            className="text-2xl leading-none text-cafe hover:text-terracota transition-colors"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-lg bg-crema p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-cafe">{reserva.experienciaCategoria}</p>
+          <p className="mt-0.5 text-sm font-bold text-verde-bosque">{reserva.experienciaTitulo}</p>
+          <p className="mt-0.5 text-xs text-cafe">
+            {formatDateDMY(reserva.fechaInicio, locale)}
+            {multinoche ? ` → ${formatDateDMY(reserva.fechaFin, locale)}` : ''}
+          </p>
+        </div>
+
+        <div className="mb-5">
+          <p className="mb-2 text-sm font-semibold text-verde-bosque">{t('reviews.question')}</p>
+          <div className="flex items-center gap-3">
+            <SelectorEstrellas valor={calificacion} onChange={setCalificacion} />
+            <span className="text-sm font-semibold text-amber">{etiquetas[calificacion]}</span>
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="comentario-resena" className="mb-1 block text-sm font-semibold text-verde-bosque">
+            {t('reviews.commentLabel')} <span className="font-normal text-cafe">{t('reviews.commentOptional')}</span>
+          </label>
+          <textarea
+            id="comentario-resena"
+            rows={4}
+            maxLength={500}
+            value={comentario}
+            onChange={(e) => setComentario(e.target.value)}
+            placeholder={t('reviews.commentPlaceholder')}
+            className="w-full resize-none rounded-lg border border-cafe-claro px-3 py-2 text-sm text-neutral-800 focus:border-verde-bosque focus:outline-none"
+          />
+          <p className="mt-1 text-right text-xs text-cafe">{comentario.length}/500</p>
+        </div>
+
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 p-2 text-center text-sm text-red-700">{error}</p>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleEnviar}
+            disabled={procesando}
+            className="flex-1 cursor-pointer rounded-lg bg-terracota px-4 py-3 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+          >
+            {procesando ? t('reviews.submitting') : t('reviews.submit')}
+          </button>
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={procesando}
+            className="flex-1 cursor-pointer rounded-lg border border-neutral-300 px-4 py-3 font-semibold text-verde-bosque hover:bg-neutral-50 transition-colors disabled:opacity-50"
+          >
+            {t('common:actions.cancel')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ReservationsPage() {
   const { t } = useTranslation('reservas')
   const [reservas, setReservas] = useState([])
@@ -779,6 +907,7 @@ export default function ReservationsPage() {
   const [reservaEliminar, setReservaEliminar] = useState(null)
   const [reservaPagar, setReservaPagar] = useState(null)
   const [reservaCancelar, setReservaCancelar] = useState(null)
+  const [reservaResenar, setReservaResenar] = useState(null)
 
   const cargarReservas = async () => {
     try {
@@ -845,6 +974,13 @@ export default function ReservationsPage() {
     setToast({ tipo: 'exito', mensaje: t('toast.cancelSuccess') })
   }
 
+  const handleExitoResena = (resena) => {
+    const id = reservaResenar?.id
+    setReservas((prev) => prev.map((r) => (r.id === id ? { ...r, resena } : r)))
+    setReservaResenar(null)
+    setToast({ tipo: 'exito', mensaje: t('reviews.toastSuccess') })
+  }
+
   if (!cargando && !sesion) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-20 text-center">
@@ -907,6 +1043,7 @@ export default function ReservationsPage() {
                       onEliminar={setReservaEliminar}
                       onPagar={handleAbrirPago}
                       onCancelar={setReservaCancelar}
+                      onResenar={setReservaResenar}
                     />
                   ))}
                 </div>
@@ -944,6 +1081,14 @@ export default function ReservationsPage() {
           reserva={reservaCancelar}
           onCerrar={() => setReservaCancelar(null)}
           onExito={handleExitoCancelacion}
+        />
+      )}
+
+      {reservaResenar && (
+        <ModalResena
+          reserva={reservaResenar}
+          onCerrar={() => setReservaResenar(null)}
+          onExito={handleExitoResena}
         />
       )}
 

@@ -47,4 +47,11 @@ public class EmailOptions
     /// points at the API's own /oauth2callback route; production must be HTTPS.
     /// </summary>
     public string GoogleRedirectUri { get; set; } = "http://localhost:5000/oauth2callback";
+
+    /// <summary>
+    /// Public base URL of the SPA, used to build the action links embedded in
+    /// emails (e.g. "Dejar mi reseña" -> {SitioUrl}/reservas). Bound from
+    /// <c>Email__SitioUrl</c> / the FRONTEND_BASE_URL compose variable.
+    /// </summary>
+    public string SitioUrl { get; set; } = "http://localhost";
 }

@@ -8,7 +8,7 @@ import { formatDayMonthYear, formatPrice } from '../i18n/format.js'
 // tags are never hardcoded here (es-SV stays `5 ene 2026`, EN switches to
 // `Jan 5, 2026` and en-US grouping in place, without a reload).
 
-export default function ExperienceCard({ experiencia, proximaFecha }) {
+export default function ExperienceCard({ experiencia, proximaFecha, resena }) {
   const { t } = useTranslation('experiencia')
   const locale = useFormatLocale()
   const esHospedaje = experiencia.tipo === 'hospedaje'
@@ -26,6 +26,7 @@ export default function ExperienceCard({ experiencia, proximaFecha }) {
         t('card.stayGuests', { count: experiencia.capacidad }),
       ].join(' · ')
     : t('reservas:cupos', { count: experiencia.capacidad })
+  const conResenas = resena && resena.total > 0
 
   return (
     // F5 (task 6.4): the card link follows the active locale's detail form.
@@ -57,6 +58,21 @@ export default function ExperienceCard({ experiencia, proximaFecha }) {
 
       <div className="flex flex-1 flex-col p-4">
         <h3 className="text-lg font-bold text-verde-bosque line-clamp-1">{experiencia.titulo}</h3>
+        <div className="mt-1 flex min-h-[20px] items-center gap-1.5 text-sm">
+          {conResenas ? (
+            <>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-amber" aria-hidden="true">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              <span className="font-bold text-neutral-800">{Number(resena.promedio).toFixed(1)}</span>
+              <span className="text-cafe">
+                ({t('reviews.count', { count: resena.total })})
+              </span>
+            </>
+          ) : (
+            <span className="text-xs italic text-cafe">{t('reviews.empty')}</span>
+          )}
+        </div>
         <p className="mt-1 text-base text-cafe">
           {experiencia.municipio}, {experiencia.departamento}
         </p>

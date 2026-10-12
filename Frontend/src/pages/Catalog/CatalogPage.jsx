@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { getCategorias, getDepartamentos, getExperiencias, getProximasExperiencias } from '../../services/experiencias.js'
+import { getResumenResenas } from '../../services/resenas.js'
 import ExperienceCard from '../../components/ExperienceCard.jsx'
 import LoadingIguana from '../../components/LoadingIguana.jsx'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
@@ -134,6 +135,10 @@ export default function CatalogPage() {
   const [zona, setZona] = useState('')
   const [tipo, setTipo] = useState('')
   const [precioMax, setPrecioMax] = useState('')
+  const [orden, setOrden] = useState('')
+  // Mapa publicacionId -> { promedio, total }. Publicaciones sin reseñas no
+  // vienen en la respuesta y la tarjeta muestra "Aún no tiene reseñas".
+  const [resumenes, setResumenes] = useState({})
   // En móvil los filtros van ocultos tras un botón "Filtros" hasta que se abre.
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
   const filtrosActivos = [tipo, categoria, zona, precioMax].filter(Boolean).length
@@ -170,11 +175,31 @@ export default function CatalogPage() {
       .catch(() => setProximasExperiencias([]))
   }, [])
 
+  // Batch de promedios: una sola llamada con los ids visibles (catálogo + próximas).
+  useEffect(() => {
+    const ids = [...new Set([...experiencias, ...proximasExperiencias].map((e) => e.id))]
+    if (ids.length === 0) {
+      setResumenes({})
+      return undefined
+    }
+    let activo = true
+    getResumenResenas(ids)
+      .then((data) => { if (activo) setResumenes(data || {}) })
+      .catch(() => { if (activo) setResumenes({}) })
+    return () => { activo = false }
+  }, [experiencias, proximasExperiencias])
+
   const hayFiltros = Boolean(busqueda || categoria || zona || tipo || precioMax)
-  const visibles = useMemo(
-    () => (hayFiltros ? experiencias : aleatorias(experiencias, 6)),
-    [experiencias, hayFiltros],
-  )
+  const visibles = useMemo(() => {
+    if (orden === 'valoradas') {
+      return [...experiencias].sort((a, b) => {
+        const ra = resumenes[a.id]?.total > 0 ? resumenes[a.id].promedio : -1
+        const rb = resumenes[b.id]?.total > 0 ? resumenes[b.id].promedio : -1
+        return rb - ra
+      })
+    }
+    return hayFiltros ? experiencias : aleatorias(experiencias, 6)
+  }, [experiencias, hayFiltros, orden, resumenes])
 
   const handleBuscar = (e) => {
     e.preventDefault()
@@ -326,9 +351,16 @@ export default function CatalogPage() {
               }))}
               onChange={setPrecioMax}
             />
+            <FiltroDesplegable
+              etiqueta={t('filters.sortLabel')}
+              placeholder={t('filters.sortPlaceholder')}
+              valor={orden}
+              opciones={[{ valor: 'valoradas', etiqueta: t('filters.sortBestRated') }]}
+              onChange={setOrden}
+            />
             <button
               type="button"
-              onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax('') }}
+              onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax(''); setOrden('') }}
               className="w-full cursor-pointer rounded-xl border-2 border-dashed border-verde-bosque px-4 py-2.5 text-sm font-semibold text-verde-bosque transition-colors hover:border-verde-bosque hover:bg-verde-bosque hover:text-white sm:w-auto"
             >
               {t('filters.clear')}
@@ -350,7 +382,12 @@ export default function CatalogPage() {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {visibles.map((e) => (
-              <ExperienceCard key={e.id} experiencia={e} proximaFecha={e.proximaFecha} />
+              <ExperienceCard
+                key={e.id}
+                experiencia={e}
+                proximaFecha={e.proximaFecha}
+                resena={resumenes[e.id]}
+              />
             ))}
           </div>
         )}
@@ -372,7 +409,12 @@ export default function CatalogPage() {
             </div>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {proximasExperiencias.map((e) => (
-                <ExperienceCard key={e.id} experiencia={e} proximaFecha={e.proximaFecha} />
+                <ExperienceCard
+                  key={e.id}
+                  experiencia={e}
+                  proximaFecha={e.proximaFecha}
+                  resena={resumenes[e.id]}
+                />
               ))}
             </div>
           </div>

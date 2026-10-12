@@ -42,4 +42,25 @@ public interface IEmailNotificationService
         int huespedes,
         decimal precioTotal,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sent to the guest once the stay/experience's arrival day is reached and
+    /// the reservation can be reviewed (button deep-links to /reservas).
+    /// </summary>
+    Task<bool> ResenaDisponibleAsync(
+        string destinatario,
+        string nombre,
+        string tituloPublicacion,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sent to the host when a guest publishes a review of one of their
+    /// publications (button deep-links to /panel, the reviews tab).
+    /// </summary>
+    Task<bool> ResenaRecibidaAsync(
+        string destinatario,
+        string nombreAnfitrion,
+        string tituloPublicacion,
+        short calificacion,
+        CancellationToken cancellationToken = default);
 }

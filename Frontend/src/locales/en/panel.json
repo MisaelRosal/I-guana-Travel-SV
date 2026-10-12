@@ -25,5 +25,23 @@
     "created": "Listing created successfully.",
     "updated": "Listing updated successfully.",
     "deleted": "\"{{title}}\" deleted successfully."
+  },
+  "tabs": {
+    "publications": "Listings"
+  },
+  "reviews": {
+    "tab": "Reviews ({{count}})",
+    "count_one": "{{count}} review",
+    "count_other": "{{count}} reviews",
+    "emptyTitle": "No reviews yet",
+    "emptyBody": "Your guests' reviews will appear here.",
+    "yourReply": "Your response",
+    "replyPlaceholder": "Write your reply to this guest… (leave it empty to delete the response)",
+    "publishing": "Saving…",
+    "publish": "Post response",
+    "respond": "Respond",
+    "editReply": "Edit response",
+    "updated": "Response posted successfully.",
+    "error": "The response could not be posted."
   }
 }

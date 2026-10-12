@@ -215,6 +215,55 @@ public class EmailNotificationService : IEmailNotificationService
             cancellationToken: cancellationToken);
     }
 
+    public Task<bool> ResenaDisponibleAsync(
+        string destinatario, string nombre, string tituloPublicacion, CancellationToken cancellationToken = default)
+    {
+        var enlace = $"{_options.SitioUrl.TrimEnd('/')}/reservas";
+        var cuerpo = $"""
+            <p>Hola {Esc(nombre)},</p>
+            <p>¡Tu estancia en "{Esc(tituloPublicacion)}" ya comenzó y ahora podés contar tu experiencia!</p>
+            <p>Calificá con estrellas y, si querés, dejá un comentario. Tu reseña le ayuda a otros viajeros y al anfitrión.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>
+              <td style="border-radius:8px;background:#1f4d3a;">
+                <a href="{Esc(enlace)}" style="display:inline-block;padding:12px 26px;color:#ffffff;font-weight:bold;text-decoration:none;">Dejar mi reseña</a>
+              </td>
+            </tr></table>
+            <p>Si ya volviste a casa, contanos cómo te fue. ¡Gracias por viajar con nosotros!</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Ya podés calificar tu experiencia - I Guana Travel SV",
+            "resena_disponible",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    public Task<bool> ResenaRecibidaAsync(
+        string destinatario, string nombreAnfitrion, string tituloPublicacion, short calificacion, CancellationToken cancellationToken = default)
+    {
+        var estrellas = new string('★', Math.Clamp((int)calificacion, 0, 5)) + new string('☆', 5 - Math.Clamp((int)calificacion, 0, 5));
+        var enlace = $"{_options.SitioUrl.TrimEnd('/')}/panel";
+        var cuerpo = $"""
+            <p>Hola {Esc(nombreAnfitrion)},</p>
+            <p>Tu publicación "{Esc(tituloPublicacion)}" recibió una nueva reseña:</p>
+            <p style="font-size:22px;margin:14px 0;color:#f5a623;letter-spacing:3px;">{estrellas} <span style="font-size:15px;color:#3a3a3a;font-weight:700;">{calificacion}/5</span></p>
+            <p>Entrá a tu panel para leer el comentario y responderle al huésped.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>
+              <td style="border-radius:8px;background:#1f4d3a;">
+                <a href="{Esc(enlace)}" style="display:inline-block;padding:12px 26px;color:#ffffff;font-weight:bold;text-decoration:none;">Ver reseñas</a>
+              </td>
+            </tr></table>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Nueva reseña recibida - I Guana Travel SV",
+            "resena_recibida",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
     /// <summary>
     /// Branded HTML shell every outgoing email is wrapped in: dark-green header
     /// with the brand mark, white rounded card holding the title and body, and a

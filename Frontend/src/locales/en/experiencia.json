@@ -160,5 +160,14 @@
     "pickArrival": "Pick the check-in date",
     "daySelected": "{{month}} {{day}}, {{year}}",
     "pickDay": "Pick a day"
+  },
+  "reviews": {
+    "title": "Reviews",
+    "empty": "No reviews yet",
+    "emptyHint": "Be the first to tell your experience.",
+    "verified": "Verified booking",
+    "hostReply": "Host's response",
+    "count_one": "{{count}} review",
+    "count_other": "{{count}} reviews"
   }
 }

@@ -22,5 +22,11 @@
   },
   "banner": {
     "dismiss": "Dismiss message"
+  },
+  "stars": {
+    "ariaLabel": "{{valor}} out of 5 stars",
+    "pickerAria": "Rating from 0 to 5 stars",
+    "star_one": "{{count}} star",
+    "star_other": "{{count}} stars"
   }
 }

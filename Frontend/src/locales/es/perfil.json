@@ -53,5 +53,10 @@
     "location": "Ubicación",
     "publications": "Publicaciones de {{name}}",
     "noImage": "Sin imagen"
+  },
+  "reviews": {
+    "empty": "Aún no tiene reseñas",
+    "hostCount_one": "{{count}} reseña de sus experiencias",
+    "hostCount_other": "{{count}} reseñas de sus experiencias"
   }
 }

@@ -53,5 +53,10 @@
     "location": "Location",
     "publications": "Listings by {{name}}",
     "noImage": "No image"
+  },
+  "reviews": {
+    "empty": "No reviews yet",
+    "hostCount_one": "{{count}} review of their listings",
+    "hostCount_other": "{{count}} reviews of their listings"
   }
 }

@@ -38,6 +38,8 @@ public class IguanasDbContext : DbContext
 
     public virtual DbSet<ReservaHorario> ReservaHorarios { get; set; }
 
+    public virtual DbSet<Resena> Resenas { get; set; }
+
     public virtual DbSet<Usuario> Usuarios { get; set; }
 
     public virtual DbSet<VerificacionEmail> VerificacionesEmail { get; set; }
@@ -505,6 +507,9 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.IdTransaccion)
                 .HasMaxLength(100)
                 .HasColumnName("id_transaccion");
+            entity.Property(e => e.ResenasNotificadasEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("resenas_notificadas_en");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
@@ -543,6 +548,53 @@ public class IguanasDbContext : DbContext
             entity.HasOne(d => d.Reserva).WithMany(p => p.ReservaHorarios)
                 .HasForeignKey(d => d.ReservaId)
                 .HasConstraintName("reserva_horario_reserva_id_fkey");
+        });
+
+        modelBuilder.Entity<Resena>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("resenas_pkey");
+
+            entity.ToTable("resenas", t => t.HasCheckConstraint(
+                "resenas_calificacion_check", "calificacion >= 0 AND calificacion <= 5"));
+
+            entity.HasIndex(e => e.PublicacionId, "idx_resenas_publicacion");
+
+            entity.HasIndex(e => e.ReservaId, "resenas_reserva_id_key").IsUnique();
+
+            entity.HasIndex(e => e.UsuarioId, "idx_resenas_usuario");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ReservaId).HasColumnName("reserva_id");
+            entity.Property(e => e.PublicacionId).HasColumnName("publicacion_id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Calificacion).HasColumnName("calificacion");
+            entity.Property(e => e.Comentario).HasColumnName("comentario");
+            entity.Property(e => e.RespuestaAnfitrion).HasColumnName("respuesta_anfitrion");
+            entity.Property(e => e.FechaRespuesta)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("fecha_respuesta");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+            entity.Property(e => e.ActualizadoEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("actualizado_en");
+
+            entity.HasOne(d => d.Reserva).WithOne(p => p.Resena)
+                .HasForeignKey<Resena>(d => d.ReservaId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("resenas_reserva_id_fkey");
+
+            entity.HasOne(d => d.Publicacion).WithMany(p => p.Resenas)
+                .HasForeignKey(d => d.PublicacionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("resenas_publicacion_id_fkey");
+
+            entity.HasOne(d => d.Usuario).WithMany(p => p.Resenas)
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("resenas_usuario_id_fkey");
         });
 
         modelBuilder.Entity<Usuario>(entity =>

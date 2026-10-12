@@ -39,6 +39,7 @@ export async function getMisReservas() {
       precioTotal: r.precioTotal ?? 0,
       estado: r.estado ?? 'pendiente',
       fechaExpiracionGracia: r.fechaExpiracionGracia ?? null,
+      resena: r.resena ?? null,
       nombreHuesped: r.nombreHuesped ?? '',
       emailHuesped: r.emailHuesped ?? '',
       telefonoHuesped: r.telefonoHuesped ?? '',
@@ -96,4 +97,15 @@ export async function pagarReserva(id, metodoPago) {
 
 export async function cancelarReserva(id) {
   return await api.put(`/Reserva/${id}/cancelar`, {})
+}
+
+// The server re-validates eligibility (owner, arrival day reached,
+// confirmed/completed, one review per reservation); errors surface through
+// the standard { mensaje } body.
+export async function crearResena({ reservaId, calificacion, comentario }) {
+  return await api.post('/Resena', {
+    reservaId,
+    calificacion,
+    comentario: comentario && comentario.trim() ? comentario.trim() : null,
+  })
 }

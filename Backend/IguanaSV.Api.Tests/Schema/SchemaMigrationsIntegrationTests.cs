@@ -128,8 +128,9 @@ public sealed class SchemaMigrationsIntegrationTests
             // Six migrations through W2 (M2 AddReservaUsuarioOwnership), plus the
             // W5 M3 ReplaceRacyIndexesWithExclusions, plus the grace-window
             // AddReservaFechaExpiracionGracia, plus the email-verification
-            // AddVerificacionEmailYNotificaciones = nine applied at head.
-            Assert.Equal(9, applied);
+            // AddVerificacionEmailYNotificaciones, plus the reseñas AddResenas
+            // = ten applied at head.
+            Assert.Equal(10, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""

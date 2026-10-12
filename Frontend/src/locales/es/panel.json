@@ -26,5 +26,23 @@
     "created": "Publicación creada exitosamente.",
     "updated": "Publicación actualizada exitosamente.",
     "deleted": "«{{title}}» eliminada exitosamente."
+  },
+  "tabs": {
+    "publications": "Publicaciones"
+  },
+  "reviews": {
+    "tab": "Reseñas ({{count}})",
+    "count_one": "{{count}} reseña",
+    "count_other": "{{count}} reseñas",
+    "emptyTitle": "Aún no hay reseñas",
+    "emptyBody": "Las reseñas de tus huéspedes aparecerán aquí.",
+    "yourReply": "Tu respuesta",
+    "replyPlaceholder": "Escribe tu respuesta a este huésped… (déjalo vacío para eliminar la respuesta)",
+    "publishing": "Guardando…",
+    "publish": "Publicar respuesta",
+    "respond": "Responder",
+    "editReply": "Editar respuesta",
+    "updated": "Respuesta publicada correctamente.",
+    "error": "No se pudo publicar la respuesta."
   }
 }

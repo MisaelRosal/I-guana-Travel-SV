@@ -6,6 +6,7 @@ import L from 'leaflet'
 import { useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
 import {
+  formatDateDMY,
   formatDayMonthShort,
   formatMonthLong,
   formatMonthYear,
@@ -15,8 +16,10 @@ import {
 } from '../../i18n/format.js'
 import { getExperienciaById } from '../../services/experiencias'
 import { getDisponibilidad } from '../../services/reservas'
+import { getResenasPublicacion } from '../../services/resenas'
 import FormularioReserva from '../../components/FormularioReserva'
 import Toast from '../../components/Toast.jsx'
+import { Estrellas } from '../../components/Estrellas.jsx'
 
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -155,7 +158,7 @@ function Galeria({ imagenes, titulo }) {
   )
 }
 
-function InfoBox({ experiencia, onReservar }) {
+function InfoBox({ experiencia, onReservar, resumenResenas }) {
   const { t } = useTranslation('experiencia')
   const locale = useFormatLocale()
   const esHospedaje = experiencia.tipo === 'hospedaje'
@@ -168,6 +171,21 @@ function InfoBox({ experiencia, onReservar }) {
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-terracota">{experiencia.categoria}</p>
           <h2 className="mt-1 text-3xl font-bold leading-tight text-verde-bosque">{experiencia.titulo}</h2>
+          {resumenResenas && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-sm">
+              {resumenResenas.total > 0 ? (
+                <>
+                  <Estrellas valor={resumenResenas.promedio} className="h-4 w-4" />
+                  <span className="font-bold text-neutral-800">{resumenResenas.promedio.toFixed(1)}</span>
+                  <span className="text-cafe">
+                    · {t('reviews.count', { count: resumenResenas.total })}
+                  </span>
+                </>
+              ) : (
+                <span className="italic text-cafe">{t('reviews.empty')}</span>
+              )}
+            </div>
+          )}
           <p className="mt-2 flex items-center gap-1 text-base text-neutral-600">
             <svg className="h-5 w-5 text-terracota" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
@@ -251,6 +269,73 @@ function InfoBox({ experiencia, onReservar }) {
         {t('info.howToArrive')}
       </button>
     </div>
+  )
+}
+
+function SeccionResenas({ data }) {
+  const { t } = useTranslation('experiencia')
+  const locale = useFormatLocale()
+  if (!data) return null
+  const { promedio, total, resenas } = data
+
+  return (
+    <section className="mt-8 border-t border-neutral-100 pt-8">
+      <h3 className="text-2xl font-bold text-verde-bosque">{t('reviews.title')}</h3>
+
+      {total > 0 ? (
+        <>
+          <div className="mt-2 flex items-center gap-2">
+            <Estrellas valor={promedio} className="h-5 w-5" />
+            <span className="text-lg font-bold text-neutral-800">{Number(promedio).toFixed(1)}</span>
+            <span className="text-sm text-cafe">
+              · {t('reviews.count', { count: total })}
+            </span>
+          </div>
+
+          <ul className="mt-5 space-y-5">
+            {resenas.map((r) => (
+              <li key={r.id} className="rounded-xl border border-neutral-100 bg-white p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-crema text-sm font-bold text-cafe">
+                      {(r.hueped || '').charAt(0).toUpperCase()}
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-verde-bosque">{r.hueped}</p>
+                      <p className="text-xs text-cafe">{formatDateDMY(r.fecha, locale)}</p>
+                    </div>
+                  </div>
+                  <Estrellas valor={r.calificacion} className="h-4 w-4" />
+                </div>
+
+                {r.comentario && (
+                  <p className="mt-3 text-sm leading-relaxed text-neutral-800">{r.comentario}</p>
+                )}
+
+                <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-verde-hoja/15 px-2 py-0.5 text-xs font-semibold text-verde-bosque">
+                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  {t('reviews.verified')}
+                </span>
+
+                {r.respuestaAnfitrion && (
+                  <div className="mt-3 rounded-lg bg-crema p-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-terracota">{t('reviews.hostReply')}</p>
+                    <p className="mt-1 text-sm text-neutral-800">{r.respuestaAnfitrion}</p>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <div className="mt-4 rounded-xl border border-dashed border-cafe-claro bg-crema/40 p-6 text-center">
+          <p className="font-semibold text-verde-bosque">{t('reviews.empty')}</p>
+          <p className="mt-1 text-sm text-cafe">{t('reviews.emptyHint')}</p>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -696,6 +781,7 @@ export default function ExperienceDetailPage() {
   const [pasoReserva, setPasoReserva] = useState('inicio')
   const [datosReserva, setDatosReserva] = useState(null)
   const [toast, setToast] = useState(null)
+  const [resenas, setResenas] = useState(null)
 
   useEffect(() => {
     let activo = true
@@ -708,6 +794,18 @@ export default function ExperienceDetailPage() {
       })
       .finally(() => {
         if (activo) setCargando(false)
+      })
+    return () => { activo = false }
+  }, [id])
+
+  useEffect(() => {
+    let activo = true
+    getResenasPublicacion(id)
+      .then((data) => {
+        if (activo) setResenas(data)
+      })
+      .catch(() => {
+        if (activo) setResenas({ promedio: 0, total: 0, resenas: [] })
       })
     return () => { activo = false }
   }, [id])
@@ -741,7 +839,11 @@ export default function ExperienceDetailPage() {
               <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
             </div>
             <div className="lg:col-span-2">
-              <InfoBox experiencia={experiencia} onReservar={() => setPasoReserva('calendario')} />
+              <InfoBox
+                experiencia={experiencia}
+                onReservar={() => setPasoReserva('calendario')}
+                resumenResenas={resenas}
+              />
             </div>
           </div>
 
@@ -751,6 +853,8 @@ export default function ExperienceDetailPage() {
               {experiencia.descripcion || t('page.noDescription')}
             </p>
           </section>
+
+          <SeccionResenas data={resenas} />
 
           <CardAnfitrion
             anfitrionId={experiencia.anfitrionId}

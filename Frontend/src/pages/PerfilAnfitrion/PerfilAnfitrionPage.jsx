@@ -6,6 +6,8 @@ import { localePath } from '../../i18n/routes.jsx'
 import { formatPrice } from '../../i18n/format.js'
 import { getAnfitrionPorId } from '../../services/anfitriones.js'
 import { getExperiencias } from '../../services/experiencias.js'
+import { getResumenAnfitrion } from '../../services/resenas.js'
+import { Estrellas } from '../../components/Estrellas.jsx'
 
 // F5 (task 6.5 + 4.5 gate closure): this public page was the one screen no
 // F1/F2 wave owned, so its frontend-owned Spanish literals are extracted here
@@ -35,6 +37,7 @@ export default function PerfilAnfitrionPage() {
   const locale = useFormatLocale()
   const [anfitrion, setAnfitrion] = useState(null)
   const [publicaciones, setPublicaciones] = useState([])
+  const [resumen, setResumen] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -47,6 +50,9 @@ export default function PerfilAnfitrionPage() {
       .catch((e) => {
         if (activo) setError(e.message)
       })
+    getResumenAnfitrion(id)
+      .then((r) => { if (activo) setResumen(r) })
+      .catch(() => { if (activo) setResumen({ promedio: 0, total: 0 }) })
     getExperiencias()
       .then((exp) => {
         if (activo) setPublicaciones(exp.filter((x) => Number(x.anfitrionId) === Number(id)))
@@ -86,6 +92,21 @@ export default function PerfilAnfitrionPage() {
                 <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber-100 text-amber-700'}`}>
                   {anfitrion.verificado ? t('badge.verified') : t('badge.pending')}
                 </span>
+                {resumen && (
+                  <div className="mt-3 flex items-center justify-center gap-2 sm:justify-start">
+                    {resumen.total > 0 ? (
+                      <>
+                        <Estrellas valor={resumen.promedio} className="h-4 w-4" />
+                        <span className="text-sm font-bold text-neutral-800">{Number(resumen.promedio).toFixed(1)}</span>
+                        <span className="text-sm text-cafe">
+                          · {t('reviews.hostCount', { count: resumen.total })}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm italic text-cafe">{t('reviews.empty')}</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

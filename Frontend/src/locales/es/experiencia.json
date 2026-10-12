@@ -160,5 +160,14 @@
     "pickArrival": "Seleccioná la fecha de llegada",
     "daySelected": "{{day}} de {{month}} de {{year}}",
     "pickDay": "Seleccioná un día"
+  },
+  "reviews": {
+    "title": "Reseñas",
+    "empty": "Aún no tiene reseñas",
+    "emptyHint": "Sé el primero en contar tu experiencia.",
+    "verified": "Reserva verificada",
+    "hostReply": "Respuesta del anfitrión",
+    "count_one": "{{count}} reseña",
+    "count_other": "{{count}} reseñas"
   }
 }

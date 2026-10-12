@@ -114,5 +114,26 @@
   "toast": {
     "paySuccess": "Pago realizado exitosamente.",
     "cancelSuccess": "Reserva cancelada exitosamente."
+  },
+  "reviews": {
+    "button": "Dejar reseña",
+    "sent": "Reseña enviada · {{rating}}/5",
+    "modalTitle": "Dejar reseña",
+    "question": "¿Cómo estuvo tu experiencia?",
+    "commentLabel": "Comentario",
+    "commentOptional": "(opcional)",
+    "commentPlaceholder": "Contá qué te gustó, cómo fue la atención, consejos para otros viajeros…",
+    "rating": {
+      "0": "Sin calificación",
+      "1": "1 estrella",
+      "2": "2 estrellas",
+      "3": "3 estrellas",
+      "4": "4 estrellas",
+      "5": "5 estrellas"
+    },
+    "submitting": "Enviando…",
+    "submit": "Enviar reseña",
+    "error": "Error al enviar la reseña",
+    "toastSuccess": "¡Gracias! Tu reseña fue enviada."
   }
 }

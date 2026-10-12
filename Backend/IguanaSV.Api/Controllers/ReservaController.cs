@@ -40,6 +40,7 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
+            .Include(r => r.Resena)
             .AsQueryable();
 
         if (!User.IsInRole(AuthConstants.AdminRole))
@@ -68,6 +69,7 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
+            .Include(r => r.Resena)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (reserva == null)

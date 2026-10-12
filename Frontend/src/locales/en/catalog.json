@@ -20,7 +20,10 @@
     "pricePlaceholder": "Any price",
     "priceUpTo": "Up to ${{max}}",
     "clear": "Clear filters",
-    "optionsFor": "Options for {{label}}"
+    "optionsFor": "Options for {{label}}",
+    "sortLabel": "Sort",
+    "sortPlaceholder": "Recommended",
+    "sortBestRated": "Best rated"
   },
   "type": {
     "all": "All",

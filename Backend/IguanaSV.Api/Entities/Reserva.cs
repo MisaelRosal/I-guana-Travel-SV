@@ -39,6 +39,10 @@ public partial class Reserva
 
     public string? IdTransaccion { get; set; }
 
+    // Set once the "you can now review" email has been sent for this stay, so
+    // the availability job never notifies the same reservation twice.
+    public DateTime? ResenasNotificadasEn { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
@@ -46,6 +50,8 @@ public partial class Reserva
     public virtual ICollection<Notificacione> Notificaciones { get; set; } = new List<Notificacione>();
 
     public virtual Publicacione? Publicacion { get; set; }
+
+    public virtual Resena? Resena { get; set; }
 
     public virtual Usuario? Usuario { get; set; }
 

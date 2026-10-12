@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../../i18n/config.js'
-import { formatPrice } from '../../i18n/format.js'
+import { formatDateDMY, formatPrice } from '../../i18n/format.js'
 import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
 import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.js'
+import { getMisResenas, responderResena } from '../../services/resenas.js'
+import { Estrellas } from '../../components/Estrellas.jsx'
 
 export default function OperatorPanelPage() {
   const { t } = useTranslation('panel')
@@ -18,6 +20,12 @@ export default function OperatorPanelPage() {
   const [eliminando, setEliminando] = useState(null)
   const [confirmando, setConfirmando] = useState(null)
   const [anfitrionPropio, setAnfitrionPropio] = useState(null)
+  const [pestana, setPestana] = useState('publicaciones')
+  const [resumenesResenas, setResumenesResenas] = useState([])
+  const [listaResenas, setListaResenas] = useState([])
+  const [respondiendoId, setRespondiendoId] = useState(null)
+  const [textoRespuesta, setTextoRespuesta] = useState('')
+  const [guardandoId, setGuardandoId] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -51,6 +59,47 @@ export default function OperatorPanelPage() {
   useEffect(() => {
     cargar()
   }, [cargar])
+
+  const cargarResenas = useCallback(async () => {
+    try {
+      const data = await getMisResenas()
+      setResumenesResenas(data.resumenes || [])
+      setListaResenas(data.resenas || [])
+    } catch {
+      setResumenesResenas([])
+      setListaResenas([])
+    }
+  }, [])
+
+  useEffect(() => {
+    cargarResenas()
+  }, [cargarResenas])
+
+  const iniciarRespuesta = (r) => {
+    setRespondiendoId(r.id)
+    setTextoRespuesta(r.respuestaAnfitrion || '')
+  }
+
+  const guardarRespuesta = async (r) => {
+    setGuardandoId(r.id)
+    try {
+      const res = await responderResena(r.id, textoRespuesta)
+      setListaResenas((prev) =>
+        prev.map((x) =>
+          x.id === r.id
+            ? { ...x, respuestaAnfitrion: res.respuestaAnfitrion, fechaRespuesta: res.fechaRespuesta }
+            : x,
+        ),
+      )
+      setRespondiendoId(null)
+      setTextoRespuesta('')
+      setMensaje(t('reviews.updated'))
+    } catch (e) {
+      setMensaje(e.mensaje || e.message || t('reviews.error'))
+    } finally {
+      setGuardandoId(null)
+    }
+  }
 
   const alCrear = () => {
     setModalAbierto(false)
@@ -121,6 +170,28 @@ export default function OperatorPanelPage() {
         </div>
       )}
 
+      <div className="mb-6 flex gap-2 border-b border-neutral-200">
+        {[
+          { id: 'publicaciones', etiqueta: t('tabs.publications') },
+          { id: 'resenas', etiqueta: t('reviews.tab', { count: listaResenas.length }) },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setPestana(tab.id)}
+            aria-pressed={pestana === tab.id}
+            className={`-mb-px cursor-pointer border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+              pestana === tab.id
+                ? 'border-terracota text-terracota'
+                : 'border-transparent text-cafe hover:text-verde-bosque'
+            }`}
+          >
+            {tab.etiqueta}
+          </button>
+        ))}
+      </div>
+
+      {pestana === 'publicaciones' ? (
       <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white shadow-sm">
         {cargando ? (
           <p className="px-6 py-14 text-center text-cafe">{t('status.loading')}</p>
@@ -228,6 +299,107 @@ export default function OperatorPanelPage() {
           </div>
         )}
       </div>
+      ) : (
+        <div className="space-y-5">
+          {resumenesResenas.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {resumenesResenas.map((r) => (
+                <span
+                  key={r.publicacionId}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-cafe-claro/50 bg-crema/60 px-3 py-1.5 text-xs"
+                >
+                  <span className="max-w-[200px] truncate font-semibold text-verde-bosque">{r.titulo}</span>
+                  <span className="font-bold text-amber">★ {Number(r.promedio).toFixed(1)}</span>
+                  <span className="text-cafe">
+                    ({t('reviews.count', { count: r.total })})
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {listaResenas.length === 0 ? (
+            <div className="rounded-xl border border-cafe-claro/40 bg-white px-6 py-14 text-center shadow-sm">
+              <p className="text-lg font-semibold text-verde-bosque">{t('reviews.emptyTitle')}</p>
+              <p className="mt-1 text-sm text-cafe">{t('reviews.emptyBody')}</p>
+            </div>
+          ) : (
+            <ul className="space-y-4">
+              {listaResenas.map((r) => (
+                <li key={r.id} className="rounded-xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-verde-bosque">{r.hueped}</p>
+                      <p className="truncate text-xs text-cafe">
+                        {formatDateDMY(r.fecha, locale)} · {r.publicacion?.titulo}
+                      </p>
+                    </div>
+                    <Estrellas valor={r.calificacion} className="h-4 w-4 shrink-0" />
+                  </div>
+
+                  {r.comentario && (
+                    <p className="mt-3 text-sm leading-relaxed text-neutral-800">{r.comentario}</p>
+                  )}
+
+                  {r.respuestaAnfitrion && respondiendoId !== r.id && (
+                    <div className="mt-3 rounded-lg bg-crema p-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-terracota">{t('reviews.yourReply')}</p>
+                      <p className="mt-1 text-sm text-neutral-800">{r.respuestaAnfitrion}</p>
+                      {r.fechaRespuesta && (
+                        <p className="mt-1 text-xs text-cafe">{formatDateDMY(r.fechaRespuesta, locale)}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {respondiendoId === r.id ? (
+                    <div className="mt-3">
+                      <textarea
+                        rows={3}
+                        maxLength={500}
+                        value={textoRespuesta}
+                        onChange={(e) => setTextoRespuesta(e.target.value)}
+                        placeholder={t('reviews.replyPlaceholder')}
+                        className="w-full resize-none rounded-lg border border-cafe-claro px-3 py-2 text-sm text-neutral-800 focus:border-verde-bosque focus:outline-none"
+                      />
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="text-xs text-cafe">{textoRespuesta.length}/500</span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setRespondiendoId(null); setTextoRespuesta('') }}
+                            className="cursor-pointer rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-verde-bosque hover:bg-neutral-50"
+                          >
+                            {t('common:actions.cancel')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => guardarRespuesta(r)}
+                            disabled={guardandoId === r.id}
+                            className="cursor-pointer rounded-lg bg-terracota px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-bosque disabled:opacity-50"
+                          >
+                            {guardandoId === r.id ? t('reviews.publishing') : t('reviews.publish')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => iniciarRespuesta(r)}
+                      className="mt-3 inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-azul transition-colors hover:text-azul-cielo"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                        <path d="M9 17l-5-5 5-5M4 12h11a5 5 0 0 1 5 5v1" />
+                      </svg>
+                      {r.respuestaAnfitrion ? t('reviews.editReply') : t('reviews.respond')}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <CrearPublicacionModal
         abierto={modalAbierto}

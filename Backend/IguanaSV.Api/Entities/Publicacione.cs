@@ -56,4 +56,6 @@ public partial class Publicacione
     public virtual ICollection<PublicacionAmenidad> PublicacionAmenidads { get; set; } = new List<PublicacionAmenidad>();
 
     public virtual ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
+
+    public virtual ICollection<Resena> Resenas { get; set; } = new List<Resena>();
 }
