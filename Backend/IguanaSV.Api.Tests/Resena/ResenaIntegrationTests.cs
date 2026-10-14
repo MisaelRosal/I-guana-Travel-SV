@@ -486,6 +486,9 @@ public sealed class ResenaIntegrationTests
         public Task<bool> BienvenidaAsync(string destinatario, string nombre,
             CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
 
+        public Task<bool> CuentaCreadaAsync(string destinatario, string nombre,
+            CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
+
         public Task<bool> SeAnfitrionAsync(string destinatario, string nombre,
             CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
 

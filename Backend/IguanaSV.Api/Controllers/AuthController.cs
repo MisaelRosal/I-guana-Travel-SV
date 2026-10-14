@@ -22,6 +22,7 @@ public class AuthController : ControllerBase
     private readonly VerificationCodeService _codigos;
     private readonly IEmailNotificationService _notificaciones;
     private readonly EmailOptions _emailOptions;
+    private readonly IGoogleTokenVerifier _google;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
@@ -32,6 +33,7 @@ public class AuthController : ControllerBase
         VerificationCodeService codigos,
         IEmailNotificationService notificaciones,
         IOptions<EmailOptions> emailOptions,
+        IGoogleTokenVerifier google,
         ILogger<AuthController> logger)
     {
         _context = context;
@@ -41,6 +43,7 @@ public class AuthController : ControllerBase
         _codigos = codigos;
         _notificaciones = notificaciones;
         _emailOptions = emailOptions.Value;
+        _google = google;
         _logger = logger;
     }
 
@@ -234,6 +237,109 @@ public class AuthController : ControllerBase
         IssueSession(usuario);
 
         return Ok(ToResponse(usuario));
+    }
+
+    /// <summary>
+    /// Public, unauthenticated hint the SPA uses to decide whether to render the
+    /// Google button at all. Empty until the Google OAuth client id is configured.
+    /// </summary>
+    [HttpGet("google-config")]
+    public IActionResult GoogleConfig()
+        => Ok(new { clientId = _emailOptions.GoogleClientId ?? string.Empty });
+
+    /// <summary>
+    /// Sign in (or sign up) with Google. The ID token from the embedded Google
+    /// button is verified server-side; the email is therefore already proven, so
+    /// a brand-new account is created active (no verification code) and only a
+    /// "cuenta creada" notification is emailed. An existing local account with
+    /// the same address is linked and signed in; a dormant unverified one is
+    /// activated, since Google just proved control of the mailbox.
+    /// </summary>
+    [HttpPost("google")]
+    public async Task<ActionResult<UsuarioResponse>> Google(GoogleLoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(_emailOptions.GoogleClientId))
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { mensaje = "El inicio de sesión con Google no está configurado." });
+        }
+
+        if (request is null || string.IsNullOrWhiteSpace(request.Credential))
+        {
+            return BadRequest(new { mensaje = "Falta el token de Google." });
+        }
+
+        var info = await _google.VerifyAsync(request.Credential, HttpContext.RequestAborted);
+        if (info is null || !info.EmailVerified || string.IsNullOrWhiteSpace(info.Email))
+        {
+            return Unauthorized(new { mensaje = "No se pudo validar tu cuenta de Google." });
+        }
+
+        var email = info.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+        var esNuevo = usuario is null;
+
+        if (usuario is null)
+        {
+            var (nombre, apellido) = NombreDeGoogle(info);
+            usuario = new Usuario
+            {
+                Nombre = nombre,
+                Apellido = apellido,
+                Email = email,
+                // Google accounts have no local password: store a random,
+                // unusable hash so a credential login can never match it.
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+                EmailVerificado = true,
+            };
+            _context.Usuarios.Add(usuario);
+            await _context.SaveChangesAsync();
+        }
+        else if (!usuario.EmailVerificado)
+        {
+            usuario.EmailVerificado = true;
+            usuario.UpdatedAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+        }
+
+        IssueSession(usuario);
+
+        if (esNuevo)
+        {
+            await _notificaciones.CuentaCreadaAsync(usuario.Email, usuario.Nombre);
+        }
+
+        return Ok(ToResponse(usuario));
+    }
+
+    /// <summary>
+    /// Split Google's profile into the two name columns. Falls back to the full
+    /// display name, then to neutral placeholders so the NOT NULL columns are
+    /// always satisfied.
+    /// </summary>
+    private static (string Nombre, string Apellido) NombreDeGoogle(GoogleUserInfo info)
+    {
+        var nombre = info.GivenName?.Trim();
+        var apellido = info.FamilyName?.Trim();
+
+        if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(apellido))
+        {
+            var partes = (info.Name ?? string.Empty)
+                .Trim()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (string.IsNullOrWhiteSpace(nombre) && partes.Length > 0)
+            {
+                nombre = partes[0];
+            }
+            if (string.IsNullOrWhiteSpace(apellido) && partes.Length > 1)
+            {
+                apellido = string.Join(' ', partes[1..]);
+            }
+        }
+
+        return (string.IsNullOrWhiteSpace(nombre) ? "Usuario" : nombre,
+                string.IsNullOrWhiteSpace(apellido) ? "Google" : apellido);
     }
 
     /// <summary>

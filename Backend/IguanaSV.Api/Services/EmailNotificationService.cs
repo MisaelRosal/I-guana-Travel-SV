@@ -120,6 +120,23 @@ public class EmailNotificationService : IEmailNotificationService
             cancellationToken: cancellationToken);
     }
 
+    public Task<bool> CuentaCreadaAsync(
+        string destinatario, string nombre, CancellationToken cancellationToken = default)
+    {
+        var cuerpo = $"""
+            <p>Hola {Esc(nombre)},</p>
+            <p>Creaste tu cuenta en I Guana Travel SV usando Google. Tu correo ya está verificado, así que no hace falta ningún código.</p>
+            <p>Ya podés reservar hospedajes y experiencias, y si querés, publicar tu propio espacio como anfitrión.</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Cuenta creada - I Guana Travel SV",
+            "cuenta_creada_google",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
     public Task<bool> SeAnfitrionAsync(
         string destinatario, string nombre, CancellationToken cancellationToken = default)
     {
