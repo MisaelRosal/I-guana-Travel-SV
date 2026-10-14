@@ -12,7 +12,8 @@ internal static class GuardScan
 {
     /// <summary>
     /// Walk up from the test assembly output directory until the directory
-    /// that contains the <c>.git</c> folder is found. That directory is the
+    /// that contains the <c>.git</c> entry is found. In linked worktrees this
+    /// entry is a file rather than a directory. That directory is the
     /// repository root regardless of the current working directory.
     /// </summary>
     public static string RepoRoot
@@ -20,14 +21,16 @@ internal static class GuardScan
         get
         {
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
-            while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
+            while (dir is not null
+                && !Directory.Exists(Path.Combine(dir.FullName, ".git"))
+                && !File.Exists(Path.Combine(dir.FullName, ".git")))
             {
                 dir = dir.Parent;
             }
 
             return dir?.FullName
                 ?? throw new InvalidOperationException(
-                    "Could not locate the repository root (.git directory) above " + AppContext.BaseDirectory);
+                    "Could not locate the repository root (.git entry) above " + AppContext.BaseDirectory);
         }
     }
 

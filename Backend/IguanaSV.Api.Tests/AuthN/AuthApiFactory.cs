@@ -2,6 +2,7 @@ using IguanaSV.Api.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -14,7 +15,9 @@ namespace IguanaSV.Api.Tests.AuthN;
 /// through process environment variables set by <see cref="AuthApiFixture"/>
 /// BEFORE the host is built — environment variables are part of the app's own
 /// default configuration sources and are appended last, so they win over the
-/// placeholder values committed in <c>appsettings.json</c>.
+/// placeholder values committed in <c>appsettings.json</c>. Optional per-factory
+/// in-memory overrides support isolated service tests without changing process-wide
+/// configuration for the other suites.
 /// </summary>
 public sealed class AuthApiFactory : WebApplicationFactory<Program>
 {
@@ -26,11 +29,24 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>
     // Origin present in the allowlist for the positive CORS case.
     public const string AllowedOrigin = "http://localhost:5173";
 
+    private readonly KeyValuePair<string, string?>[] _configurationOverrides;
+
+    public AuthApiFactory(IReadOnlyDictionary<string, string?>? configurationOverrides = null)
+    {
+        _configurationOverrides = configurationOverrides?.ToArray() ?? [];
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Ensure the JWT bearer runs without HTTPS metadata enforcement and the
         // dev-only Swagger middleware is harmless; all secrets come from env vars.
         builder.UseEnvironment("Development");
+
+        if (_configurationOverrides.Length > 0)
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(_configurationOverrides));
+        }
     }
 }
 

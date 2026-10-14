@@ -79,7 +79,12 @@ vi.mock('../../../services/reservas.js', () => ({
   crearReserva: vi.fn(async () => ({ id: 1 })),
 }))
 
+vi.mock('../../../services/resenas.js', () => ({
+  getResenasPublicacion: vi.fn(async () => ({ promedio: 0, total: 0, resenas: [] })),
+}))
+
 import { getExperienciaById } from '../../../services/experiencias.js'
+import { getResenasPublicacion } from '../../../services/resenas.js'
 
 function renderDetail() {
   return render(
@@ -157,6 +162,41 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     expect(screen.getByText('Jan 5')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 3, name: 'Location' })).toBeInTheDocument()
     expect(screen.queryByText(/experiencia:/)).toBeNull()
+  })
+
+  it('loads translated review comments and host replies for the active locale', async () => {
+    getResenasPublicacion.mockResolvedValueOnce({
+      promedio: 5,
+      total: 1,
+      resenas: [{
+        id: 9,
+        calificacion: 5,
+        comentario: 'A wonderful stay near the beach.',
+        respuestaAnfitrion: 'Thank you for staying with us.',
+        hueped: 'Alex R.',
+        fecha: '2026-10-01T12:00:00Z',
+      }],
+    })
+
+    await openLoaded()
+
+    expect(getResenasPublicacion).toHaveBeenCalledWith('42', 'en')
+    expect(screen.getByText('A wonderful stay near the beach.')).toBeInTheDocument()
+    expect(screen.getByText('Thank you for staying with us.')).toBeInTheDocument()
+  })
+
+  it('renders translated nested experience details from the localized API response', async () => {
+    await openLoaded({
+      ...fixtures.experiencia,
+      experiencias: [{
+        nombre: 'Coffee tasting',
+        descripcion: 'Try coffee from a local family farm.',
+      }],
+    })
+
+    expect(screen.getByRole('heading', { level: 3, name: 'Experience details' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 4, name: 'Coffee tasting' })).toBeInTheDocument()
+    expect(screen.getByText('Try coffee from a local family farm.')).toBeInTheDocument()
   })
 
   it('renders the experience branch, description and host card in English', async () => {

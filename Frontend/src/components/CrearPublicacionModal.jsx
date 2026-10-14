@@ -368,6 +368,9 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           {/* Información básica */}
           <fieldset className="mb-6">
             <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.basicLegend')}</legend>
+            <p className="mb-4 rounded-lg border border-verde-hoja/30 bg-verde-hoja/10 px-3 py-2 text-sm text-verde-bosque">
+              {t('modal.translationHint')}
+            </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className={labelCls}>{t('modal.title')} *</label>

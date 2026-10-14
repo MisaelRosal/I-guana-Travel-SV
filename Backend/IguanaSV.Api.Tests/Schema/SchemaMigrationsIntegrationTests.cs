@@ -12,6 +12,7 @@ namespace IguanaSV.Api.Tests.Schema;
 /// The developer/CI host database is never a target.
 /// Tests skip gracefully when no Docker daemon or no dotnet-ef tool is available.
 /// </summary>
+[Collection("SchemaMigrationCli")]
 public sealed class SchemaMigrationsIntegrationTests
 {
     private readonly ITestOutputHelper _output;
@@ -128,9 +129,9 @@ public sealed class SchemaMigrationsIntegrationTests
             // Six migrations through W2 (M2 AddReservaUsuarioOwnership), plus the
             // W5 M3 ReplaceRacyIndexesWithExclusions, plus the grace-window
             // AddReservaFechaExpiracionGracia, plus the email-verification
-            // AddVerificacionEmailYNotificaciones, plus the reseñas AddResenas
-            // = ten applied at head.
-            Assert.Equal(10, applied);
+            // AddVerificacionEmailYNotificaciones, AddResenas, publication English
+            // overlay, and public user-content English overlays = twelve at head.
+            Assert.Equal(12, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""
@@ -219,6 +220,9 @@ public sealed class SchemaMigrationsIntegrationTests
         }
     }
 }
+
+[CollectionDefinition("SchemaMigrationCli", DisableParallelization = true)]
+public sealed class SchemaMigrationCliCollection;
 
 /// <summary>Small ADO helpers so the tests stay readable.</summary>
 internal static class NpgsqlTestExtensions

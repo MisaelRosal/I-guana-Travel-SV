@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace IguanaSV.Api.Entities;
 
@@ -25,8 +26,14 @@ public partial class Resena
     /// <summary>Optional free-text comment, max 500 chars (validated by the DTO).</summary>
     public string? Comentario { get; set; }
 
+    [JsonIgnore]
+    public string? ComentarioEn { get; set; }
+
     /// <summary>Public host reply; single reply, edited in place.</summary>
     public string? RespuestaAnfitrion { get; set; }
+
+    [JsonIgnore]
+    public string? RespuestaAnfitrionEn { get; set; }
 
     public DateTime? FechaRespuesta { get; set; }
 

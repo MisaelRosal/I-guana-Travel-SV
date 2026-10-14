@@ -1,8 +1,10 @@
 import { api } from './api.js'
+import { getContentLocale } from '../i18n/config.js'
 
 // Public: star average + reviews of a publication (detail page).
-export async function getResenasPublicacion(publicacionId) {
-  return await api.get(`/Resena/publicacion/${publicacionId}`)
+export async function getResenasPublicacion(publicacionId, language) {
+  const params = new URLSearchParams({ contentLocale: getContentLocale(language) })
+  return await api.get(`/Resena/publicacion/${publicacionId}?${params.toString()}`)
 }
 
 // Public: batch averages for catalog cards. Publications with no reviews are
@@ -19,8 +21,9 @@ export async function getResumenAnfitrion(anfitrionId) {
 
 // Host panel: reviews received by the caller's publications (+ per-listing
 // averages). Admins see every review.
-export async function getMisResenas() {
-  return await api.get('/Resena/mias')
+export async function getMisResenas(language) {
+  const params = new URLSearchParams({ contentLocale: getContentLocale(language) })
+  return await api.get(`/Resena/mias?${params.toString()}`)
 }
 
 // Host reply to a review (empty string clears the reply).

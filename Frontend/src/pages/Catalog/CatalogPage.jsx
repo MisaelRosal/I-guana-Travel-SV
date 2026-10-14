@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { getContentLocale } from '../../i18n/config.js'
 import { getCategorias, getDepartamentos, getExperiencias, getProximasExperiencias } from '../../services/experiencias.js'
 import { getResumenResenas } from '../../services/resenas.js'
 import ExperienceCard from '../../components/ExperienceCard.jsx'
@@ -18,7 +19,8 @@ const CARGA_MINIMA_MS = 2000
 // cafe, panel de opciones estilo tarjeta (hover crema, seleccion verde-bosque
 // con tilde). Cierra con Escape o clic fuera. Sustituye al <select> nativo.
 function FiltroDesplegable({ etiqueta, placeholder, valor, opciones, onChange }) {
-  const { t } = useTranslation('catalog')
+  const { t, i18n } = useTranslation('catalog')
+  const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
   const [abierto, setAbierto] = useState(false)
   const contenedor = useRef(null)
 
@@ -119,7 +121,8 @@ function aleatorias(lista, cantidad) {
 }
 
 export default function CatalogPage() {
-  const { t } = useTranslation('catalog')
+  const { t, i18n } = useTranslation('catalog')
+  const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
   const [categorias, setCategorias] = useState([])
   const [departamentos, setDepartamentos] = useState([])
   const [experiencias, setExperiencias] = useState([])
@@ -153,7 +156,7 @@ export default function CatalogPage() {
     if (primeraCarga.current) setCargando(true)
     const inicioCarga = Date.now()
 
-    getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax })
+    getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax, locale: contentLocale })
       .then((datos) => { if (activo) setExperiencias(datos) })
       .catch(() => { if (activo) setExperiencias([]) })
       .finally(() => {
@@ -165,15 +168,15 @@ export default function CatalogPage() {
       })
 
     return () => { activo = false }
-  }, [busqueda, categoria, zona, tipo, precioMax])
+  }, [busqueda, categoria, zona, tipo, precioMax, contentLocale])
 
   useEffect(() => () => clearTimeout(temporizadorCarga.current), [])
 
   useEffect(() => {
-    getProximasExperiencias(PROXIMAS_LIMITE)
+    getProximasExperiencias(PROXIMAS_LIMITE, contentLocale)
       .then(setProximasExperiencias)
       .catch(() => setProximasExperiencias([]))
-  }, [])
+  }, [contentLocale])
 
   // Batch de promedios: una sola llamada con los ids visibles (catálogo + próximas).
   useEffect(() => {

@@ -35,6 +35,10 @@ export const LOCALE_STORAGE_KEY = 'iguana_locale'
 // Active UI language -> BCP 47 formatting tag for Intl consumers (AD-4/F4).
 export const FORMAT_LOCALES = { es: 'es-SV', en: 'en-US' }
 
+export function getContentLocale(language = i18n.resolvedLanguage || i18n.language) {
+  return String(language || '').toLowerCase().startsWith('en') ? 'en' : 'es'
+}
+
 // F4 (AD-4): the Intl locale tag for the currently active UI language.
 // Reads through `useTranslation` so components calling it re-render (and
 // reformat) in place when the toggle changes the language.

@@ -6,6 +6,7 @@ using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace IguanaSV.Api.Controllers;
 
@@ -15,11 +16,19 @@ public class ResenaController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly IContentTranslationService _translationService;
+    private readonly ILogger<ResenaController> _logger;
 
-    public ResenaController(IguanasDbContext context, IEmailNotificationService notificaciones)
+    public ResenaController(
+        IguanasDbContext context,
+        IEmailNotificationService notificaciones,
+        IContentTranslationService? translationService = null,
+        ILogger<ResenaController>? logger = null)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _translationService = translationService ?? NoOpContentTranslationService.Instance;
+        _logger = logger ?? NullLogger<ResenaController>.Instance;
     }
 
     // Create: the reservation row is the single source of eligibility. The
@@ -84,6 +93,8 @@ public class ResenaController : ControllerBase
             return Conflict(new { mensaje = "Ya dejaste una reseña para esta reserva." });
         }
 
+        await TranslateCommentIfMissingAsync(resena, HttpContext.RequestAborted);
+
         // Host notification: fire-and-forget-safe (the service never throws).
         var anfitrion = reserva.Publicacion?.Anfitrion;
         if (!string.IsNullOrWhiteSpace(anfitrion?.Email))
@@ -107,8 +118,15 @@ public class ResenaController : ControllerBase
     // Public reviews of one publication (comment area on the detail page).
     // Projects only what a stranger may see: never the guest's email.
     [HttpGet("publicacion/{publicacionId}")]
-    public async Task<IActionResult> GetResenasPublicacion(int publicacionId)
+    public async Task<IActionResult> GetResenasPublicacion(
+        int publicacionId,
+        [FromQuery] string? contentLocale = null)
     {
+        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        {
+            return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
+        }
+
         var resumen = await _context.Resenas
             .Where(r => r.PublicacionId == publicacionId)
             .GroupBy(r => 1)
@@ -127,10 +145,16 @@ public class ResenaController : ControllerBase
             {
                 r.Id,
                 r.Calificacion,
-                r.Comentario,
+                Comentario = locale == "en" && r.ComentarioEn != null && r.ComentarioEn.Trim() != ""
+                    ? r.ComentarioEn
+                    : r.Comentario,
                 Fecha = r.CreadoEn,
                 Hueped = r.Usuario.Nombre + " " + r.Usuario.Apellido.Substring(0, 1) + ".",
-                r.RespuestaAnfitrion,
+                RespuestaAnfitrion = locale == "en"
+                    && r.RespuestaAnfitrionEn != null
+                    && r.RespuestaAnfitrionEn.Trim() != ""
+                        ? r.RespuestaAnfitrionEn
+                        : r.RespuestaAnfitrion,
                 r.FechaRespuesta,
             })
             .ToListAsync();
@@ -194,8 +218,13 @@ public class ResenaController : ControllerBase
     // Owner scoping mirrors GetPublicacionesByAnfitrion (W3b mechanism).
     [HttpGet("mias")]
     [Authorize]
-    public async Task<IActionResult> GetMisResenas()
+    public async Task<IActionResult> GetMisResenas([FromQuery] string? contentLocale = null)
     {
+        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        {
+            return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
+        }
+
         var sub = User.GetSubjectId();
         if (!sub.HasValue)
         {
@@ -209,7 +238,15 @@ public class ResenaController : ControllerBase
         }
 
         var resumenes = await query
-            .GroupBy(r => new { r.PublicacionId, Titulo = r.Publicacion!.Titulo })
+            .GroupBy(r => new
+            {
+                r.PublicacionId,
+                Titulo = locale == "en"
+                    && r.Publicacion!.TituloEn != null
+                    && r.Publicacion.TituloEn.Trim() != ""
+                        ? r.Publicacion.TituloEn
+                        : r.Publicacion!.Titulo,
+            })
             .Select(g => new
             {
                 g.Key.PublicacionId,
@@ -226,12 +263,27 @@ public class ResenaController : ControllerBase
             {
                 r.Id,
                 r.Calificacion,
-                r.Comentario,
+                Comentario = locale == "en" && r.ComentarioEn != null && r.ComentarioEn.Trim() != ""
+                    ? r.ComentarioEn
+                    : r.Comentario,
                 Fecha = r.CreadoEn,
-                r.RespuestaAnfitrion,
+                RespuestaAnfitrion = locale == "en"
+                    && r.RespuestaAnfitrionEn != null
+                    && r.RespuestaAnfitrionEn.Trim() != ""
+                        ? r.RespuestaAnfitrionEn
+                        : r.RespuestaAnfitrion,
+                RespuestaAnfitrionFuente = r.RespuestaAnfitrion,
                 r.FechaRespuesta,
                 Hueped = r.Usuario!.Nombre + " " + r.Usuario.Apellido.Substring(0, 1) + ".",
-                Publicacion = new { r.Publicacion!.Id, r.Publicacion.Titulo },
+                Publicacion = new
+                {
+                    r.Publicacion!.Id,
+                    Titulo = locale == "en"
+                        && r.Publicacion.TituloEn != null
+                        && r.Publicacion.TituloEn.Trim() != ""
+                            ? r.Publicacion.TituloEn
+                            : r.Publicacion.Titulo,
+                },
             })
             .ToListAsync();
 
@@ -263,7 +315,9 @@ public class ResenaController : ControllerBase
         }
 
         var respuesta = string.IsNullOrWhiteSpace(dto.Respuesta) ? null : dto.Respuesta.Trim();
+        var respuestaCambio = !string.Equals(resena.RespuestaAnfitrion, respuesta, StringComparison.Ordinal);
         resena.RespuestaAnfitrion = respuesta;
+        if (respuestaCambio) resena.RespuestaAnfitrionEn = null;
         resena.FechaRespuesta = respuesta == null ? null : DateTime.Now;
         resena.ActualizadoEn = DateTime.Now;
 
@@ -276,6 +330,87 @@ public class ResenaController : ControllerBase
             return Conflict();
         }
 
+        await TranslateReplyIfMissingAsync(resena, HttpContext.RequestAborted);
+
         return Ok(new { resena.RespuestaAnfitrion, resena.FechaRespuesta });
+    }
+
+    private async Task TranslateCommentIfMissingAsync(Resena resena, CancellationToken cancellationToken)
+    {
+        var source = resena.Comentario;
+        if (string.IsNullOrWhiteSpace(source) || source.Length > 1200 || resena.ComentarioEn is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            var translated = await _translationService.TranslateBatchAsync(
+                resena.Id,
+                "review_comment",
+                [source],
+                cancellationToken);
+            if (translated is not { Count: 1 }) return;
+
+            await _context.Resenas
+                .Where(review => review.Id == resena.Id && review.Comentario == source && review.ComentarioEn == null)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(review => review.ComentarioEn, translated[0]), cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            LogTranslationPersistenceFailure(resena.Id, "review_comment", exception);
+        }
+    }
+
+    private async Task TranslateReplyIfMissingAsync(Resena resena, CancellationToken cancellationToken)
+    {
+        var source = resena.RespuestaAnfitrion;
+        if (string.IsNullOrWhiteSpace(source) || source.Length > 1200 || resena.RespuestaAnfitrionEn is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            var translated = await _translationService.TranslateBatchAsync(
+                resena.Id,
+                "review_reply",
+                [source],
+                cancellationToken);
+            if (translated is not { Count: 1 }) return;
+
+            await _context.Resenas
+                .Where(review => review.Id == resena.Id
+                    && review.RespuestaAnfitrion == source
+                    && review.RespuestaAnfitrionEn == null)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(review => review.RespuestaAnfitrionEn, translated[0]), cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            LogTranslationPersistenceFailure(resena.Id, "review_reply", exception);
+        }
+    }
+
+    private void LogTranslationPersistenceFailure(int reviewId, string contentType, Exception exception) =>
+        _logger.LogWarning(
+            "Review translation persistence failed for {ContentType} on review {ReviewId}: {FailureCategory}",
+            contentType,
+            reviewId,
+            $"persistence_error_{exception.GetType().Name}");
+
+    private static bool TryNormalizeContentLocale(string? contentLocale, out string locale)
+    {
+        locale = string.IsNullOrWhiteSpace(contentLocale)
+            ? "es"
+            : contentLocale.Trim().ToLowerInvariant();
+        return locale is "es" or "en";
     }
 }

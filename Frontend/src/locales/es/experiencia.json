@@ -39,6 +39,7 @@
     "stay": "Hospedaje",
     "experience": "Experiencia",
     "basicLegend": "Información básica",
+    "translationHint": "El título y la descripción se escriben en español. La versión en inglés se genera automáticamente para el público.",
     "title": "Título",
     "titlePhStay": "Ej: Casa frente al mar en El Tunco",
     "titlePhExp": "Ej: Clases de surf en El Tunco",
@@ -92,6 +93,7 @@
     "notFound": "No se encontró la experiencia.",
     "descriptionTitle": "Descripción",
     "noDescription": "Sin descripción disponible.",
+    "experiencesTitle": "Detalles de la experiencia",
     "amenitiesTitle": "Amenidades",
     "toastBooked": "Reserva creada exitosamente. Ve a \"Mis reservas\" para pagar."
   },

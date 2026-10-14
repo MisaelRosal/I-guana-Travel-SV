@@ -83,6 +83,10 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("descripcion");
 
+                    b.Property<string>("DescripcionEn")
+                        .HasColumnType("text")
+                        .HasColumnName("descripcion_en");
+
                     b.Property<string>("Direccion")
                         .HasColumnType("text")
                         .HasColumnName("direccion");
@@ -244,6 +248,10 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("descripcion");
 
+                    b.Property<string>("DescripcionEn")
+                        .HasColumnType("text")
+                        .HasColumnName("descripcion_en");
+
                     b.Property<int?>("DuracionHoras")
                         .HasColumnType("integer")
                         .HasColumnName("duracion_horas");
@@ -253,6 +261,10 @@ namespace IguanaSV.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("nombre");
+
+                    b.Property<string>("NombreEn")
+                        .HasColumnType("text")
+                        .HasColumnName("nombre_en");
 
                     b.Property<decimal?>("PrecioAdicional")
                         .ValueGeneratedOnAdd()
@@ -610,6 +622,10 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("descripcion");
 
+                    b.Property<string>("DescripcionEn")
+                        .HasColumnType("text")
+                        .HasColumnName("descripcion_en");
+
                     b.Property<string>("DireccionExacta")
                         .HasColumnType("text")
                         .HasColumnName("direccion_exacta");
@@ -660,6 +676,10 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("titulo");
 
+                    b.Property<string>("TituloEn")
+                        .HasColumnType("text")
+                        .HasColumnName("titulo_en");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp without time zone")
@@ -703,6 +723,10 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("comentario");
 
+                    b.Property<string>("ComentarioEn")
+                        .HasColumnType("text")
+                        .HasColumnName("comentario_en");
+
                     b.Property<DateTime>("CreadoEn")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp without time zone")
@@ -724,6 +748,10 @@ namespace IguanaSV.Api.Migrations
                     b.Property<string>("RespuestaAnfitrion")
                         .HasColumnType("text")
                         .HasColumnName("respuesta_anfitrion");
+
+                    b.Property<string>("RespuestaAnfitrionEn")
+                        .HasColumnType("text")
+                        .HasColumnName("respuesta_anfitrion_en");
 
                     b.Property<int>("UsuarioId")
                         .HasColumnType("integer")

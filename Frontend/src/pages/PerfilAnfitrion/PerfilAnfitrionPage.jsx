@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useFormatLocale } from '../../i18n/config.js'
+import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
 import { formatPrice } from '../../i18n/format.js'
 import { getAnfitrionPorId } from '../../services/anfitriones.js'
@@ -16,7 +16,7 @@ import { Estrellas } from '../../components/Estrellas.jsx'
 // `perfil.host.*`. DB values (name, city, description, listings) stay
 // verbatim passthrough.
 function Avatar({ anfitrion, grande }) {
-  const { t } = useTranslation('perfil')
+  const { t, i18n } = useTranslation('perfil')
   const cls = grande
     ? 'flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-5xl font-bold text-cafe shadow-md'
     : 'flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-crema text-lg font-bold text-cafe shadow-sm'
@@ -32,9 +32,10 @@ function Avatar({ anfitrion, grande }) {
 }
 
 export default function PerfilAnfitrionPage() {
-  const { t } = useTranslation('perfil')
+  const { t, i18n } = useTranslation('perfil')
   const { id } = useParams()
   const locale = useFormatLocale()
+  const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
   const [anfitrion, setAnfitrion] = useState(null)
   const [publicaciones, setPublicaciones] = useState([])
   const [resumen, setResumen] = useState(null)
@@ -43,7 +44,7 @@ export default function PerfilAnfitrionPage() {
 
   useEffect(() => {
     let activo = true
-    getAnfitrionPorId(id)
+    getAnfitrionPorId(id, contentLocale)
       .then((a) => {
         if (activo) setAnfitrion(a)
       })
@@ -53,7 +54,7 @@ export default function PerfilAnfitrionPage() {
     getResumenAnfitrion(id)
       .then((r) => { if (activo) setResumen(r) })
       .catch(() => { if (activo) setResumen({ promedio: 0, total: 0 }) })
-    getExperiencias()
+    getExperiencias({ locale: contentLocale })
       .then((exp) => {
         if (activo) setPublicaciones(exp.filter((x) => Number(x.anfitrionId) === Number(id)))
       })
@@ -62,7 +63,7 @@ export default function PerfilAnfitrionPage() {
         if (activo) setCargando(false)
       })
     return () => { activo = false }
-  }, [id])
+  }, [id, contentLocale])
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">

@@ -39,6 +39,7 @@
     "stay": "Stay",
     "experience": "Experience",
     "basicLegend": "Basic information",
+    "translationHint": "Write the title and description in Spanish. An English version is generated automatically for public display.",
     "title": "Title",
     "titlePhStay": "E.g.: Beachfront house in El Tunco",
     "titlePhExp": "E.g.: Surf lessons in El Tunco",
@@ -92,6 +93,7 @@
     "notFound": "Experience not found.",
     "descriptionTitle": "Description",
     "noDescription": "No description available.",
+    "experiencesTitle": "Experience details",
     "amenitiesTitle": "Amenities",
     "toastBooked": "Booking created successfully. Go to \"My bookings\" to pay."
   },

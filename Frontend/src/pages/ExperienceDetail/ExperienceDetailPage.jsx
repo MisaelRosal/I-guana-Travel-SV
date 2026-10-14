@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
-import { useFormatLocale } from '../../i18n/config.js'
+import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
 import {
   formatDateDMY,
@@ -772,9 +772,10 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 }
 
 export default function ExperienceDetailPage() {
-  const { t } = useTranslation('experiencia')
+  const { t, i18n } = useTranslation('experiencia')
   const { id } = useParams()
   const navigate = useNavigate()
+  const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
   const [experiencia, setExperiencia] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -785,7 +786,7 @@ export default function ExperienceDetailPage() {
 
   useEffect(() => {
     let activo = true
-    getExperienciaById(id)
+    getExperienciaById(id, contentLocale)
       .then((data) => {
         if (activo) setExperiencia(data)
       })
@@ -796,11 +797,11 @@ export default function ExperienceDetailPage() {
         if (activo) setCargando(false)
       })
     return () => { activo = false }
-  }, [id])
+  }, [id, contentLocale])
 
   useEffect(() => {
     let activo = true
-    getResenasPublicacion(id)
+    getResenasPublicacion(id, contentLocale)
       .then((data) => {
         if (activo) setResenas(data)
       })
@@ -808,7 +809,7 @@ export default function ExperienceDetailPage() {
         if (activo) setResenas({ promedio: 0, total: 0, resenas: [] })
       })
     return () => { activo = false }
-  }, [id])
+  }, [id, contentLocale])
 
   const seleccionarFechas = useCallback((datos) => {
     setDatosReserva(datos)
@@ -853,6 +854,28 @@ export default function ExperienceDetailPage() {
               {experiencia.descripcion || t('page.noDescription')}
             </p>
           </section>
+
+          {(experiencia.experiencias ?? []).some(item =>
+            item.descripcion || item.nombre !== experiencia.titulo,
+          ) && (
+            <section className="mt-8 border-t border-neutral-100 pt-8">
+              <h3 className="text-2xl font-bold text-verde-bosque">{t('page.experiencesTitle')}</h3>
+              <ul className="mt-4 space-y-4">
+                {(experiencia.experiencias ?? [])
+                  .filter(item => item.descripcion || item.nombre !== experiencia.titulo)
+                  .map((item, index) => (
+                    <li key={`${item.nombre}-${index}`} className="rounded-lg bg-crema/60 p-4">
+                      {item.nombre !== experiencia.titulo && (
+                        <h4 className="font-semibold text-verde-bosque">{item.nombre}</h4>
+                      )}
+                      {item.descripcion && (
+                        <p className="text-neutral-700">{item.descripcion}</p>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          )}
 
           <CardAnfitrion
             anfitrionId={experiencia.anfitrionId}

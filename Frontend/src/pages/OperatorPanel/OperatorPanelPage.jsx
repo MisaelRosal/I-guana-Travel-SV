@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFormatLocale } from '../../i18n/config.js'
+import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
 import { formatDateDMY, formatPrice } from '../../i18n/format.js'
 import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
@@ -10,8 +10,9 @@ import { Estrellas } from '../../components/Estrellas.jsx'
 import DashboardGanancias from '../../components/DashboardGanancias.jsx'
 
 export default function OperatorPanelPage() {
-  const { t } = useTranslation('panel')
+  const { t, i18n } = useTranslation('panel')
   const locale = useFormatLocale()
+  const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
   const usuario = obtenerSesion()
   const [publicaciones, setPublicaciones] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -63,14 +64,14 @@ export default function OperatorPanelPage() {
 
   const cargarResenas = useCallback(async () => {
     try {
-      const data = await getMisResenas()
+      const data = await getMisResenas(contentLocale)
       setResumenesResenas(data.resumenes || [])
       setListaResenas(data.resenas || [])
     } catch {
       setResumenesResenas([])
       setListaResenas([])
     }
-  }, [])
+  }, [contentLocale])
 
   useEffect(() => {
     cargarResenas()
@@ -78,20 +79,14 @@ export default function OperatorPanelPage() {
 
   const iniciarRespuesta = (r) => {
     setRespondiendoId(r.id)
-    setTextoRespuesta(r.respuestaAnfitrion || '')
+    setTextoRespuesta(r.respuestaAnfitrionFuente ?? r.respuestaAnfitrion ?? '')
   }
 
   const guardarRespuesta = async (r) => {
     setGuardandoId(r.id)
     try {
-      const res = await responderResena(r.id, textoRespuesta)
-      setListaResenas((prev) =>
-        prev.map((x) =>
-          x.id === r.id
-            ? { ...x, respuestaAnfitrion: res.respuestaAnfitrion, fechaRespuesta: res.fechaRespuesta }
-            : x,
-        ),
-      )
+      await responderResena(r.id, textoRespuesta)
+      await cargarResenas()
       setRespondiendoId(null)
       setTextoRespuesta('')
       setMensaje(t('reviews.updated'))

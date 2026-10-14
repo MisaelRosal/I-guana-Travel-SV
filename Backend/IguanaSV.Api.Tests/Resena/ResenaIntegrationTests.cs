@@ -84,6 +84,201 @@ public sealed class ResenaIntegrationTests
     }
 
     [SkippableFact]
+    [Trait("Category", "Translation")]
+    public async Task LiveTranslator_LocalizesHostExperienceReviewAndHostReply()
+    {
+        var translatorUrl = Environment.GetEnvironmentVariable("LIBRETRANSLATE_TEST_URL");
+        Skip.If(string.IsNullOrWhiteSpace(translatorUrl),
+            "Set LIBRETRANSLATE_TEST_URL to run the live user-content translation test.");
+
+        var hostUser = await RegisterUserAsync();
+        var guest = await RegisterUserAsync();
+        var hostId = await SeedHostIdAsync(hostUser.UserId);
+        var publicationId = await SeedPublicationAsync(hostId);
+        var reservationId = await SeedReservaAsync(
+            publicationId, guest.UserId, Iso(0), Iso(1), "confirmada", guest.Email);
+        var overrides = new Dictionary<string, string?>
+        {
+            ["Translation:LibreTranslate:Enabled"] = "true",
+            ["Translation:LibreTranslate:BaseUrl"] = translatorUrl,
+        };
+
+        using var translationFactory = new AuthApiFactory(overrides);
+        using var hostClient = AuthedClient(translationFactory, hostUser);
+        using var guestClient = AuthedClient(translationFactory, guest);
+
+        const string hostAbout = "Guía local de café y senderos en Apan.";
+        using var profileUpdate = await hostClient.PutAsync(
+            "/api/Anfitrione/mi-perfil",
+            Json(new { descripcion = hostAbout }));
+        Assert.Equal(HttpStatusCode.OK, profileUpdate.StatusCode);
+
+        const string experienceName = "Caminata entre fincas de café";
+        const string experienceDescription = "Visitamos fincas familiares y aprendemos sobre el café local.";
+        using var experienceCreate = await hostClient.PostAsync("/api/Experiencia", Json(new
+        {
+            publicacionId = publicationId,
+            nombre = experienceName,
+            descripcion = experienceDescription,
+        }));
+        Assert.Equal(HttpStatusCode.Created, experienceCreate.StatusCode);
+
+        const string reviewComment = "La caminata fue hermosa y el café delicioso.";
+        using var reviewCreate = await guestClient.PostAsync("/api/Resena", Json(new
+        {
+            reservaId = reservationId,
+            calificacion = 5,
+            comentario = reviewComment,
+        }));
+        Assert.Equal(HttpStatusCode.OK, reviewCreate.StatusCode);
+        using var createdReview = JsonDocument.Parse(await reviewCreate.Content.ReadAsStringAsync());
+        var reviewId = createdReview.RootElement.GetProperty("id").GetInt32();
+
+        const string hostReply = "Muchas gracias por visitarnos; será un gusto recibirte de nuevo.";
+        using var replyUpdate = await hostClient.PutAsync(
+            $"/api/Resena/{reviewId}/respuesta",
+            Json(new { respuesta = hostReply }));
+        Assert.Equal(HttpStatusCode.OK, replyUpdate.StatusCode);
+
+        await using (var db = NewDb())
+        {
+            var savedHost = await db.Anfitriones.AsNoTracking().SingleAsync(item => item.Id == hostId);
+            var savedExperience = await db.Experiencias.AsNoTracking()
+                .SingleAsync(item => item.PublicacionId == publicationId);
+            var savedReview = await db.Resenas.AsNoTracking().SingleAsync(item => item.Id == reviewId);
+            Assert.False(string.IsNullOrWhiteSpace(savedHost.DescripcionEn));
+            Assert.False(string.IsNullOrWhiteSpace(savedExperience.NombreEn));
+            Assert.False(string.IsNullOrWhiteSpace(savedExperience.DescripcionEn));
+            Assert.False(string.IsNullOrWhiteSpace(savedReview.ComentarioEn));
+            Assert.False(string.IsNullOrWhiteSpace(savedReview.RespuestaAnfitrionEn));
+        }
+
+        using var englishProfileResponse = await Client().GetAsync(
+            $"/api/Anfitrione/{hostId}?contentLocale=en");
+        Assert.Equal(HttpStatusCode.OK, englishProfileResponse.StatusCode);
+        using var englishProfile = JsonDocument.Parse(await englishProfileResponse.Content.ReadAsStringAsync());
+        var translatedAbout = englishProfile.RootElement.GetProperty("descripcion").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(translatedAbout));
+        Assert.NotEqual(hostAbout, translatedAbout);
+
+        using var englishPublicationResponse = await Client().GetAsync(
+            $"/api/Publicacione/{publicationId}?contentLocale=en");
+        Assert.Equal(HttpStatusCode.OK, englishPublicationResponse.StatusCode);
+        using var englishPublication = JsonDocument.Parse(await englishPublicationResponse.Content.ReadAsStringAsync());
+        var translatedExperience = englishPublication.RootElement.GetProperty("experiencia")[0];
+        Assert.NotEqual(experienceName, translatedExperience.GetProperty("nombre").GetString());
+        Assert.NotEqual(experienceDescription, translatedExperience.GetProperty("descripcion").GetString());
+
+        using var englishReviewsResponse = await Client().GetAsync(
+            $"/api/Resena/publicacion/{publicationId}?contentLocale=en");
+        Assert.Equal(HttpStatusCode.OK, englishReviewsResponse.StatusCode);
+        using var englishReviews = JsonDocument.Parse(await englishReviewsResponse.Content.ReadAsStringAsync());
+        var translatedReview = englishReviews.RootElement.GetProperty("resenas")[0];
+        Assert.NotEqual(reviewComment, translatedReview.GetProperty("comentario").GetString());
+        Assert.NotEqual(hostReply, translatedReview.GetProperty("respuestaAnfitrion").GetString());
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Translation")]
+    public async Task LiveTranslator_BackfillsPendingHostExperienceAndReviewTextInBoundedBatches()
+    {
+        var translatorUrl = Environment.GetEnvironmentVariable("LIBRETRANSLATE_TEST_URL");
+        Skip.If(string.IsNullOrWhiteSpace(translatorUrl),
+            "Set LIBRETRANSLATE_TEST_URL to run the live content backfill test.");
+
+        var hostUser = await RegisterUserAsync();
+        var guest = await RegisterUserAsync();
+        var hostId = await SeedHostIdAsync(hostUser.UserId);
+        var publicationId = await SeedPublicationAsync(hostId);
+        var reservationId = await SeedReservaAsync(
+            publicationId, guest.UserId, Iso(0), Iso(1), "confirmada", guest.Email);
+
+        using (var hostClient = AuthedClient(hostUser))
+        {
+            using var profile = await hostClient.PutAsync("/api/Anfitrione/mi-perfil", Json(new
+            {
+                descripcion = "Anfitrión local para el backfill de prueba.",
+            }));
+            Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
+
+            using var experience = await hostClient.PostAsync("/api/Experiencia", Json(new
+            {
+                publicacionId = publicationId,
+                nombre = "Ruta de prueba pendiente",
+                descripcion = "Descripción sintética pendiente de traducción.",
+            }));
+            Assert.Equal(HttpStatusCode.Created, experience.StatusCode);
+        }
+
+        int reviewId;
+        using (var guestClient = AuthedClient(guest))
+        {
+            using var review = await guestClient.PostAsync("/api/Resena", Json(new
+            {
+                reservaId = reservationId,
+                calificacion = 5,
+                comentario = "Comentario de prueba pendiente de traducción.",
+            }));
+            Assert.Equal(HttpStatusCode.OK, review.StatusCode);
+            using var created = JsonDocument.Parse(await review.Content.ReadAsStringAsync());
+            reviewId = created.RootElement.GetProperty("id").GetInt32();
+        }
+
+        using (var hostClient = AuthedClient(hostUser))
+        {
+            using var reply = await hostClient.PutAsync(
+                $"/api/Resena/{reviewId}/respuesta",
+                Json(new { respuesta = "Respuesta del anfitrión pendiente de traducción." }));
+            Assert.Equal(HttpStatusCode.OK, reply.StatusCode);
+        }
+
+        var overrides = new Dictionary<string, string?>
+        {
+            ["Translation:LibreTranslate:Enabled"] = "true",
+            ["Translation:LibreTranslate:BaseUrl"] = translatorUrl,
+        };
+        using var translationFactory = new AuthApiFactory(overrides);
+        using var adminClient = AuthedClient(translationFactory, AdminSession());
+
+        int experienceId;
+        await using (var db = NewDb())
+        {
+            experienceId = await db.Experiencias
+                .Where(item => item.PublicacionId == publicationId)
+                .Select(item => item.Id)
+                .SingleAsync();
+        }
+
+        foreach (var (tipo, id) in new[]
+        {
+            ("anfitriones", hostId),
+            ("experiencias", experienceId),
+            ("resenas", reviewId),
+        })
+        {
+            using var backfill = await adminClient.PostAsync(
+                $"/api/Traducciones/pendientes?tipo={tipo}&batchSize=1&afterId={id - 1}",
+                content: null);
+            Assert.Equal(HttpStatusCode.OK, backfill.StatusCode);
+            using var result = JsonDocument.Parse(await backfill.Content.ReadAsStringAsync());
+            Assert.Equal(1, result.RootElement.GetProperty("processedCount").GetInt32());
+            Assert.Equal(1, result.RootElement.GetProperty("translatedCount").GetInt32());
+            Assert.Equal(0, result.RootElement.GetProperty("failedCount").GetInt32());
+            Assert.False(result.RootElement.TryGetProperty("comentario", out _));
+        }
+
+        await using var verifyDb = NewDb();
+        var host = await verifyDb.Anfitriones.AsNoTracking().SingleAsync(item => item.Id == hostId);
+        var experienceRecord = await verifyDb.Experiencias.AsNoTracking().SingleAsync(item => item.Id == experienceId);
+        var reviewRecord = await verifyDb.Resenas.AsNoTracking().SingleAsync(item => item.Id == reviewId);
+        Assert.False(string.IsNullOrWhiteSpace(host.DescripcionEn));
+        Assert.False(string.IsNullOrWhiteSpace(experienceRecord.NombreEn));
+        Assert.False(string.IsNullOrWhiteSpace(experienceRecord.DescripcionEn));
+        Assert.False(string.IsNullOrWhiteSpace(reviewRecord.ComentarioEn));
+        Assert.False(string.IsNullOrWhiteSpace(reviewRecord.RespuestaAnfitrionEn));
+    }
+
+    [SkippableFact]
     [Trait("Category", "Resena")]
     public async Task Post_Elegibilidad_Futura_Pendiente_Y_Cancelada_Rechazadas()
     {
@@ -531,7 +726,16 @@ public sealed class ResenaIntegrationTests
 
     private HttpClient AuthedClient(Session session)
     {
-        var client = Client();
+        return AuthedClient(_factory, session);
+    }
+
+    private static HttpClient AuthedClient(AuthApiFactory factory, Session session)
+    {
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = false,
+        });
         client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie",
             $"{AuthConstants.AuthCookieName}={session.Auth}; {AuthConstants.CsrfCookieName}={session.Csrf}");
         client.DefaultRequestHeaders.TryAddWithoutValidation(AuthConstants.CsrfHeaderName, session.Csrf);

@@ -40,6 +40,27 @@ services:
       timeout: 3s
       retries: 10
 
+  libretranslate:
+    image: libretranslate/libretranslate:v1.9.6
+    environment:
+      ARGOS_PACKAGE_INDEX: https://raw.githubusercontent.com/argosopentech/argospm-index/ff90de60728f7c1338ff6b75974e4c89b2442d22/
+      LT_LOAD_ONLY: es,en
+      LT_CHAR_LIMIT: "1200"
+      LT_BATCH_LIMIT: "2"
+    volumes:
+      - libretranslate-data:/home/libretranslate/.local
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=5).read()"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
   # One-shot migrator: applies `dotnet ef database update` (populates
   # __EFMigrationsHistory) and then loads the idempotent seed with psql.
   # NOTE for existing dev databases that were created by the retired init.sql
@@ -95,6 +116,9 @@ services:
       - Email__GoogleRefreshToken=${GOOGLE_OAUTH_REFRESH_TOKEN:-}
       - Email__GoogleRedirectUri=${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:5000/oauth2callback}
       - Email__SitioUrl=${FRONTEND_BASE_URL:-http://localhost}
+      - Translation__LibreTranslate__Enabled=${LIBRETRANSLATE_ENABLED:-true}
+      - Translation__LibreTranslate__BaseUrl=http://libretranslate:5000
+      - Translation__LibreTranslate__TimeoutSeconds=${LIBRETRANSLATE_TIMEOUT_SECONDS:-15}
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,3 +160,4 @@ services:
 volumes:
   pgdata:
   miniodata:
+  libretranslate-data:

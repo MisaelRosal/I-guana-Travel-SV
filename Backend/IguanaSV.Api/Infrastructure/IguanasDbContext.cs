@@ -90,6 +90,9 @@ public class IguanasDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.Direccion).HasColumnName("direccion");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.DescripcionEn)
+                .HasColumnType("text")
+                .HasColumnName("descripcion_en");
             entity.Property(e => e.Email)
                 .HasMaxLength(150)
                 .HasColumnName("email");
@@ -184,10 +187,16 @@ public class IguanasDbContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.DescripcionEn)
+                .HasColumnType("text")
+                .HasColumnName("descripcion_en");
             entity.Property(e => e.DuracionHoras).HasColumnName("duracion_horas");
             entity.Property(e => e.Nombre)
                 .HasMaxLength(200)
                 .HasColumnName("nombre");
+            entity.Property(e => e.NombreEn)
+                .HasColumnType("text")
+                .HasColumnName("nombre_en");
             entity.Property(e => e.PrecioAdicional)
                 .HasPrecision(10, 2)
                 .HasDefaultValue(0m)
@@ -411,6 +420,9 @@ public class IguanasDbContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.DescripcionEn)
+                .HasColumnType("text")
+                .HasColumnName("descripcion_en");
             entity.Property(e => e.DireccionExacta).HasColumnName("direccion_exacta");
             entity.Property(e => e.Estado)
                 .HasMaxLength(20)
@@ -432,6 +444,9 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Titulo)
                 .HasMaxLength(200)
                 .HasColumnName("titulo");
+            entity.Property(e => e.TituloEn)
+                .HasColumnType("text")
+                .HasColumnName("titulo_en");
             entity.Property(e => e.Tipo)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'experiencia'::character varying")
@@ -569,7 +584,13 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
             entity.Property(e => e.Calificacion).HasColumnName("calificacion");
             entity.Property(e => e.Comentario).HasColumnName("comentario");
+            entity.Property(e => e.ComentarioEn)
+                .HasColumnType("text")
+                .HasColumnName("comentario_en");
             entity.Property(e => e.RespuestaAnfitrion).HasColumnName("respuesta_anfitrion");
+            entity.Property(e => e.RespuestaAnfitrionEn)
+                .HasColumnType("text")
+                .HasColumnName("respuesta_anfitrion_en");
             entity.Property(e => e.FechaRespuesta)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("fecha_respuesta");

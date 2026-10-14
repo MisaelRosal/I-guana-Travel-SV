@@ -16,18 +16,32 @@ public class PublicacioneController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly IPublicationTranslationService _translationService;
+    private readonly ILogger<PublicacioneController> _logger;
 
-    public PublicacioneController(IguanasDbContext context, IEmailNotificationService notificaciones)
+    public PublicacioneController(
+        IguanasDbContext context,
+        IEmailNotificationService notificaciones,
+        IPublicationTranslationService translationService,
+        ILogger<PublicacioneController> logger)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _translationService = translationService;
+        _logger = logger;
     }
 
     // Catalog reads stay anonymous (spec: "Public read, protected write").
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PublicacioneEntity>>> GetPublicaciones()
+    public async Task<ActionResult<IEnumerable<PublicacioneEntity>>> GetPublicaciones(
+        [FromQuery] string? contentLocale = null)
     {
-        return await _context.Publicaciones
+        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        {
+            return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
+        }
+
+        var publicaciones = await _context.Publicaciones
             .AsNoTracking()
             .Include(p => p.Anfitrion)
                 .ThenInclude(a => a.Municipio)
@@ -41,11 +55,21 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.PublicacionAmenidads)
                 .ThenInclude(pa => pa.Amenidad)
             .ToListAsync();
+
+        ApplyContentLocale(publicaciones, locale);
+        return publicaciones;
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<PublicacioneEntity>> GetPublicacione(int id)
+    public async Task<ActionResult<PublicacioneEntity>> GetPublicacione(
+        int id,
+        [FromQuery] string? contentLocale = null)
     {
+        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        {
+            return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
+        }
+
         var publicacione = await _context.Publicaciones
             .AsNoTracking()
             .Include(p => p.Anfitrion)
@@ -66,6 +90,7 @@ public class PublicacioneController : ControllerBase
             return NotFound();
         }
 
+        ApplyContentLocale(publicacione, locale);
         return publicacione;
     }
 
@@ -136,10 +161,23 @@ public class PublicacioneController : ControllerBase
             return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
         }
 
+        var tituloAnterior = publicacione.Titulo;
+        var descripcionAnterior = publicacione.Descripcion;
+        var tituloCambio = !string.Equals(tituloAnterior, dto.Titulo, StringComparison.Ordinal);
+        var descripcionCambio = !string.Equals(descripcionAnterior, dto.Descripcion, StringComparison.Ordinal);
+
         publicacione.AnfitrionId = dto.AnfitrionId;
         publicacione.CategoriaId = dto.CategoriaId;
         publicacione.Titulo = dto.Titulo;
         publicacione.Descripcion = dto.Descripcion;
+        if (tituloCambio)
+        {
+            publicacione.TituloEn = null;
+        }
+        if (descripcionCambio)
+        {
+            publicacione.DescripcionEn = null;
+        }
         publicacione.PrecioPorNoche = dto.PrecioPorNoche;
         publicacione.CapacidadMaxima = dto.CapacidadMaxima;
         publicacione.Habitaciones = dto.Habitaciones;
@@ -251,6 +289,9 @@ public class PublicacioneController : ControllerBase
             return Conflict();
         }
 
+        await TranslateAndPersistIfMissingAsync(publicacione, HttpContext.RequestAborted);
+        await TranslateExperienceFieldsAsync(id, HttpContext.RequestAborted);
+
         return NoContent();
     }
 
@@ -330,6 +371,9 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
         _context.Publicaciones.Add(publicacione);
         await _context.SaveChangesAsync();
 
+        await TranslateAndPersistIfMissingAsync(publicacione, HttpContext.RequestAborted);
+        await TranslateExperienceFieldsAsync(publicacione.Id, HttpContext.RequestAborted);
+
         // Tell the account owner, resolved through the host row's usuario link —
         // the anfitriones.email contact column is not the login mailbox.
         var anfitrion = await _context.Anfitriones
@@ -346,6 +390,67 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
         }
 
         return CreatedAtAction(nameof(GetPublicacione), new { id = publicacione.Id }, publicacione);
+    }
+
+    [HttpPost("traducir-pendientes")]
+    [Authorize(Roles = AuthConstants.AdminRole)]
+    public async Task<IActionResult> TranslatePending(
+        [FromQuery] int batchSize = 25,
+        [FromQuery] int? afterId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (batchSize is < 1 or > 25)
+        {
+            return BadRequest(new { mensaje = "batchSize must be between 1 and 25." });
+        }
+
+        if (afterId is < 0)
+        {
+            return BadRequest(new { mensaje = "afterId must be zero or greater." });
+        }
+
+        var candidatos = await _context.Publicaciones
+            .AsNoTracking()
+            .Where(p => (!afterId.HasValue || p.Id > afterId.Value)
+                && (p.TituloEn == null
+                    || (p.Descripcion != null && p.Descripcion.Trim() != "" && p.DescripcionEn == null)))
+            .OrderBy(p => p.Id)
+            .Take(batchSize + 1)
+            .ToListAsync(cancellationToken);
+
+        var hasMore = candidatos.Count > batchSize;
+        var procesar = candidatos.Take(batchSize).ToList();
+        var processedCount = 0;
+        var translatedCount = 0;
+        var failedCount = 0;
+        var nextAfterId = afterId;
+
+        foreach (var publicacion in procesar)
+        {
+            var result = await TranslateAndPersistIfMissingAsync(publicacion, cancellationToken);
+            if (!result.Completed)
+            {
+                failedCount = 1;
+                hasMore = true;
+                break;
+            }
+
+            processedCount++;
+            if (result.Translated)
+            {
+                translatedCount++;
+            }
+            nextAfterId = publicacion.Id;
+        }
+
+        return Ok(new
+        {
+            processedCount,
+            translatedCount,
+            failedCount,
+            nextAfterId,
+            hasMore,
+        });
     }
 
     [HttpDelete("{id}")]
@@ -392,4 +497,214 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
         return sub.HasValue
             && await _context.Publicaciones.AnyAsync(p => p.Id == publicacionId && p.Anfitrion!.UsuarioId == sub.Value);
     }
+
+    private async Task<TranslationPersistenceResult> TranslateAndPersistIfMissingAsync(
+        PublicacioneEntity publicacion,
+        CancellationToken cancellationToken)
+    {
+        var translateTitle = publicacion.TituloEn is null;
+        var translateDescription = publicacion.DescripcionEn is null
+            && !string.IsNullOrWhiteSpace(publicacion.Descripcion);
+
+        if (!translateTitle && !translateDescription)
+        {
+            return new TranslationPersistenceResult(true, false);
+        }
+
+        try
+        {
+            var translation = await _translationService.TranslateMissingAsync(
+                publicacion.Id,
+                publicacion.Titulo,
+                publicacion.Descripcion,
+                translateTitle,
+                translateDescription,
+                cancellationToken);
+
+            if (translation is null)
+            {
+                return new TranslationPersistenceResult(false, false);
+            }
+
+            var titleEnglish = translateTitle && !string.IsNullOrWhiteSpace(translation.TitleEnglish)
+                ? translation.TitleEnglish
+                : null;
+            var descriptionEnglish = translateDescription && !string.IsNullOrWhiteSpace(translation.DescriptionEnglish)
+                ? translation.DescriptionEnglish
+                : null;
+
+            if (titleEnglish is null && descriptionEnglish is null)
+            {
+                return new TranslationPersistenceResult(false, false);
+            }
+
+            var currentSource = _context.Publicaciones
+                .Where(p => p.Id == publicacion.Id
+                    && p.Titulo == publicacion.Titulo
+                    && p.Descripcion == publicacion.Descripcion);
+            var updated = 0;
+
+            if (titleEnglish is not null)
+            {
+                updated += await currentSource
+                    .Where(p => p.TituloEn == null)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.TituloEn, titleEnglish), cancellationToken);
+            }
+
+            if (descriptionEnglish is not null)
+            {
+                updated += await currentSource
+                    .Where(p => p.DescripcionEn == null)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.DescripcionEn, descriptionEnglish), cancellationToken);
+            }
+
+            // A newer edit/translation won the race. Treat the attempt as complete
+            // only if no current source field still needs a translation; otherwise
+            // the backfill cursor stays before this publication for a safe retry.
+            var stillPending = await _context.Publicaciones
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == publicacion.Id
+                    && (p.TituloEn == null
+                        || (p.Descripcion != null && p.Descripcion.Trim() != "" && p.DescripcionEn == null)),
+                    cancellationToken);
+
+            return new TranslationPersistenceResult(!stillPending, updated > 0);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            var failureCategory = $"persistence_error_{exception.GetType().Name}";
+            _logger.LogWarning(
+                "Publication translation persistence failed for publication {PublicationId}: {FailureCategory}",
+                publicacion.Id,
+                failureCategory);
+            return new TranslationPersistenceResult(false, false);
+        }
+    }
+
+    private static bool TryNormalizeContentLocale(string? contentLocale, out string locale)
+    {
+        locale = string.IsNullOrWhiteSpace(contentLocale) ? "es" : contentLocale.Trim().ToLowerInvariant();
+        return locale is "es" or "en";
+    }
+
+    private static void ApplyContentLocale(IEnumerable<PublicacioneEntity> publicaciones, string locale)
+    {
+        if (locale != "en")
+        {
+            return;
+        }
+
+        foreach (var publicacion in publicaciones)
+        {
+            ApplyContentLocale(publicacion, locale);
+        }
+    }
+
+    private static void ApplyContentLocale(PublicacioneEntity publicacion, string locale)
+    {
+        if (locale != "en")
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(publicacion.TituloEn))
+        {
+            publicacion.Titulo = publicacion.TituloEn;
+        }
+        if (!string.IsNullOrWhiteSpace(publicacion.DescripcionEn))
+        {
+            publicacion.Descripcion = publicacion.DescripcionEn;
+        }
+
+        if (publicacion.Anfitrion is not null
+            && !string.IsNullOrWhiteSpace(publicacion.Anfitrion.DescripcionEn))
+        {
+            publicacion.Anfitrion.Descripcion = publicacion.Anfitrion.DescripcionEn;
+        }
+
+        foreach (var experiencia in publicacion.Experiencia)
+        {
+            if (!string.IsNullOrWhiteSpace(experiencia.NombreEn)) experiencia.Nombre = experiencia.NombreEn;
+            if (!string.IsNullOrWhiteSpace(experiencia.DescripcionEn)) experiencia.Descripcion = experiencia.DescripcionEn;
+        }
+    }
+
+    private async Task TranslateExperienceFieldsAsync(int publicacionId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var experiencias = await _context.Experiencias
+                .Where(experiencia => experiencia.PublicacionId == publicacionId)
+                .ToListAsync(cancellationToken);
+
+            foreach (var experiencia in experiencias)
+            {
+                var translateName = experiencia.NombreEn is null;
+                var translateDescription = experiencia.DescripcionEn is null
+                    && !string.IsNullOrWhiteSpace(experiencia.Descripcion);
+                var texts = new List<string>(2);
+                var nameIndex = -1;
+                var descriptionIndex = -1;
+
+                if (translateName && !string.IsNullOrWhiteSpace(experiencia.Nombre))
+                {
+                    nameIndex = texts.Count;
+                    texts.Add(experiencia.Nombre);
+                }
+                if (translateDescription)
+                {
+                    descriptionIndex = texts.Count;
+                    texts.Add(experiencia.Descripcion!);
+                }
+                if (texts.Count == 0 || texts.Any(text => text.Length > 1200))
+                {
+                    continue;
+                }
+
+                var translated = await _translationService.TranslateBatchAsync(
+                    experiencia.Id,
+                    "experience",
+                    texts,
+                    cancellationToken);
+                if (translated is null || translated.Count != texts.Count)
+                {
+                    continue;
+                }
+
+                var currentSource = _context.Experiencias.Where(item =>
+                    item.Id == experiencia.Id
+                    && item.Nombre == experiencia.Nombre
+                    && item.Descripcion == experiencia.Descripcion);
+                if (nameIndex >= 0)
+                {
+                    await currentSource
+                        .Where(item => item.NombreEn == null)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.NombreEn, translated[nameIndex]), cancellationToken);
+                }
+                if (descriptionIndex >= 0)
+                {
+                    await currentSource
+                        .Where(item => item.DescripcionEn == null)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.DescripcionEn, translated[descriptionIndex]), cancellationToken);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                "Experience translation persistence failed for publication {PublicationId}: {FailureCategory}",
+                publicacionId,
+                $"persistence_error_{exception.GetType().Name}");
+        }
+    }
+
+    private sealed record TranslationPersistenceResult(bool Completed, bool Translated);
 }

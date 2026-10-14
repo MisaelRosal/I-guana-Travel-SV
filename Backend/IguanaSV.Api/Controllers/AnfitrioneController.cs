@@ -6,6 +6,7 @@ using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 
 namespace IguanaSV.Api.Controllers;
@@ -16,11 +17,19 @@ public class AnfitrioneController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly IContentTranslationService _translationService;
+    private readonly ILogger<AnfitrioneController> _logger;
 
-    public AnfitrioneController(IguanasDbContext context, IEmailNotificationService notificaciones)
+    public AnfitrioneController(
+        IguanasDbContext context,
+        IEmailNotificationService notificaciones,
+        IContentTranslationService? translationService = null,
+        ILogger<AnfitrioneController>? logger = null)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _translationService = translationService ?? NoOpContentTranslationService.Instance;
+        _logger = logger ?? NullLogger<AnfitrioneController>.Instance;
     }
 
     // PII bulk guard: the list is catalog data for anonymous/usuario callers,
@@ -28,8 +37,13 @@ public class AnfitrioneController : ControllerBase
     // full rows (the admin panel legitimately manages contact data); a host
     // reads their own full row through GET mi-perfil, never through this list.
     [HttpGet]
-    public async Task<IActionResult> GetAnfitriones()
+    public async Task<IActionResult> GetAnfitriones([FromQuery] string? contentLocale = null)
     {
+        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        {
+            return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
+        }
+
         var anfitriones = await _context.Anfitriones
             .Include(a => a.Municipio)
                 .ThenInclude(m => m.Departamento)
@@ -38,15 +52,21 @@ public class AnfitrioneController : ControllerBase
 
         if (User.IsInRole(AuthConstants.AdminRole))
         {
+            ApplyContentLocale(anfitriones, locale);
             return Ok(anfitriones);
         }
 
-        return Ok(anfitriones.Select(ToCatalogo));
+        return Ok(anfitriones.Select(anfitrion => ToCatalogo(anfitrion, locale)));
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetAnfitrione(int id)
+    public async Task<IActionResult> GetAnfitrione(int id, [FromQuery] string? contentLocale = null)
     {
+        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        {
+            return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
+        }
+
         var anfitrione = await _context.Anfitriones
             .Include(a => a.Municipio)
                 .ThenInclude(m => m.Departamento)
@@ -58,6 +78,8 @@ public class AnfitrioneController : ControllerBase
             return NotFound();
         }
 
+        ApplyContentLocale(anfitrione, locale);
+
         // Email/Telefono are public by product decision (the host profile page
         // shows them), but the UsuarioId link is internal plumbing: only admin
         // and the owner ever see it back. Literal "mi-perfil" wins over this
@@ -67,7 +89,7 @@ public class AnfitrioneController : ControllerBase
             return Ok(anfitrione);
         }
 
-        return Ok(ToPublico(anfitrione));
+        return Ok(ToPublico(anfitrione, locale));
     }
 
     [HttpPut("{id}")]
@@ -108,6 +130,9 @@ public class AnfitrioneController : ControllerBase
             anfitrione.UsuarioId = existente.UsuarioId;
         }
 
+        var descripcionCambio = !string.Equals(existente.Descripcion, anfitrione.Descripcion, StringComparison.Ordinal);
+        anfitrione.DescripcionEn = descripcionCambio ? null : existente.DescripcionEn;
+
         _context.Entry(anfitrione).State = EntityState.Modified;
 
         try
@@ -118,6 +143,8 @@ public class AnfitrioneController : ControllerBase
         {
             return Conflict();
         }
+
+        await TranslateDescriptionIfMissingAsync(anfitrione.Id, anfitrione.Descripcion, HttpContext.RequestAborted);
 
         return NoContent();
     }
@@ -170,8 +197,14 @@ public class AnfitrioneController : ControllerBase
             return Forbid();
         }
 
-        anfitrione.Descripcion = request.Descripcion?.Trim();
+        var descripcion = request.Descripcion?.Trim();
+        if (!string.Equals(anfitrione.Descripcion, descripcion, StringComparison.Ordinal))
+        {
+            anfitrione.DescripcionEn = null;
+        }
+        anfitrione.Descripcion = descripcion;
         await _context.SaveChangesAsync();
+        await TranslateDescriptionIfMissingAsync(anfitrione.Id, anfitrione.Descripcion, HttpContext.RequestAborted);
 
         return Ok(anfitrione);
     }
@@ -267,7 +300,15 @@ public class AnfitrioneController : ControllerBase
         if (emailNormalizado != null) anfitrione.Email = emailNormalizado;
         if (dto.Telefono != null) anfitrione.Telefono = dto.Telefono.Trim();
         if (dto.MunicipioId.HasValue) anfitrione.MunicipioId = dto.MunicipioId.Value;
-        if (dto.Descripcion != null) anfitrione.Descripcion = dto.Descripcion.Trim();
+        if (dto.Descripcion != null)
+        {
+            var descripcion = dto.Descripcion.Trim();
+            if (!string.Equals(anfitrione.Descripcion, descripcion, StringComparison.Ordinal))
+            {
+                anfitrione.DescripcionEn = null;
+            }
+            anfitrione.Descripcion = descripcion;
+        }
 
         try
         {
@@ -281,6 +322,8 @@ public class AnfitrioneController : ControllerBase
             // { mensaje } payload (mirrors ReservaController's 23P01 mapping).
             return Conflict(new { mensaje = "Ese correo ya está registrado por otro anfitrión." });
         }
+
+        await TranslateDescriptionIfMissingAsync(anfitrione.Id, anfitrione.Descripcion, HttpContext.RequestAborted);
 
         // Re-read the row fresh: after a MunicipioId reassign the tracked
         // entity's Municipio navigation still points to the OLD municipio (the
@@ -321,6 +364,7 @@ public class AnfitrioneController : ControllerBase
 
         _context.Anfitriones.Add(anfitrione);
         await _context.SaveChangesAsync();
+        await TranslateDescriptionIfMissingAsync(anfitrione.Id, anfitrione.Descripcion, HttpContext.RequestAborted);
 
         return CreatedAtAction(nameof(GetAnfitrione), new { id = anfitrione.Id }, anfitrione);
     }
@@ -376,6 +420,7 @@ public class AnfitrioneController : ControllerBase
             usuario.Rol = "anfitrion";
         }
         await _context.SaveChangesAsync();
+        await TranslateDescriptionIfMissingAsync(anfitrione.Id, anfitrione.Descripcion, HttpContext.RequestAborted);
 
         await _notificaciones.SeAnfitrionAsync(usuario.Email, usuario.Nombre);
 
@@ -423,11 +468,11 @@ public class AnfitrioneController : ControllerBase
     // caller may see depends on the role/ownership of the REQUEST, and the
     // same Anfitrione row must serialize fully for admin and owner.
 
-    private static AnfitrionCatalogoDto ToCatalogo(Anfitrione a) => new()
+    private static AnfitrionCatalogoDto ToCatalogo(Anfitrione a, string locale) => new()
     {
         Id = a.Id,
         Nombre = a.Nombre,
-        Descripcion = a.Descripcion,
+        Descripcion = SelectDescription(a, locale),
         Direccion = a.Direccion,
         FotoPerfil = a.FotoPerfil,
         Verificado = a.Verificado,
@@ -435,19 +480,95 @@ public class AnfitrioneController : ControllerBase
         Municipio = ToMunicipio(a.Municipio),
     };
 
-    private static AnfitrionPublicoDto ToPublico(Anfitrione a) => new()
+    private static AnfitrionPublicoDto ToPublico(Anfitrione a, string locale) => new()
     {
         Id = a.Id,
         Nombre = a.Nombre,
         Email = a.Email,
         Telefono = a.Telefono,
-        Descripcion = a.Descripcion,
+        Descripcion = SelectDescription(a, locale),
         Direccion = a.Direccion,
         FotoPerfil = a.FotoPerfil,
         Verificado = a.Verificado,
         MunicipioId = a.MunicipioId,
         Municipio = ToMunicipio(a.Municipio),
     };
+
+    private async Task TranslateDescriptionIfMissingAsync(
+        int anfitrionId,
+        string? sourceDescription,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(sourceDescription) || sourceDescription.Length > 1200)
+        {
+            return;
+        }
+
+        var pending = await _context.Anfitriones.AsNoTracking().AnyAsync(host =>
+            host.Id == anfitrionId
+            && host.Descripcion == sourceDescription
+            && host.DescripcionEn == null,
+            cancellationToken);
+        if (!pending) return;
+
+        try
+        {
+            var translated = await _translationService.TranslateBatchAsync(
+                anfitrionId,
+                "host",
+                [sourceDescription],
+                cancellationToken);
+            if (translated is not { Count: 1 }) return;
+
+            await _context.Anfitriones
+                .Where(host => host.Id == anfitrionId
+                    && host.Descripcion == sourceDescription
+                    && host.DescripcionEn == null)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(host => host.DescripcionEn, translated[0]),
+                    cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                "Host description translation persistence failed for host {HostId}: {FailureCategory}",
+                anfitrionId,
+                $"persistence_error_{exception.GetType().Name}");
+        }
+    }
+
+    private static void ApplyContentLocale(IEnumerable<Anfitrione> anfitriones, string locale)
+    {
+        foreach (var anfitrion in anfitriones)
+        {
+            ApplyContentLocale(anfitrion, locale);
+        }
+    }
+
+    private static void ApplyContentLocale(Anfitrione anfitrion, string locale)
+    {
+        if (locale == "en")
+        {
+            anfitrion.Descripcion = SelectDescription(anfitrion, locale);
+        }
+    }
+
+    private static string? SelectDescription(Anfitrione anfitrion, string locale) =>
+        locale == "en" && !string.IsNullOrWhiteSpace(anfitrion.DescripcionEn)
+            ? anfitrion.DescripcionEn
+            : anfitrion.Descripcion;
+
+    private static bool TryNormalizeContentLocale(string? contentLocale, out string locale)
+    {
+        locale = string.IsNullOrWhiteSpace(contentLocale)
+            ? "es"
+            : contentLocale.Trim().ToLowerInvariant();
+        return locale is "es" or "en";
+    }
 
     private async Task<MiPerfilAnfitrionDto> ToMiPerfilAsync(Anfitrione a)
     {

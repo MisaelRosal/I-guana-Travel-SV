@@ -28,6 +28,30 @@ builder.Services.AddDbContext<IguanasDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddSingleton<IMinioStorageService, MinioStorageService>();
 
+// LibreTranslate is optional for direct backend runs. Source publication writes
+// remain available while the translator is disabled or unavailable.
+builder.Services.Configure<LibreTranslateOptions>(
+    builder.Configuration.GetSection(LibreTranslateOptions.SectionName));
+builder.Services.AddHttpClient(LibreTranslateTranslationService.HttpClientName, (services, client) =>
+{
+    var options = services.GetRequiredService<IOptions<LibreTranslateOptions>>().Value;
+    var timeoutSeconds = Math.Clamp(options.TimeoutSeconds, 1, 60);
+    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+    var baseUri = Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var configuredUri)
+        ? configuredUri
+        : new Uri("http://localhost:5501/");
+    var uriBuilder = new UriBuilder(baseUri);
+    uriBuilder.Path = uriBuilder.Path.TrimEnd('/') + "/";
+    client.BaseAddress = uriBuilder.Uri;
+});
+builder.Services.AddSingleton<TranslationConcurrencyLimiter>();
+builder.Services.AddSingleton<LibreTranslateTranslationService>();
+builder.Services.AddSingleton<IPublicationTranslationService>(services =>
+    services.GetRequiredService<LibreTranslateTranslationService>());
+builder.Services.AddSingleton<IContentTranslationService>(services =>
+    services.GetRequiredService<LibreTranslateTranslationService>());
+
 // --- Email saliente + verificación de correo (design: notificaciones) ---
 // Registration is held until the emailed code is entered while
 // Email:VerificacionHabilitada is true. The transport (IEmailService) is the
