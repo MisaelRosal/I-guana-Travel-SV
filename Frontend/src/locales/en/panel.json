@@ -29,6 +29,26 @@
   "tabs": {
     "publications": "Listings"
   },
+  "availability": {
+    "tab": "Availability",
+    "emptyTitle": "No experiences with dates",
+    "emptyBody": "Create an experience and pick its dates so you can manage slots and blocked days.",
+    "selectLabel": "Experience",
+    "hint": "Block a date by clearing \"Available\" or adjust the slots, then save your changes.",
+    "table": {
+      "date": "Date",
+      "time": "Time",
+      "slots": "Slots",
+      "available": "Status",
+      "actions": "Actions"
+    },
+    "available": "Available",
+    "blocked": "Blocked",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Availability updated successfully.",
+    "error": "The availability could not be updated."
+  },
   "reviews": {
     "tab": "Reviews ({{count}})",
     "count_one": "{{count}} review",
@@ -57,6 +77,12 @@
       "all": "All listings"
     },
     "adminNote": "You are viewing the earnings of every listing.",
+    "shortcuts": {
+      "title": "Quick actions",
+      "create": "Create listing",
+      "publications": "View my listings",
+      "reviews": "Manage reviews"
+    },
     "loading": "Calculating earnings…",
     "error": "The earnings could not be loaded.",
     "card": {

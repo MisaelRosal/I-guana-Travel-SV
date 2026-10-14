@@ -130,8 +130,9 @@ public sealed class SchemaMigrationsIntegrationTests
             // W5 M3 ReplaceRacyIndexesWithExclusions, plus the grace-window
             // AddReservaFechaExpiracionGracia, plus the email-verification
             // AddVerificacionEmailYNotificaciones, AddResenas, publication English
-            // overlay, and public user-content English overlays = twelve at head.
-            Assert.Equal(12, applied);
+            // overlay, public user-content English overlays, and the availability
+            // manager AddHorarioCupos = thirteen at head.
+            Assert.Equal(13, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""

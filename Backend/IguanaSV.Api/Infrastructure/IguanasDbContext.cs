@@ -232,6 +232,7 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Disponible)
                 .HasDefaultValue(true)
                 .HasColumnName("disponible");
+            entity.Property(e => e.Cupos).HasColumnName("cupos");
             entity.Property(e => e.HoraFin).HasColumnName("hora_fin");
             entity.Property(e => e.HoraInicio).HasColumnName("hora_inicio");
             entity.Property(e => e.PublicacionId).HasColumnName("publicacion_id");

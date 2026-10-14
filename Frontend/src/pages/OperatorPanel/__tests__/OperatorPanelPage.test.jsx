@@ -65,6 +65,16 @@ vi.mock('../../../components/CrearPublicacionModal.jsx', () => ({
   default: () => null,
 }))
 
+// The dashboard's /Dashboard/ganancias call is out of this slice's scope: feed
+// it a valid empty payload so the A-19 quick actions render deterministically.
+vi.mock('../../../services/dashboard.js', () => ({
+  getGanancias: vi.fn(async () => ({
+    periodo: 'mes', desde: '2026-10-01', hasta: '2026-10-12', moneda: 'USD',
+    total: 0, totalReservas: 0, promedio: 0, totalGeneral: 0,
+    series: [], porPublicacion: [],
+  })),
+}))
+
 function renderPanel() {
   return render(
     <I18nextProvider i18n={i18n}>
@@ -160,6 +170,22 @@ describe('EN active: operator panel chrome comes from the panel namespace', () =
       screen.getByText('Usa el botón «Crear publicación» para agregar la primera.'),
     ).toBeInTheDocument()
     expect(screen.queryByText(/panel:/)).toBeNull()
+  })
+
+  // A-19: the dashboard's quick actions switch tabs without a page reload.
+  it('jumps from the dashboard quick actions back to the listings and reviews tabs', async () => {
+    renderPanel()
+    await screen.findByText('Listing')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    expect(await screen.findByText('Quick actions')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /View my listings/ }))
+    expect(await screen.findByText('Listing')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Manage reviews/ }))
+    expect(await screen.findByText('No reviews yet')).toBeInTheDocument()
   })
 })
 

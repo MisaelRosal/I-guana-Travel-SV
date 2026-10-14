@@ -9,7 +9,14 @@ import { getGanancias } from '../services/dashboard.js'
 // server; every figure below comes from the same simulated-earnings response.
 const PERIODOS = ['dia', 'semana', 'mes']
 
-export default function DashboardGanancias({ publicaciones = [], esAdmin = false }) {
+export default function DashboardGanancias({
+  publicaciones = [],
+  esAdmin = false,
+  totalResenas,
+  onVerPublicaciones,
+  onVerResenas,
+  onCrearPublicacion,
+}) {
   const { t } = useTranslation('panel')
   const locale = useFormatLocale()
   const [periodo, setPeriodo] = useState('mes')
@@ -46,6 +53,44 @@ export default function DashboardGanancias({ publicaciones = [], esAdmin = false
     periodo === 'mes' ? formatMonthLong(inicio, locale) : formatDayMonthShort(inicio, locale)
 
   const tipoLabel = (tipo) => t(`dashboard.type.${tipo}`, { defaultValue: tipo })
+
+  // Shortcuts to the operator's remaining tools (A-19): each is rendered only
+  // when the parent wires its handler, so the dashboard stays usable in
+  // isolation (tests, admin preview) without dangling buttons.
+  const accesos = [
+    onCrearPublicacion && {
+      key: 'create',
+      etiqueta: t('dashboard.shortcuts.create'),
+      onClick: onCrearPublicacion,
+      icono: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      ),
+    },
+    onVerPublicaciones && {
+      key: 'publications',
+      etiqueta: t('dashboard.shortcuts.publications'),
+      onClick: onVerPublicaciones,
+      contador: publicaciones.length,
+      icono: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5" aria-hidden="true">
+          <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+        </svg>
+      ),
+    },
+    onVerResenas && {
+      key: 'reviews',
+      etiqueta: t('dashboard.shortcuts.reviews'),
+      onClick: onVerResenas,
+      contador: totalResenas,
+      icono: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+          <path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 18l-5.8 3 1.1-6.5L2.6 9.8l6.5-.9L12 3z" />
+        </svg>
+      ),
+    },
+  ].filter(Boolean)
 
   return (
     <div className="space-y-5">
@@ -99,6 +144,34 @@ export default function DashboardGanancias({ publicaciones = [], esAdmin = false
           <p className="text-xs italic text-cafe">{t('dashboard.adminNote')}</p>
         )}
       </div>
+
+      {accesos.length > 0 && (
+        <section className="rounded-xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
+          <h3 className="mb-4 text-sm font-bold text-verde-bosque">{t('dashboard.shortcuts.title')}</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {accesos.map((a) => (
+              <button
+                key={a.key}
+                type="button"
+                onClick={a.onClick}
+                className="group flex cursor-pointer items-center gap-3 rounded-lg border border-cafe-claro/50 bg-crema/30 px-4 py-3 text-left transition-colors hover:border-terracota/50 hover:bg-crema"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-terracota/10 text-terracota transition-colors group-hover:bg-terracota group-hover:text-white">
+                  {a.icono}
+                </span>
+                <span className="min-w-0 flex-1 text-sm font-semibold text-verde-bosque">
+                  {a.etiqueta}
+                </span>
+                {a.contador != null && (
+                  <span className="shrink-0 rounded-full bg-verde-hoja/15 px-2 py-0.5 text-xs font-bold text-verde-bosque">
+                    {a.contador}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {cargando ? (
         <p className="rounded-xl border border-cafe-claro/40 bg-white px-6 py-14 text-center text-cafe shadow-sm">

@@ -259,6 +259,8 @@ public class PublicacioneController : ControllerBase
                 Fecha = h.Fecha,
                 HoraInicio = h.HoraInicio,
                 HoraFin = h.HoraFin,
+                Disponible = h.Disponible ?? true,
+                Cupos = h.Cupos,
             });
         }
 
@@ -351,6 +353,8 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
                     Fecha = h.Fecha,
                     HoraInicio = h.HoraInicio,
                     HoraFin = h.HoraFin,
+                    Disponible = h.Disponible ?? true,
+                    Cupos = h.Cupos,
                 })
                 .ToList(),
             Experiencia = (dto.Experiencia ?? new List<CreateExperienciaDto>())

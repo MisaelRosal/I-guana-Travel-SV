@@ -30,6 +30,26 @@
   "tabs": {
     "publications": "Publicaciones"
   },
+  "availability": {
+    "tab": "Disponibilidad",
+    "emptyTitle": "Sin experiencias con fechas",
+    "emptyBody": "Crea una experiencia y elige sus fechas para poder gestionar cupos y bloqueos.",
+    "selectLabel": "Experiencia",
+    "hint": "Bloquea una fecha desmarcando «Disponible» o ajusta los cupos, y guarda los cambios.",
+    "table": {
+      "date": "Fecha",
+      "time": "Horario",
+      "slots": "Cupos",
+      "available": "Estado",
+      "actions": "Acciones"
+    },
+    "available": "Disponible",
+    "blocked": "Bloqueada",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "saved": "Disponibilidad actualizada correctamente.",
+    "error": "No se pudo actualizar la disponibilidad."
+  },
   "reviews": {
     "tab": "Reseñas ({{count}})",
     "count_one": "{{count}} reseña",
@@ -58,6 +78,12 @@
       "all": "Todas las publicaciones"
     },
     "adminNote": "Ves las ganancias de todas las publicaciones.",
+    "shortcuts": {
+      "title": "Accesos directos",
+      "create": "Crear publicación",
+      "publications": "Ver mis publicaciones",
+      "reviews": "Gestionar reseñas"
+    },
     "loading": "Calculando ganancias…",
     "error": "No se pudieron cargar las ganancias.",
     "card": {

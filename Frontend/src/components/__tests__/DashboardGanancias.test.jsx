@@ -158,3 +158,53 @@ describe('ES active: canonical Spanish dashboard copy', () => {
     expect(screen.queryByText(/panel:/)).toBeNull()
   })
 })
+
+// A-19: quick actions (accesos directos) to the operator's remaining tools.
+// Each handler is optional and its shortcut only renders when wired, so the
+// dashboard can also be previewed standalone (admin/isolated) safely.
+describe('A-19 quick actions: shortcuts to the operator tools', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en')
+  })
+
+  it('renders the localized shortcuts with their counts and reports every click', async () => {
+    const onCrearPublicacion = vi.fn()
+    const onVerPublicaciones = vi.fn()
+    const onVerResenas = vi.fn()
+    renderDash({ onCrearPublicacion, onVerPublicaciones, onVerResenas, totalResenas: 3 })
+
+    expect(await screen.findByText('Quick actions')).toBeInTheDocument()
+
+    const crear = screen.getByRole('button', { name: 'Create listing' })
+    // publications.length = 2 (PUBLICACIONES) and totalResenas = 3.
+    const publicaciones = screen.getByRole('button', { name: /View my listings/ })
+    const resenas = screen.getByRole('button', { name: /Manage reviews/ })
+    expect(within(publicaciones).getByText('2')).toBeInTheDocument()
+    expect(within(resenas).getByText('3')).toBeInTheDocument()
+
+    fireEvent.click(crear)
+    fireEvent.click(publicaciones)
+    fireEvent.click(resenas)
+    expect(onCrearPublicacion).toHaveBeenCalledTimes(1)
+    expect(onVerPublicaciones).toHaveBeenCalledTimes(1)
+    expect(onVerResenas).toHaveBeenCalledTimes(1)
+
+    expect(screen.queryByText(/panel:/)).toBeNull()
+  })
+
+  it('omits a shortcut whose handler is not provided', async () => {
+    renderDash({ onVerResenas: vi.fn(), totalResenas: 0 })
+
+    expect(await screen.findByText('Quick actions')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Manage reviews/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create listing' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /View my listings/ })).toBeNull()
+  })
+
+  it('hides the whole section when the parent wires no handlers', async () => {
+    renderDash()
+    await screen.findByText('Period total')
+
+    expect(screen.queryByText('Quick actions')).toBeNull()
+  })
+})

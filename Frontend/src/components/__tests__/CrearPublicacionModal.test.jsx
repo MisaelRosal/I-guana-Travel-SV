@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../i18n/config.js'
 import CrearPublicacionModal from '../CrearPublicacionModal.jsx'
+import { api } from '../../services/api.js'
 
 // F2b-2 (i18n-es-en) task 4.3 RED — the create/edit publication modal reads
 // its chrome from the `experiencia` namespace (`modal` block) and reuses the
@@ -49,6 +50,7 @@ vi.mock('../../services/api.js', () => ({
     }),
     post: vi.fn(async () => ({ id: 1 })),
     put: vi.fn(async () => ({ ok: true })),
+    delete: vi.fn(async () => ({ ok: true })),
   },
   readCsrfToken: vi.fn(() => 'token'),
 }))
@@ -213,6 +215,44 @@ describe('ES active: extraction keeps the canonical Spanish modal byte-comparabl
     })
     expect(await screen.findByRole('heading', { name: 'Editar publicación' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeInTheDocument()
+  })
+
+  it('removes an existing image and re-normalizes the surviving one', async () => {
+    api.delete.mockClear()
+    api.put.mockClear()
+
+    const { container } = renderModal({
+      esEdicion: true,
+      pubExistente: {
+        id: 5, titulo: 'Casa', descripcion: '', anfitrionId: 1, categoriaId: 1,
+        precioPorNoche: 120, capacidadMaxima: 4, tipo: 'hospedaje',
+        latitud: 13.5, longitud: -89.3,
+        municipio: { id: 2, departamentoId: 1 },
+        horarios: [], publicacionAmenidads: [],
+        imagenesPublicacions: [
+          { id: 10, url: 'https://cdn.local/1.jpg', esPrincipal: true, orden: 0 },
+          { id: 11, url: 'https://cdn.local/2.jpg', esPrincipal: false, orden: 1 },
+        ],
+      },
+    })
+
+    await screen.findByRole('heading', { name: 'Editar publicación' })
+    expect(container.querySelectorAll('img')).toHaveLength(2)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Quitar imagen' })[0])
+    expect(container.querySelectorAll('img')).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/ImagenesPublicacion/10'))
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith('/ImagenesPublicacion/11', expect.objectContaining({
+        publicacionId: 5,
+        url: 'https://cdn.local/2.jpg',
+        esPrincipal: true,
+        orden: 0,
+      })),
+    )
   })
 
   it('keeps municipality fallback and DB option values in stored Spanish', async () => {

@@ -39,6 +39,27 @@ describe('publication content locale requests', () => {
     expect(api.get).toHaveBeenCalledWith('/Publicacione/9?contentLocale=en')
   })
 
+  it('excludes blocked horarios from the public availability lists', async () => {
+    api.get.mockResolvedValue([{
+      id: 20,
+      titulo: 'Caminata al volcán',
+      tipo: 'experiencia',
+      experiencia: [{ nombre: 'Caminata al volcán' }],
+      categoria: { nombre: 'Naturaleza' },
+      horarios: [
+        { fecha: '2099-12-01', horaInicio: '08:00', horaFin: '12:00', disponible: true },
+        { fecha: '2099-12-02', horaInicio: '08:00', horaFin: '12:00', disponible: false },
+      ],
+      imagenesPublicacions: [],
+      publicacionAmenidads: [],
+    }])
+
+    const [result] = await getExperiencias({ locale: 'es' })
+
+    expect(result.fechasDisponibles).toEqual(['2099-12-01'])
+    expect(result.proximaFecha).toBe('2099-12-01')
+  })
+
   it('maps localized nested experience names and descriptions', async () => {
     api.get.mockResolvedValue([{
       id: 12,

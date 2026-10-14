@@ -306,6 +306,10 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<int?>("Cupos")
+                        .HasColumnType("integer")
+                        .HasColumnName("cupos");
+
                     b.Property<int?>("DiaSemana")
                         .HasColumnType("integer")
                         .HasColumnName("dia_semana");

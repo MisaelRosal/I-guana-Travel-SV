@@ -42,6 +42,10 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>
         // dev-only Swagger middleware is harmless; all secrets come from env vars.
         builder.UseEnvironment("Development");
 
+        // Bypass the MvcTestingAppManifest content root: a repository path
+        // containing an apostrophe breaks the embedded MSBuild expression.
+        builder.UseContentRoot(TestContentRoot.Resolve());
+
         if (_configurationOverrides.Length > 0)
         {
             builder.ConfigureAppConfiguration((_, configuration) =>

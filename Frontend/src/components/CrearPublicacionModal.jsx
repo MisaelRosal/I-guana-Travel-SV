@@ -39,6 +39,8 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const [longitud, setLongitud] = useState('')
   const [amenidadIds, setAmenidadIds] = useState([])
   const [archivos, setArchivos] = useState([])
+  const [imagenesExistentes, setImagenesExistentes] = useState([])
+  const [imagenesAEliminar, setImagenesAEliminar] = useState([])
   const [fechasSeleccionadas, setFechasSeleccionadas] = useState([])
   const [horaInicioExp, setHoraInicioExp] = useState('08:00')
   const [horaFinExp, setHoraFinExp] = useState('17:00')
@@ -82,6 +84,12 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setLongitud(pubExistente.longitud != null ? String(pubExistente.longitud) : '')
       setAmenidadIds((pubExistente.publicacionAmenidads || []).map((pa) => pa.amenidadId))
       setArchivos([])
+      setImagenesExistentes(
+        (pubExistente.imagenesPublicacions || [])
+          .slice()
+          .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
+      )
+      setImagenesAEliminar([])
       const horariosPub = pubExistente.horarios || []
       const conFecha = horariosPub.filter((h) => h.fecha)
       setFechasSeleccionadas(conFecha.map((h) => h.fecha))
@@ -108,6 +116,8 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setLongitud('')
     setAmenidadIds([])
     setArchivos([])
+    setImagenesExistentes([])
+    setImagenesAEliminar([])
     setFechasSeleccionadas([])
     setHoraInicioExp('08:00')
     setHoraFinExp('17:00')
@@ -121,6 +131,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
   const toggleAmenidad = (id) => {
     setAmenidadIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+  }
+
+  const quitarImagenExistente = (id) => {
+    setImagenesExistentes((prev) => prev.filter((img) => img.id !== id))
+    setImagenesAEliminar((prev) => (prev.includes(id) ? prev : [...prev, id]))
   }
 
   const subirArchivos = async () => {
@@ -146,6 +161,42 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       }
     }
     return urls
+  }
+
+  // Edit-mode image reconciliation: delete the removed ones, upload the new
+  // files, then normalize order so the first image stays principal.
+  const sincronizarImagenes = async (publicacionId) => {
+    const restantes = imagenesExistentes.filter((img) => !imagenesAEliminar.includes(img.id))
+    for (const id of imagenesAEliminar) {
+      await api.delete(`/ImagenesPublicacion/${id}`)
+    }
+
+    const creadas = []
+    if (archivos.length > 0) {
+      const urls = await subirArchivos()
+      for (const url of urls) {
+        const res = await api.post('/ImagenesPublicacion', {
+          publicacionId,
+          url,
+          esPrincipal: false,
+          orden: 0,
+        })
+        creadas.push({ id: res.id, url })
+      }
+    }
+
+    const finales = [...restantes, ...creadas]
+    for (let i = 0; i < finales.length; i++) {
+      const img = finales[i]
+      const debePrincipal = i === 0
+      if (img.esPrincipal === debePrincipal && img.orden === i) continue
+      await api.put(`/ImagenesPublicacion/${img.id}`, {
+        publicacionId,
+        url: img.url,
+        esPrincipal: debePrincipal,
+        orden: i,
+      })
+    }
   }
 
   const cambiarMesCal = (delta) => {
@@ -231,11 +282,23 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         publicacion.banos = null
         publicacion.amenidadIds = []
         publicacion.experiencia = [{ nombre: titulo, duracionHoras: null, precioAdicional: null }]
-        publicacion.horarios = fechasSeleccionadas.map((fecha) => ({
-          fecha,
-          horaInicio: horaInicioExp,
-          horaFin: horaFinExp,
-        }))
+        // Preserve the per-date availability set through the availability
+        // manager: the PUT replaces every horario, so carry disponible/cupos.
+        const previosPorFecha = new Map(
+          (pubExistente?.horarios ?? [])
+            .filter((h) => h.fecha)
+            .map((h) => [String(h.fecha).slice(0, 10), h]),
+        )
+        publicacion.horarios = fechasSeleccionadas.map((fecha) => {
+          const previo = previosPorFecha.get(fecha)
+          return {
+            fecha,
+            horaInicio: horaInicioExp,
+            horaFin: horaFinExp,
+            disponible: previo ? previo.disponible !== false : true,
+            cupos: previo?.cupos ?? null,
+          }
+        })
       }
 
       publicacion.publicacionAmenidads = amenidadIds.map((aid) => ({ amenidadId: aid }))
@@ -246,16 +309,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           id: pubExistente.id,
         })
 
-        if (archivos.length > 0) {
-          const urls = await subirArchivos()
-          for (let i = 0; i < urls.length; i++) {
-            await api.post('/ImagenesPublicacion', {
-              publicacionId: pubExistente.id,
-              url: urls[i],
-              esPrincipal: i === 0,
-            })
-          }
-        }
+        await sincronizarImagenes(pubExistente.id)
       } else {
         const res = await api.post('/Publicacione', publicacion)
         const pubId = res.id
@@ -267,6 +321,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               publicacionId: pubId,
               url: urls[i],
               esPrincipal: i === 0,
+              orden: i,
             })
           }
         }
@@ -284,7 +339,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     return titulo || descripcion || anfitrionId || categoriaId || precio || capacidad ||
       habitaciones || camas || banos || horaEntrada || horaSalida || departamentoId || municipioId ||
       latitud || longitud || amenidadIds.length > 0 || archivos.length > 0 ||
-      fechasSeleccionadas.length > 0
+      imagenesAEliminar.length > 0 || fechasSeleccionadas.length > 0
   }
 
   const handleCerrar = () => {
@@ -524,12 +579,26 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               onChange={(e) => setArchivos((prev) => [...prev, ...Array.from(e.target.files)])}
               className="block w-full text-sm text-cafe file:mr-4 file:rounded-lg file:border-0 file:bg-terracota file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:cursor-pointer hover:file:bg-verde-bosque"
             />
-            {archivos.length > 0 && (
+            {(imagenesExistentes.length > 0 || archivos.length > 0) && (
               <div className="mt-3 flex flex-wrap gap-3">
-                {archivos.map((a, i) => (
-                  <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-neutral-200">
-                    <img src={URL.createObjectURL(a)} alt="" className="h-full w-full object-cover" />
+                {imagenesExistentes.map((img, i) => (
+                  <div key={`existente-${img.id}`} className="relative h-20 w-20 overflow-hidden rounded-lg border border-neutral-200">
+                    <img src={img.url} alt="" className="h-full w-full object-cover" />
                     {i === 0 && <span className="absolute top-0 left-0 rounded-br bg-verde-bosque px-1.5 py-0.5 text-[10px] font-bold text-white">{t('modal.primaryBadge')}</span>}
+                    <button
+                      type="button"
+                      onClick={() => quitarImagenExistente(img.id)}
+                      aria-label={t('modal.removeImage')}
+                      className="absolute top-0.5 right-0.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                ))}
+                {archivos.map((a, i) => (
+                  <div key={`nueva-${i}`} className="relative h-20 w-20 overflow-hidden rounded-lg border border-neutral-200">
+                    <img src={URL.createObjectURL(a)} alt="" className="h-full w-full object-cover" />
+                    {imagenesExistentes.length === 0 && i === 0 && <span className="absolute top-0 left-0 rounded-br bg-verde-bosque px-1.5 py-0.5 text-[10px] font-bold text-white">{t('modal.primaryBadge')}</span>}
                     <button type="button" onClick={() => setArchivos((prev) => prev.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>

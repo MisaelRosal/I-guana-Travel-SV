@@ -192,6 +192,10 @@ public sealed class GoogleApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Development");
 
+        // Bypass the MvcTestingAppManifest content root: a repository path
+        // containing an apostrophe breaks the embedded MSBuild expression.
+        builder.UseContentRoot(TestContentRoot.Resolve());
+
         builder.ConfigureAppConfiguration((_, config) =>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {

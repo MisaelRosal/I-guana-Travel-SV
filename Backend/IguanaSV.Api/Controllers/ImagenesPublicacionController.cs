@@ -1,4 +1,5 @@
 using ImagenesPublicacionEntity = IguanaSV.Api.Entities.ImagenesPublicacion;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -57,6 +58,17 @@ public class ImagenesPublicacionController : ControllerBase
             return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
+        // Owner-or-admin gate (spec: "Publication ownership gate"): a non-admin
+        // must own both the image's current publication and the target one.
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            if (!await CallerOwnsPublicationAsync(imagenesPublicacion.PublicacionId)
+                || !await CallerOwnsPublicationAsync(dto.PublicacionId))
+            {
+                return Forbid();
+            }
+        }
+
         imagenesPublicacion.PublicacionId = dto.PublicacionId;
         imagenesPublicacion.Url = dto.Url;
         imagenesPublicacion.EsPrincipal = dto.EsPrincipal;
@@ -86,6 +98,12 @@ public class ImagenesPublicacionController : ControllerBase
             return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
+        // A non-admin may only attach an image to a publication they own.
+        if (!User.IsInRole(AuthConstants.AdminRole) && !await CallerOwnsPublicationAsync(dto.PublicacionId))
+        {
+            return Forbid();
+        }
+
         var imagenesPublicacion = new ImagenesPublicacionEntity
         {
             PublicacionId = dto.PublicacionId,
@@ -112,9 +130,24 @@ public class ImagenesPublicacionController : ControllerBase
             return NotFound();
         }
 
+        // Owner-or-admin gate (spec: "Publication ownership gate").
+        if (!User.IsInRole(AuthConstants.AdminRole)
+            && !await CallerOwnsPublicationAsync(imagenesPublicacion.PublicacionId))
+        {
+            return Forbid();
+        }
+
         _context.ImagenesPublicacions.Remove(imagenesPublicacion);
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>True when the token subject owns the host behind the given publication.</summary>
+    private async Task<bool> CallerOwnsPublicationAsync(int publicacionId)
+    {
+        var sub = User.GetSubjectId();
+        return sub.HasValue
+            && await _context.Publicaciones.AnyAsync(p => p.Id == publicacionId && p.Anfitrion!.UsuarioId == sub.Value);
     }
 }

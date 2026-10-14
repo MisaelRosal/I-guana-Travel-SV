@@ -8,6 +8,7 @@ import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.
 import { getMisResenas, responderResena } from '../../services/resenas.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
 import DashboardGanancias from '../../components/DashboardGanancias.jsx'
+import GestorDisponibilidad from '../../components/GestorDisponibilidad.jsx'
 
 export default function OperatorPanelPage() {
   const { t, i18n } = useTranslation('panel')
@@ -169,6 +170,7 @@ export default function OperatorPanelPage() {
       <div className="mb-6 flex gap-2 border-b border-neutral-200">
         {[
           { id: 'publicaciones', etiqueta: t('tabs.publications') },
+          { id: 'disponibilidad', etiqueta: t('availability.tab') },
           { id: 'dashboard', etiqueta: t('dashboard.tab') },
           { id: 'resenas', etiqueta: t('reviews.tab', { count: listaResenas.length }) },
         ].map((tab) => (
@@ -298,8 +300,23 @@ export default function OperatorPanelPage() {
       </div>
       )}
 
+      {pestana === 'disponibilidad' && (
+        <GestorDisponibilidad
+          publicaciones={publicaciones}
+          onActualizado={cargar}
+          onMensaje={setMensaje}
+        />
+      )}
+
       {pestana === 'dashboard' && (
-        <DashboardGanancias publicaciones={publicaciones} esAdmin={esAdmin(usuario?.rol)} />
+        <DashboardGanancias
+          publicaciones={publicaciones}
+          esAdmin={esAdmin(usuario?.rol)}
+          totalResenas={listaResenas.length}
+          onVerPublicaciones={() => setPestana('publicaciones')}
+          onVerResenas={() => setPestana('resenas')}
+          onCrearPublicacion={() => { setPubEditando(null); setModalAbierto(true) }}
+        />
       )}
 
       {pestana === 'resenas' && (

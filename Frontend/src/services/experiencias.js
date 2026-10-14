@@ -76,13 +76,14 @@ function mapearPublicacion(p) {
       })),
     fechasDisponibles: (p.horarios ?? [])
       .filter(Boolean)
-      .filter((h) => h.fecha)
+      .filter((h) => h.fecha && h.disponible !== false)
       .map((h) => String(h.fecha).slice(0, 10)),
     proximaFecha: (() => {
       const hoy = new Date()
       const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
       return (p.horarios ?? [])
         .filter(Boolean)
+        .filter((h) => h.disponible !== false)
         .map((h) => (h.fecha ? String(h.fecha).slice(0, 10) : null))
         .filter((f) => f && f >= hoyStr)
         .sort()
