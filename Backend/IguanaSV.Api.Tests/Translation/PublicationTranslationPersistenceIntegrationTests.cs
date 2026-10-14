@@ -330,6 +330,8 @@ public sealed class PublicationTranslationPersistenceIntegrationTests
             CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> BienvenidaAsync(string destinatario, string nombre,
             CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> CuentaCreadaAsync(string destinatario, string nombre,
+            CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> SeAnfitrionAsync(string destinatario, string nombre,
             CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> PerfilAnfitrionActualizadoAsync(string destinatario, string nombre,
