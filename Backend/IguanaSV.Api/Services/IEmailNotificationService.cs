@@ -25,6 +25,12 @@ public interface IEmailNotificationService
 
     Task<bool> BienvenidaAsync(string destinatario, string nombre, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Notification (no code) sent when an account is created through Google,
+    /// whose email is already verified by the provider.
+    /// </summary>
+    Task<bool> CuentaCreadaAsync(string destinatario, string nombre, CancellationToken cancellationToken = default);
+
     Task<bool> SeAnfitrionAsync(string destinatario, string nombre, CancellationToken cancellationToken = default);
 
     Task<bool> PerfilAnfitrionActualizadoAsync(string destinatario, string nombre, CancellationToken cancellationToken = default);

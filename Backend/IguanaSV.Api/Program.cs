@@ -88,6 +88,10 @@ var jwtOptions = new JwtOptions
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton<JwtTokenService>();
 
+// Google Sign-In: verifies the ID token from the embedded button against
+// Google's public keys and the SAME OAuth client id used for outbound Gmail.
+builder.Services.AddSingleton<IGoogleTokenVerifier, GoogleTokenVerifier>();
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

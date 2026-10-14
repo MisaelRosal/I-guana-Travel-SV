@@ -21,7 +21,7 @@ public sealed class CsrfMiddleware
     // These paths authenticate a session and set the CSRF cookie; they cannot
     // require a token the client has not received yet, and they are unauthenticated
     // so a cross-site attacker gains nothing by calling them.
-    private static readonly string[] ExemptPathFragments = { "/api/auth/login", "/api/auth/register" };
+    private static readonly string[] ExemptPathFragments = { "/api/auth/login", "/api/auth/register", "/api/auth/google" };
 
     private readonly RequestDelegate _next;
 

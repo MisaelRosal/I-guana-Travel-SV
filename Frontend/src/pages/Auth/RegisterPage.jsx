@@ -5,6 +5,7 @@ import { localePath } from '../../i18n/routes.jsx'
 import { api } from '../../services/api.js'
 import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
+import GoogleSignInButton from '../../components/GoogleSignInButton.jsx'
 
 const estilosInput =
   'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
@@ -129,6 +130,20 @@ export default function RegisterPage() {
     } finally {
       setEnviando(false)
     }
+  }
+
+  // Signing up with Google skips the emailed-code step entirely: Google already
+  // verified the address, so the account is created active server-side.
+  const handleGoogleExito = () => {
+    setError('')
+    setToast({ tipo: 'exito', mensaje: t('register.successToast') })
+    setTimeout(() => navigate(localePath('catalog')), 1500)
+  }
+
+  const handleGoogleError = (err) => {
+    const mensaje = err?.mensaje || err?.message || t('register.genericError')
+    setError(mensaje)
+    setToast({ tipo: 'error', mensaje })
   }
 
   const soloDigitos = (valor) => valor.replace(/[^0-9]/g, '').slice(0, 6)
@@ -359,6 +374,12 @@ export default function RegisterPage() {
               {enviando ? t('register.submitting') : t('register.submit')}
             </button>
           </form>
+
+          <GoogleSignInButton
+            text="signup_with"
+            onExito={handleGoogleExito}
+            onError={handleGoogleError}
+          />
             </>
           ) : (
             <>

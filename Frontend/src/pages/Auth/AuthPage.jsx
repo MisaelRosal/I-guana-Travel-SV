@@ -5,6 +5,7 @@ import { localePath } from '../../i18n/routes.jsx'
 import { api } from '../../services/api.js'
 import { restaurarSesion } from '../../services/session.js'
 import Toast from '../../components/Toast.jsx'
+import GoogleSignInButton from '../../components/GoogleSignInButton.jsx'
 
 export default function AuthPage() {
   // F2a (i18n-es-en): all frontend-owned copy comes from the `auth` namespace.
@@ -48,6 +49,20 @@ export default function AuthPage() {
     } finally {
       setEnviando(false)
     }
+  }
+
+  // Google already proved the identity; the session cookie is set server-side
+  // and rehydrated inside iniciarSesionConGoogle, so we just land the user.
+  const handleGoogleExito = () => {
+    setError('')
+    setToast({ tipo: 'exito', mensaje: t('login.successToast') })
+    setTimeout(() => navigate(localePath('catalog')), 1500)
+  }
+
+  const handleGoogleError = (err) => {
+    const mensaje = err?.mensaje || err?.message || t('login.genericError')
+    setError(mensaje)
+    setToast({ tipo: 'error', mensaje })
   }
 
   return (
@@ -123,6 +138,12 @@ export default function AuthPage() {
               {enviando ? t('login.submitting') : t('login.submit')}
             </button>
           </form>
+
+          <GoogleSignInButton
+            text="signin_with"
+            onExito={handleGoogleExito}
+            onError={handleGoogleError}
+          />
         </div>
 
         <p className="mt-5 text-center text-sm text-cafe">

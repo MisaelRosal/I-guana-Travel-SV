@@ -15,6 +15,16 @@ public class LoginRequest
     public string Password { get; set; } = null!;
 }
 
+/// <summary>
+/// Body of POST /api/auth/google: the ID token (JWT) that Google Identity
+/// Services hands back to the embedded button after the user consents. It is
+/// verified server-side against Google's public keys and never trusted as-is.
+/// </summary>
+public class GoogleLoginRequest
+{
+    public string Credential { get; set; } = null!;
+}
+
 public class UsuarioResponse
 {
     public int Id { get; set; }
