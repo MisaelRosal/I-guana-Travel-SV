@@ -50,6 +50,35 @@
     "saved": "Disponibilidad actualizada correctamente.",
     "error": "No se pudo actualizar la disponibilidad."
   },
+  "agenda": {
+    "tab": "Agenda",
+    "filter": {
+      "label": "Publicación",
+      "all": "Todas las publicaciones"
+    },
+    "adminNote": "Ves las reservas de todas las publicaciones.",
+    "loading": "Cargando agenda…",
+    "error": "No se pudo cargar la agenda.",
+    "legend": {
+      "occupied": "Con reserva",
+      "today": "Hoy"
+    },
+    "dayOccupied_one": "{{count}} reserva",
+    "dayOccupied_other": "{{count}} reservas",
+    "guests_one": "{{count}} huésped",
+    "guests_other": "{{count}} huéspedes",
+    "emptyTitle": "Aún no hay reservas",
+    "emptyBody": "Las reservas de tus publicaciones aparecerán aquí.",
+    "upcomingTitle": "Próximas reservas",
+    "upcomingEmpty": "No tienes reservas próximas en este filtro.",
+    "pastTitle": "Reservas anteriores",
+    "estado": {
+      "pendiente": "Pendiente",
+      "confirmada": "Confirmada",
+      "completada": "Completada",
+      "cancelada": "Cancelada"
+    }
+  },
   "reviews": {
     "tab": "Reseñas ({{count}})",
     "count_one": "{{count}} reseña",

@@ -49,6 +49,35 @@
     "saved": "Availability updated successfully.",
     "error": "The availability could not be updated."
   },
+  "agenda": {
+    "tab": "Agenda",
+    "filter": {
+      "label": "Listing",
+      "all": "All listings"
+    },
+    "adminNote": "You are viewing the reservations of every listing.",
+    "loading": "Loading agenda…",
+    "error": "The agenda could not be loaded.",
+    "legend": {
+      "occupied": "Booked",
+      "today": "Today"
+    },
+    "dayOccupied_one": "{{count}} reservation",
+    "dayOccupied_other": "{{count}} reservations",
+    "guests_one": "{{count}} guest",
+    "guests_other": "{{count}} guests",
+    "emptyTitle": "No reservations yet",
+    "emptyBody": "Reservations for your listings will appear here.",
+    "upcomingTitle": "Upcoming reservations",
+    "upcomingEmpty": "You have no upcoming reservations for this filter.",
+    "pastTitle": "Past reservations",
+    "estado": {
+      "pendiente": "Pending",
+      "confirmada": "Confirmed",
+      "completada": "Completed",
+      "cancelada": "Cancelled"
+    }
+  },
   "reviews": {
     "tab": "Reviews ({{count}})",
     "count_one": "{{count}} review",
