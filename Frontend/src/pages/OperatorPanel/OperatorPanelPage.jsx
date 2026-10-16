@@ -10,6 +10,7 @@ import { scrollBehavior } from '../../utils/motion.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
 import DashboardGanancias from '../../components/DashboardGanancias.jsx'
 import GestorDisponibilidad from '../../components/GestorDisponibilidad.jsx'
+import AgendaOperador from '../../components/AgendaOperador.jsx'
 
 export default function OperatorPanelPage() {
   const { t, i18n } = useTranslation('panel')
@@ -172,6 +173,7 @@ export default function OperatorPanelPage() {
         {[
           { id: 'publicaciones', etiqueta: t('tabs.publications') },
           { id: 'disponibilidad', etiqueta: t('availability.tab') },
+          { id: 'agenda', etiqueta: t('agenda.tab') },
           { id: 'dashboard', etiqueta: t('dashboard.tab') },
           { id: 'resenas', etiqueta: t('reviews.tab', { count: listaResenas.length }) },
         ].map((tab) => (
@@ -306,6 +308,13 @@ export default function OperatorPanelPage() {
           publicaciones={publicaciones}
           onActualizado={cargar}
           onMensaje={setMensaje}
+        />
+      )}
+
+      {pestana === 'agenda' && (
+        <AgendaOperador
+          publicaciones={publicaciones}
+          esAdmin={esAdmin(usuario?.rol)}
         />
       )}
 

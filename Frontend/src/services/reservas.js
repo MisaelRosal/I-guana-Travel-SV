@@ -68,6 +68,14 @@ export async function getDisponibilidad(publicacionId) {
   return await api.get(`/Reserva/disponibilidad/${publicacionId}`)
 }
 
+// A-20 (operator agenda): reservations behind the caller's own publications,
+// resolved server-side from the token (never a client-supplied host id). The
+// lean payload carries the guest contact fields the operator needs to plan.
+export async function getAgenda() {
+  const data = await api.get('/Reserva/agenda')
+  return Array.isArray(data) ? data : []
+}
+
 export async function crearReserva({ publicacionId, nombreHuesped, emailHuesped, telefonoHuesped, fechaInicio, fechaFin, numeroHuespedes, precioTotal }) {
   return await api.post('/Reserva', {
     publicacionId,

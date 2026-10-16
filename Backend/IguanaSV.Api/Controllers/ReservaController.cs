@@ -104,6 +104,55 @@ public class ReservaController : ControllerBase
         return Ok(reservasOcupadas);
     }
 
+    // Operator agenda (A-20): every reservation behind the caller's own
+    // publications, so the panel can paint a month calendar and a forward-looking
+    // list without leaking other hosts' guest PII. Owner scoping mirrors
+    // DashboardController: an admin sees every reservation, a host sees only
+    // their listings' rows, and a plain user with no host row gets an empty list.
+    // Cancelled rows are included (the client filters them out of the occupancy
+    // marks) so an operator can still audit them.
+    [HttpGet("agenda")]
+    [Authorize]
+    public async Task<IActionResult> GetAgenda()
+    {
+        var sub = User.GetSubjectId();
+        if (!sub.HasValue)
+        {
+            return Forbid();
+        }
+
+        var query = _context.Reservas.AsNoTracking();
+
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            query = query.Where(r => r.Publicacion!.Anfitrion!.UsuarioId == sub.Value);
+        }
+
+        var filas = await query
+            .OrderBy(r => r.FechaInicio)
+            .ThenBy(r => r.Id)
+            .Select(r => new
+            {
+                id = r.Id,
+                publicacionId = r.PublicacionId,
+                publicacionTitulo = r.Publicacion!.Titulo,
+                tipo = r.Publicacion!.Tipo,
+                fechaInicio = r.FechaInicio,
+                fechaFin = r.FechaFin,
+                numeroHuespedes = r.NumeroHuespedes,
+                precioTotal = r.PrecioTotal,
+                estado = r.Estado,
+                nombreHuesped = r.NombreHuesped,
+                emailHuesped = r.EmailHuesped,
+                telefonoHuesped = r.TelefonoHuesped,
+                fechaPago = r.FechaPago,
+                metodoPago = r.MetodoPago,
+            })
+            .ToListAsync();
+
+        return Ok(filas);
+    }
+
     // Edit (W4): binds CreateReservaDto, so the validator runs and only the
     // legitimate guest fields (dates, guests) change. PrecioTotal is recomputed
     // server-side; UsuarioId, Estado and the owning publication are never read
