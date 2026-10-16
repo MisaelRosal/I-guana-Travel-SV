@@ -41,6 +41,14 @@ export default function MiPerfilPage() {
   const [editando, setEditando] = useState(false)
   const [toast, setToast] = useState(null)
   const [error, setError] = useState('')
+  const [campoError, setCampoError] = useState('')
+
+  // Asocia el mensaje con el campo que lo causó y lleva el foco hasta él.
+  const marcarError = (campo, mensaje) => {
+    setError(mensaje)
+    setCampoError(campo)
+    document.getElementById(campo)?.focus()
+  }
 
   // Fills the form fields from the current profile. Used both on load and
   // when cancelling an edit, so the inputs always mirror the saved state.
@@ -90,25 +98,26 @@ export default function MiPerfilPage() {
     e.preventDefault()
     if (!anfitrion) return
     setError('')
+    setCampoError('')
 
     if (!correo.trim()) {
-      setError(t('errors.emailRequired'))
+      marcarError('mp-correo', t('errors.emailRequired'))
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim())) {
-      setError(t('errors.emailInvalid'))
+      marcarError('mp-correo', t('errors.emailInvalid'))
       return
     }
     if (correo.trim().length > 150) {
-      setError(t('errors.emailLength'))
+      marcarError('mp-correo', t('errors.emailLength'))
       return
     }
     if (telefono.trim().length > 20) {
-      setError(t('errors.phoneLength'))
+      marcarError('mp-telefono', t('errors.phoneLength'))
       return
     }
     if (!municipioId) {
-      setError(t('errors.municipioRequired'))
+      marcarError('mp-municipio', t('errors.municipioRequired'))
       return
     }
 
@@ -141,15 +150,15 @@ export default function MiPerfilPage() {
 
   if (cargando) {
     return (
-      <main className="flex justify-center px-4 py-20">
+      <div className="flex justify-center px-4 py-20">
         <p className="text-cafe">{t('loading')}</p>
-      </main>
+      </div>
     )
   }
 
   if (!anfitrion) {
     return (
-      <main className="flex justify-center px-4 py-20">
+      <div className="flex justify-center px-4 py-20">
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('title')}</h1>
           <p className="mt-3 text-cafe">{t('missing.body')}</p>
@@ -157,12 +166,12 @@ export default function MiPerfilPage() {
             {t('missing.cta')}
           </Link>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10">
+    <div className="mx-auto max-w-4xl px-4 py-10">
       <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
         {t('back')}
       </Link>
@@ -237,6 +246,8 @@ export default function MiPerfilPage() {
                 onChange={(e) => setCorreo(e.target.value)}
                 placeholder={t('form.emailPlaceholder')}
                 required
+                aria-invalid={campoError === 'mp-correo' ? true : undefined}
+                aria-describedby={campoError === 'mp-correo' ? 'mp-form-error' : undefined}
               />
             </div>
             <div>
@@ -249,6 +260,8 @@ export default function MiPerfilPage() {
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
                 placeholder={t('form.phonePlaceholder')}
+                aria-invalid={campoError === 'mp-telefono' ? true : undefined}
+                aria-describedby={campoError === 'mp-telefono' ? 'mp-form-error' : undefined}
               />
             </div>
             <div>
@@ -279,6 +292,8 @@ export default function MiPerfilPage() {
                 onChange={(e) => setMunicipioId(e.target.value)}
                 required
                 disabled={!departamentoId}
+                aria-invalid={campoError === 'mp-municipio' ? true : undefined}
+                aria-describedby={campoError === 'mp-municipio' ? 'mp-form-error' : undefined}
               >
                 <option value="">{t('form.muniOption')}</option>
                 {municipios.map((m) => (
@@ -301,7 +316,7 @@ export default function MiPerfilPage() {
             </div>
           </div>
           {error && (
-            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+            <p id="mp-form-error" role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
               {error}
             </p>
           )}
@@ -330,6 +345,6 @@ export default function MiPerfilPage() {
         tipo={toast?.tipo || 'exito'}
         onCerrar={() => setToast(null)}
       />
-    </main>
+    </div>
   )
 }

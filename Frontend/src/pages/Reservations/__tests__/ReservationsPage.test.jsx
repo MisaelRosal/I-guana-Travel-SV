@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
 import ReservationsPage from '../ReservationsPage.jsx'
+import { getMisReservas } from '../../../services/reservas.js'
 
 // F2b-1 (i18n-es-en): the reservations page reads its chrome from the
 // `reservas` namespace (task 4.1 RED — strict-tdd forbids touching
@@ -220,7 +221,7 @@ describe('EN active: reservations chrome comes from the reservas namespace', () 
     await screen.findAllByText('Pending')
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
-    const dialog = await screen.findByRole('dialog', { name: 'Confirm deletion' })
+    const dialog = await screen.findByRole('dialog', { name: 'Delete booking?' })
     expect(within(dialog).getByText('Delete booking?')).toBeInTheDocument()
     // Trans keeps the styled <b> spans while the full sentence resolves from one
     // resource template; the title stays the stored Spanish value (passthrough).
@@ -296,5 +297,94 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(within(dialog).getByRole('button', { name: 'Guardar cambios' })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Menos personas' })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Más personas' })).toBeInTheDocument()
+  })
+})
+
+describe('loading failure surfaces a clear error state (not the empty state)', () => {
+  it('shows the error state with a retry control when the bookings request fails', async () => {
+    getMisReservas.mockRejectedValueOnce(new Error('boom'))
+    renderReservations()
+
+    expect(await screen.findByText('No se pudieron cargar tus reservas.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
+    // A backend failure must never be reported as "no bookings".
+    expect(screen.queryByText('Todavía no tienes reservas')).toBeNull()
+  })
+})
+
+describe('Accesibilidad de modales: foco y tecla Escape', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('es')
+  })
+
+  it('moves focus into the dialog, closes on Escape and returns focus to the trigger', async () => {
+    renderReservations()
+    await screen.findAllByText('Pendiente')
+
+    const disparador = screen.getByRole('button', { name: 'Pagar' })
+    disparador.focus()
+    fireEvent.click(disparador)
+
+    const dialog = await screen.findByRole('dialog', { name: 'Simular pago' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    // Focus moved into the dialog when it opened.
+    expect(dialog.contains(document.activeElement)).toBe(true)
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // Focus goes back to the element that opened the modal.
+    expect(document.activeElement).toBe(disparador)
+  })
+
+  it('traps Tab and Shift+Tab focus inside the dialog', async () => {
+    renderReservations()
+    await screen.findAllByText('Pendiente')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pagar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Simular pago' })
+
+    const botones = within(dialog).getAllByRole('button')
+    const primero = botones[0]
+    const ultimo = botones[botones.length - 1]
+
+    ultimo.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(document.activeElement).toBe(primero)
+
+    primero.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(ultimo)
+  })
+})
+
+describe('Accesibilidad del pago: estado de selección y error asociado', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('es')
+  })
+
+  it('expone el método seleccionado y enfoca el primer campo inválido del pago', async () => {
+    renderReservations()
+    await screen.findAllByText('Pendiente')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pagar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Simular pago' })
+
+    const credito = within(dialog).getByRole('button', { name: 'Tarjeta de crédito' })
+    expect(credito).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar pago' }))
+    expect(await screen.findByText('Seleccioná un método de pago')).toBeInTheDocument()
+    expect(within(dialog).getByRole('group', { name: 'Método de pago' })).toHaveAttribute('aria-invalid', 'true')
+    expect(document.activeElement).toBe(credito)
+
+    fireEvent.click(credito)
+    expect(credito).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar pago' }))
+    const numero = within(dialog).getByPlaceholderText('**** **** **** ****')
+    expect(numero).toHaveAttribute('aria-invalid', 'true')
+    expect(numero).toHaveAttribute('aria-describedby', 'pay-error')
+    expect(document.activeElement).toBe(numero)
   })
 })

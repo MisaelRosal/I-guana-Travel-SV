@@ -66,7 +66,7 @@ export default function PerfilAnfitrionPage() {
   }, [id, contentLocale])
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-10">
       <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
         {t('back')}
       </Link>
@@ -170,6 +170,6 @@ export default function PerfilAnfitrionPage() {
           )}
         </>
       )}
-    </main>
+    </div>
   )
 }

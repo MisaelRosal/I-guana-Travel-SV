@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
 import AuthPage from '../AuthPage.jsx'
 import RegisterPage from '../RegisterPage.jsx'
+import ExperienceDetailPage from '../../ExperienceDetail/ExperienceDetailPage.jsx'
 
 // F2a (i18n-es-en): the auth pages read their chrome from the `auth` namespace.
 // Specs (openspec/changes/i18n-es-en/specs/localized-ui-content/spec.md):
@@ -55,6 +56,57 @@ vi.mock('../../../services/api.js', () => ({
 
 vi.mock('../../../services/session.js', () => ({
   restaurarSesion: vi.fn(async () => {}),
+}))
+
+// The login-return integration spec below renders the real experience detail
+// screen, so its leaflet map and service boundaries are stubbed here too.
+vi.mock('react-leaflet', () => ({
+  MapContainer: ({ children }) => <div>{children}</div>,
+  TileLayer: () => null,
+  Marker: () => null,
+  useMapEvents: () => null,
+  useMap: () => null,
+}))
+
+vi.mock('../../../services/experiencias.js', () => ({
+  getExperienciaById: vi.fn(async () => ({
+    id: 42,
+    titulo: 'Ruta del café en Apan',
+    tipo: 'experiencia',
+    categoria: 'Café',
+    descripcion: '',
+    municipio: 'Apan',
+    departamento: 'Chalatenango',
+    precio: 25,
+    capacidad: 8,
+    habitaciones: 0,
+    camas: 0,
+    banos: 0,
+    anfitrion: '',
+    anfitrionId: null,
+    anfitrionFoto: '',
+    anfitrionDescripcion: '',
+    anfitrionVerificado: false,
+    direccion: '',
+    estado: 'activo',
+    imagenes: [],
+    amenidades: [],
+    horarios: [],
+    fechasDisponibles: [],
+    proximaFecha: null,
+    popular: false,
+    latitud: null,
+    longitud: null,
+  })),
+}))
+
+vi.mock('../../../services/reservas.js', () => ({
+  getDisponibilidad: vi.fn(async () => []),
+  crearReserva: vi.fn(async () => ({ id: 1 })),
+}))
+
+vi.mock('../../../services/resenas.js', () => ({
+  getResenasPublicacion: vi.fn(async () => ({ promedio: 0, total: 0, resenas: [] })),
 }))
 
 function renderAuthPage() {
@@ -341,5 +393,134 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
 
     // No raw keys surface in the canonical locale either.
     expect(screen.queryByText(/auth:/)).toBeNull()
+  })
+})
+
+describe('Accesibilidad de formularios: error asociado y foco en el primer campo inválido', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('es')
+  })
+
+  it('marca el campo inválido del login, lo describe con su error y le da el foco', async () => {
+    renderAuthPage()
+
+    const email = await screen.findByLabelText('Correo electrónico')
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
+
+    expect(email).toHaveAttribute('aria-invalid', 'true')
+    expect(email).toHaveAttribute('aria-describedby', 'login-error')
+    expect(document.getElementById('login-error')).toHaveTextContent('Correo y contraseña son obligatorios.')
+    expect(document.activeElement).toBe(email)
+  })
+
+  it('asocia cada error de campo y enfoca el primero en el registro', async () => {
+    renderRegisterPage()
+
+    const nombre = await screen.findByLabelText('Nombre *')
+    fireEvent.click(screen.getByRole('button', { name: 'Registrarse' }))
+
+    expect(nombre).toHaveAttribute('aria-invalid', 'true')
+    expect(nombre).toHaveAttribute('aria-describedby', 'nombre-error')
+    expect(document.getElementById('nombre-error')).toHaveTextContent('El nombre es obligatorio.')
+    expect(document.activeElement).toBe(nombre)
+  })
+})
+
+// Login must return the visitor to the page that sent them here (not always the
+// catalog), and the booking selection parked before the trip must come back.
+// Lives here because it exercises the login round-trip end to end.
+describe('login round-trip: returns to the originating page and restores the booking selection', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('es')
+    sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    sessionStorage.clear()
+  })
+
+  it('comes back to the detail page with the parked dates and people intact', async () => {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={['/experiencias/42']}>
+          <Routes>
+            <Route path="/experiencias/:id" element={<ExperienceDetailPage />} />
+            <Route path="/login" element={<AuthPage />} />
+            <Route path="/" element={<div>catálogo</div>} />
+          </Routes>
+        </MemoryRouter>
+      </I18nextProvider>,
+    )
+
+    await screen.findByRole('heading', { level: 2 })
+
+    // Anonymous visitor configures a booking: people step, then a date.
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar ahora' }))
+    const calendar = await screen.findByRole('dialog', { name: 'Elegir fecha de reserva' })
+    fireEvent.click(within(calendar).getByRole('button', { name: 'Continuar' }))
+    fireEvent.click(await within(calendar).findByRole('button', { name: 'Mes siguiente' }))
+    fireEvent.click(within(calendar).getByRole('button', { name: '15' }))
+    fireEvent.click(within(calendar).getByRole('button', { name: 'Continuar' }))
+
+    // The anonymous gate sends them to login (the selection is parked meanwhile).
+    const gate = await screen.findByRole('dialog', { name: 'Formulario de reserva' })
+    fireEvent.click(within(gate).getByRole('link', { name: 'Iniciar sesión' }))
+
+    fireEvent.change(await screen.findByLabelText('Correo electrónico'), { target: { value: 'ana@correo.com' } })
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'secreta1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
+
+    // Back on the detail page, the form reopens by itself with the selection.
+    expect(
+      await screen.findByRole('dialog', { name: 'Formulario de reserva' }, { timeout: 3000 }),
+    ).toBeInTheDocument()
+    // Consumed: the parked value is gone and cannot leak into a later visit.
+    expect(sessionStorage.getItem('iguana_reserva_pendiente')).toBeNull()
+  })
+
+  // Same round-trip through the other door: the visitor starts the booking,
+  // reaches login, and creates an account instead. Registration must return to
+  // the origin page and the parked selection must survive, exactly like login.
+  it('comes back to the detail page after registering instead of logging in', async () => {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={['/experiencias/42']}>
+          <Routes>
+            <Route path="/experiencias/:id" element={<ExperienceDetailPage />} />
+            <Route path="/login" element={<AuthPage />} />
+            <Route path="/registro" element={<RegisterPage />} />
+            <Route path="/" element={<div>catálogo</div>} />
+          </Routes>
+        </MemoryRouter>
+      </I18nextProvider>,
+    )
+
+    await screen.findByRole('heading', { level: 2 })
+
+    // Anonymous visitor configures a booking: people step, then a date.
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar ahora' }))
+    const calendar = await screen.findByRole('dialog', { name: 'Elegir fecha de reserva' })
+    fireEvent.click(within(calendar).getByRole('button', { name: 'Continuar' }))
+    fireEvent.click(await within(calendar).findByRole('button', { name: 'Mes siguiente' }))
+    fireEvent.click(within(calendar).getByRole('button', { name: '15' }))
+    fireEvent.click(within(calendar).getByRole('button', { name: 'Continuar' }))
+
+    // The gate sends them to login; from there they choose to register.
+    const gate = await screen.findByRole('dialog', { name: 'Formulario de reserva' })
+    fireEvent.click(within(gate).getByRole('link', { name: 'Iniciar sesión' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Regístrate' }))
+
+    // Complete registration; the default POST resolves without verification.
+    registerLabels.es.forEach((label, i) => {
+      fireEvent.change(screen.getByLabelText(label), { target: { value: registerValues[i] } })
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Registrarse' }))
+
+    // Back on the detail page, the form reopens by itself with the selection.
+    expect(
+      await screen.findByRole('dialog', { name: 'Formulario de reserva' }, { timeout: 3000 }),
+    ).toBeInTheDocument()
+    // Consumed: the parked value is gone and cannot leak into a later visit.
+    expect(sessionStorage.getItem('iguana_reserva_pendiente')).toBeNull()
   })
 })

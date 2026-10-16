@@ -15,7 +15,8 @@
   "bookingRef": "Booking #{{id}}",
   "status": {
     "loading": "Loading your bookings…",
-    "error": "Error: {{error}}",
+    "error": "Your bookings could not be loaded.",
+    "retry": "Retry",
     "emptyTitle": "No bookings yet",
     "emptyBody": "Once you make a booking, you'll see it here.",
     "exploreCta": "Explore experiences"

@@ -4,6 +4,7 @@
     "subtitle": "Surf, coffee, volcanoes and charming towns. Explore, book and live the country with local hosts."
   },
   "search": {
+    "label": "Search listings",
     "placeholder": "Search by name or description…",
     "button": "Search"
   },
@@ -32,6 +33,8 @@
   },
   "status": {
     "loading": "Loading listings…",
+    "error": "Listings could not be loaded.",
+    "retry": "Retry",
     "emptyTitle": "No listings found",
     "emptyWithFilters": "Try changing your search filters.",
     "emptyNoContent": "Create the first listing from the operator panel."

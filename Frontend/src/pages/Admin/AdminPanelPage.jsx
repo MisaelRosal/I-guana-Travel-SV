@@ -93,19 +93,19 @@ export default function AdminPanelPage() {
 
   if (!usuario || !esAdmin(usuario.rol)) {
     return (
-      <main className="flex justify-center px-4 py-20">
+      <div className="flex justify-center px-4 py-20">
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('restricted.title')}</h1>
           <p className="mt-3 text-cafe">
             {t('restricted.body')}
           </p>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
         <p className="mt-1 text-cafe">{t('subtitle')}</p>
@@ -235,7 +235,7 @@ export default function AdminPanelPage() {
                               type="button"
                               onClick={() => setConfirmando(a.id)}
                               disabled={!!confirmando}
-                              className="cursor-pointer rounded p-1.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+                              className="relative cursor-pointer rounded p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
                               title={t('action.deleteProfileTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
@@ -312,7 +312,7 @@ export default function AdminPanelPage() {
                             <button
                               type="button"
                               onClick={() => { setPubEditando(p); setModalAbierto(true) }}
-                              className="cursor-pointer rounded p-1.5 text-cafe transition-colors hover:bg-cafe/10 hover:text-cafe-oscuro"
+                              className="relative cursor-pointer rounded p-1.5 text-cafe transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-cafe/10 hover:text-cafe-oscuro"
                               title={t('action.editListingTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
@@ -324,7 +324,7 @@ export default function AdminPanelPage() {
                               type="button"
                               onClick={() => setConfirmandoPub(p.id)}
                               disabled={!!confirmandoPub}
-                              className="cursor-pointer rounded p-1.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+                              className="relative cursor-pointer rounded p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
                               title={t('action.deleteListingTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
@@ -359,6 +359,6 @@ export default function AdminPanelPage() {
         pubExistente={pubEditando}
         esEdicion={!!pubEditando}
       />
-    </main>
+    </div>
   )
 }

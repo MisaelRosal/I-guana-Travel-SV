@@ -7,6 +7,7 @@ import { formatDateDMY, formatMonthYear, formatPrice, weekdayShortMonFirst } fro
 import { actualizarReserva, crearResena, eliminarReserva, getMisReservas, pagarReserva, cancelarReserva } from '../../services/reservas.js'
 import Toast from '../../components/Toast.jsx'
 import { Estrellas, SelectorEstrellas } from '../../components/Estrellas.jsx'
+import { useModalAccesible } from '../../hooks/useModalAccesible.js'
 
 // Display-only mapping DB estado -> reservas chip key (localized-ui-content spec:
 // the stored value is never rewritten; unknown values render verbatim passthrough).
@@ -303,6 +304,7 @@ function CalendarioFechas({ fechasDisponibles, seleccionada, onSeleccionar }) {
 function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
   const { t } = useTranslation('reservas')
   const locale = useFormatLocale()
+  const refDialogo = useModalAccesible(onCerrar)
   const esHospedaje = reserva.tipo === 'hospedaje'
   const fechasDisponibles = reserva.fechasDisponibles ?? []
   const [fechaInicio, setFechaInicio] = useState(reserva.fechaInicio)
@@ -357,14 +359,15 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
 
   return (
     <div
+      ref={refDialogo}
       className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
       aria-modal="true"
-      aria-label={t('edit.title')}
+      aria-labelledby="editar-reserva-titulo"
     >
       <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-verde-bosque">{t('edit.title')}</h3>
+          <h3 id="editar-reserva-titulo" className="text-xl font-bold text-verde-bosque">{t('edit.title')}</h3>
           <button
             type="button"
             onClick={onCerrar}
@@ -494,6 +497,7 @@ function ModalEditarReserva({ reserva, onCerrar, onGuardado }) {
 function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
   const { t } = useTranslation('reservas')
   const locale = useFormatLocale()
+  const refDialogo = useModalAccesible(onCerrar)
   const [eliminando, setEliminando] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -511,14 +515,15 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
 
   return (
     <div
+      ref={refDialogo}
       className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4"
       role="dialog"
       aria-modal="true"
-      aria-label={t('deleteConfirm.dialogLabel')}
+      aria-labelledby="eliminar-reserva-titulo"
     >
       <div className="animate-modal-box w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="flex items-start justify-between">
-          <h3 className="text-lg font-bold text-verde-bosque">{t('deleteConfirm.heading')}</h3>
+          <h3 id="eliminar-reserva-titulo" className="text-lg font-bold text-verde-bosque">{t('deleteConfirm.heading')}</h3>
           <button
             type="button"
             onClick={onCerrar}
@@ -564,30 +569,39 @@ function ModalConfirmarEliminar({ reserva, onCerrar, onEliminado }) {
 function ModalPago({ reserva, onCerrar, onExito }) {
   const { t } = useTranslation('reservas')
   const locale = useFormatLocale()
+  const refDialogo = useModalAccesible(onCerrar)
   const [metodoPago, setMetodoPago] = useState('')
   const [numeroTarjeta, setNumeroTarjeta] = useState('')
   const [nombreTitular, setNombreTitular] = useState('')
   const [vencimiento, setVencimiento] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState(null)
+  const [campoError, setCampoError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!metodoPago) {
       setError(t('pay.errorMethod'))
+      setCampoError('metodo')
+      document.getElementById('pay-metodo')?.querySelector('button')?.focus()
       return
     }
     if (metodoPago !== 'paypal' && !numeroTarjeta.trim()) {
       setError(t('pay.errorCardNumber'))
+      setCampoError('pay-numero')
+      document.getElementById('pay-numero')?.focus()
       return
     }
     if (metodoPago !== 'paypal' && !nombreTitular.trim()) {
       setError(t('pay.errorHolder'))
+      setCampoError('pay-titular')
+      document.getElementById('pay-titular')?.focus()
       return
     }
 
     setProcesando(true)
     setError(null)
+    setCampoError('')
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500))
@@ -601,13 +615,20 @@ function ModalPago({ reserva, onCerrar, onExito }) {
   }
 
   return (
-    <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8">
+    <div
+      ref={refDialogo}
+      className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pago-titulo"
+    >
       <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-verde-bosque">{t('pay.title')}</h2>
+          <h2 id="pago-titulo" className="text-xl font-bold text-verde-bosque">{t('pay.title')}</h2>
           <button
             type="button"
             onClick={onCerrar}
+            aria-label={t('common:modal.close')}
             className="text-2xl leading-none text-cafe hover:text-terracota transition-colors"
           >
             &times;
@@ -622,16 +643,23 @@ function ModalPago({ reserva, onCerrar, onExito }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+          <div
+            id="pay-metodo"
+            role="group"
+            aria-labelledby="pay-metodo-label"
+            aria-invalid={campoError === 'metodo' ? true : undefined}
+            aria-describedby={campoError === 'metodo' ? 'pay-error' : undefined}
+          >
+            <span id="pay-metodo-label" className="mb-1 block text-sm font-semibold text-verde-bosque">
               {t('pay.methodLabel')}
-            </label>
+            </span>
             <div className="flex flex-col gap-2 sm:flex-row">
               {METODOS_PAGO.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => setMetodoPago(m.id)}
+                  aria-pressed={metodoPago === m.id}
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors sm:flex-1 ${
                     metodoPago === m.id
                       ? 'border-terracota bg-terracota text-white'
@@ -647,35 +675,42 @@ function ModalPago({ reserva, onCerrar, onExito }) {
           {metodoPago && metodoPago !== 'paypal' && (
             <>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                <label htmlFor="pay-numero" className="mb-1 block text-sm font-semibold text-verde-bosque">
                   {t('pay.cardNumber')}
                 </label>
                 <input
+                  id="pay-numero"
                   type="text"
                   value={numeroTarjeta}
                   onChange={(e) => setNumeroTarjeta(e.target.value)}
                   placeholder="**** **** **** ****"
                   maxLength={19}
+                  aria-invalid={campoError === 'pay-numero' ? true : undefined}
+                  aria-describedby={campoError === 'pay-numero' ? 'pay-error' : undefined}
                   className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                <label htmlFor="pay-titular" className="mb-1 block text-sm font-semibold text-verde-bosque">
                   {t('pay.holderName')}
                 </label>
                 <input
+                  id="pay-titular"
                   type="text"
                   value={nombreTitular}
                   onChange={(e) => setNombreTitular(e.target.value)}
                   placeholder={t('pay.holderPlaceholder')}
+                  aria-invalid={campoError === 'pay-titular' ? true : undefined}
+                  aria-describedby={campoError === 'pay-titular' ? 'pay-error' : undefined}
                   className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-terracota focus:outline-none focus:ring-1 focus:ring-terracota"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-verde-bosque">
+                <label htmlFor="pay-vencimiento" className="mb-1 block text-sm font-semibold text-verde-bosque">
                   {t('pay.expiry')}
                 </label>
                 <input
+                  id="pay-vencimiento"
                   type="text"
                   value={vencimiento}
                   onChange={(e) => setVencimiento(e.target.value)}
@@ -694,7 +729,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
           )}
 
           {error && (
-            <p className="rounded-lg bg-red-50 p-2 text-center text-sm text-red-700">{error}</p>
+            <p id="pay-error" role="alert" className="rounded-lg bg-red-50 p-2 text-center text-sm text-red-700">{error}</p>
           )}
 
           <button
@@ -713,6 +748,7 @@ function ModalPago({ reserva, onCerrar, onExito }) {
 function ModalCancelar({ reserva, onCerrar, onExito }) {
   const { t } = useTranslation('reservas')
   const locale = useFormatLocale()
+  const refDialogo = useModalAccesible(onCerrar)
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -739,14 +775,21 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
   }
 
   return (
-    <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+    <div
+      ref={refDialogo}
+      className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cancelar-titulo"
+    >
       <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-terracota">{t('cancel.title')}</h2>
+          <h2 id="cancelar-titulo" className="text-xl font-bold text-terracota">{t('cancel.title')}</h2>
           <button
             type="button"
             onClick={onCerrar}
             disabled={procesando}
+            aria-label={t('common:modal.close')}
             className="text-2xl leading-none text-cafe hover:text-terracota transition-colors"
           >
             &times;
@@ -801,6 +844,7 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
 function ModalResena({ reserva, onCerrar, onExito }) {
   const { t } = useTranslation('reservas')
   const locale = useFormatLocale()
+  const refDialogo = useModalAccesible(onCerrar)
   const [calificacion, setCalificacion] = useState(0)
   const [comentario, setComentario] = useState('')
   const [procesando, setProcesando] = useState(false)
@@ -822,14 +866,21 @@ function ModalResena({ reserva, onCerrar, onExito }) {
   }
 
   return (
-    <div className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+    <div
+      ref={refDialogo}
+      className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="resena-titulo"
+    >
       <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-terracota">{t('reviews.modalTitle')}</h2>
+          <h2 id="resena-titulo" className="text-xl font-bold text-terracota">{t('reviews.modalTitle')}</h2>
           <button
             type="button"
             onClick={onCerrar}
             disabled={procesando}
+            aria-label={t('common:modal.close')}
             className="text-2xl leading-none text-cafe hover:text-terracota transition-colors"
           >
             &times;
@@ -900,7 +951,7 @@ export default function ReservationsPage() {
   const { t } = useTranslation('reservas')
   const [reservas, setReservas] = useState([])
   const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState(false)
   const [toast, setToast] = useState(null)
   const [sesion, setSesion] = useState(null)
   const [reservaEditar, setReservaEditar] = useState(null)
@@ -913,11 +964,18 @@ export default function ReservationsPage() {
     try {
       const lista = await getMisReservas()
       setReservas(lista)
-    } catch (e) {
-      setReservas([])
+      setError(false)
+    } catch {
+      setError(true)
     } finally {
       setCargando(false)
     }
+  }
+
+  const reintentarCarga = () => {
+    setCargando(true)
+    setError(false)
+    cargarReservas()
   }
 
   useEffect(() => {
@@ -983,7 +1041,7 @@ export default function ReservationsPage() {
 
   if (!cargando && !sesion) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-20 text-center">
+      <div className="mx-auto max-w-5xl px-4 py-20 text-center">
         <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
         <p className="mt-1 text-cafe">{t('gate.body')}</p>
         <Link
@@ -992,19 +1050,28 @@ export default function ReservationsPage() {
         >
           {t('gate.cta')}
         </Link>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
       <p className="mt-1 text-cafe">{t('subtitle')}</p>
 
       {cargando ? (
         <p className="mt-8 text-cafe">{t('status.loading')}</p>
       ) : error ? (
-        <p className="mt-8 text-terracota">{t('status.error', { error })}</p>
+        <div role="alert" className="mt-8 rounded-xl border border-dashed border-red-200 bg-red-50 p-10 text-center">
+          <p className="text-lg font-semibold text-red-700">{t('status.error')}</p>
+          <button
+            type="button"
+            onClick={reintentarCarga}
+            className="mt-5 cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
+          >
+            {t('status.retry')}
+          </button>
+        </div>
       ) : reservas.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-cafe-claro bg-white p-10 text-center">
           <p className="text-lg font-semibold text-verde-bosque">{t('status.emptyTitle')}</p>
@@ -1097,6 +1164,6 @@ export default function ReservationsPage() {
         tipo={toast?.tipo || 'exito'}
         onCerrar={() => setToast(null)}
       />
-    </main>
+    </div>
   )
 }

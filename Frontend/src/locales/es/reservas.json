@@ -16,7 +16,8 @@
   "bookingRef": "Reserva #{{id}}",
   "status": {
     "loading": "Cargando tus reservas…",
-    "error": "Error: {{error}}",
+    "error": "No se pudieron cargar tus reservas.",
+    "retry": "Reintentar",
     "emptyTitle": "Todavía no tienes reservas",
     "emptyBody": "Cuando hagas una reserva, la vas a poder ver aquí.",
     "exploreCta": "Explorar experiencias"

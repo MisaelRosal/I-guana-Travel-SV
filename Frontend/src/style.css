@@ -110,3 +110,11 @@ body {
 .animate-modal-box {
   animation: modal-box-in 0.3s ease-out both;
 }
+
+/* WCAG 2.3.3: users who ask for less motion get the end state with no animation. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-modal-backdrop,
+  .animate-modal-box {
+    animation: none;
+  }
+}

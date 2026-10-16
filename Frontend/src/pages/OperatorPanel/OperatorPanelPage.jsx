@@ -6,6 +6,7 @@ import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
 import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.js'
 import { getMisResenas, responderResena } from '../../services/resenas.js'
+import { scrollBehavior } from '../../utils/motion.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
 import DashboardGanancias from '../../components/DashboardGanancias.jsx'
 import GestorDisponibilidad from '../../components/GestorDisponibilidad.jsx'
@@ -102,7 +103,7 @@ export default function OperatorPanelPage() {
     setModalAbierto(false)
     setMensaje(t('toast.created'))
     cargar()
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: scrollBehavior() })
   }
 
   const alEditar = (p) => {
@@ -116,7 +117,7 @@ export default function OperatorPanelPage() {
     setPubEditando(null)
     setMensaje(t('toast.updated'))
     cargar()
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: scrollBehavior() })
   }
 
   const alEliminar = async (p) => {
@@ -126,14 +127,14 @@ export default function OperatorPanelPage() {
       await api.delete(`/Publicacione/${p.id}`)
       setMensaje(t('toast.deleted', { title: p.titulo }))
       cargar()
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: scrollBehavior() })
     } catch {
       setEliminando(null)
     }
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
@@ -262,7 +263,7 @@ export default function OperatorPanelPage() {
                           <button
                             type="button"
                             onClick={() => alEditar(p)}
-                            className="cursor-pointer rounded p-1.5 text-cafe transition-colors hover:bg-cafe/10 hover:text-cafe-oscuro"
+                            className="relative cursor-pointer rounded p-1.5 text-cafe transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-cafe/10 hover:text-cafe-oscuro"
                             title={t('action.editTitle')}
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
@@ -274,7 +275,7 @@ export default function OperatorPanelPage() {
                             type="button"
                             onClick={() => setConfirmando(p.id)}
                             disabled={eliminando === p.id}
-                            className="cursor-pointer rounded p-1.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+                            className="relative cursor-pointer rounded p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
                             title={t('action.deleteTitle')}
                           >
                             {eliminando === p.id ? (
@@ -429,6 +430,6 @@ export default function OperatorPanelPage() {
         esEdicion={!!pubEditando}
         anfitrionFijo={usuario?.rol === 'anfitrion' ? anfitrionPropio : null}
       />
-    </main>
+    </div>
   )
 }

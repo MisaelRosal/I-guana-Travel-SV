@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../i18n/config.js'
@@ -40,7 +40,7 @@ describe('EN active: backend messages render verbatim (passthrough MUST)', () =>
   it('shows "No autorizado" untouched while the control chrome is English', () => {
     renderToast({ mensaje: 'No autorizado', tipo: 'error', onCerrar: vi.fn() })
 
-    expect(screen.getByRole('status')).toHaveTextContent('No autorizado')
+    expect(screen.getByRole('alert')).toHaveTextContent('No autorizado')
     // Frontend-owned string: served from the common namespace in EN.
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
   })
@@ -58,6 +58,30 @@ describe('ES active: canonical Spanish chrome', () => {
     renderToast({ mensaje: 'No autorizado', tipo: 'error', onCerrar: vi.fn() })
 
     expect(screen.getByRole('button', { name: 'Cerrar' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('No autorizado')
+    expect(screen.getByRole('alert')).toHaveTextContent('No autorizado')
+  })
+})
+
+describe('Error toasts announce assertively and do not auto-dismiss', () => {
+  it('renders an error toast as role="alert", not a polite status', () => {
+    renderToast({ mensaje: 'No autorizado', tipo: 'error', onCerrar: vi.fn() })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('No autorizado')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('keeps an error toast visible past the auto-dismiss window until dismissed', () => {
+    vi.useFakeTimers()
+    try {
+      const onCerrar = vi.fn()
+      renderToast({ mensaje: 'No autorizado', tipo: 'error', onCerrar })
+
+      act(() => { vi.advanceTimersByTime(5000) })
+
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      expect(onCerrar).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

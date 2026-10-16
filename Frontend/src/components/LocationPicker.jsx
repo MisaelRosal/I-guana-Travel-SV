@@ -107,12 +107,15 @@ function SearchBar({ onSearch, disabled }) {
       {results.length > 0 && (
         <ul className="absolute top-full left-0 z-[1000] mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white shadow-lg">
           {results.map((item, i) => (
-            <li
-              key={i}
-              onClick={() => selectResult(item)}
-              className="cursor-pointer border-b border-neutral-100 px-3 py-2 text-sm text-neutral-700 last:border-0 hover:bg-verde-hoja/10"
-            >
-              {item.display_name.split(',').slice(0, 4).join(',')}
+            <li key={i} className="border-b border-neutral-100 last:border-0">
+              {/* A real button keeps the row in the tab order and answers Enter/Space. */}
+              <button
+                type="button"
+                onClick={() => selectResult(item)}
+                className="w-full cursor-pointer px-3 py-2 text-left text-sm text-neutral-700 hover:bg-verde-hoja/10"
+              >
+                {item.display_name.split(',').slice(0, 4).join(',')}
+              </button>
             </li>
           ))}
         </ul>

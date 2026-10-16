@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { localePath } from '../../i18n/routes.jsx'
 import { api } from '../../services/api.js'
@@ -39,6 +39,11 @@ export default function RegisterPage() {
   const [reenviando, setReenviando] = useState(false)
 
   const navigate = useNavigate()
+  // Igual que el login: si venimos de una página concreta (p. ej. el detalle de
+  // una experiencia), volvemos ahí al terminar el registro; sin origen, al
+  // catálogo como antes.
+  const location = useLocation()
+  const destino = location.state?.from || localePath('catalog')
 
   const validar = () => {
     const nuevos = {}
@@ -92,10 +97,12 @@ export default function RegisterPage() {
     e.preventDefault()
     setError('')
     const erroresEncontrados = validar()
-    if (Object.keys(erroresEncontrados).length > 0) {
-      const primer = Object.values(erroresEncontrados)[0]
+    const camposInvalidos = Object.keys(erroresEncontrados)
+    if (camposInvalidos.length > 0) {
+      const primer = erroresEncontrados[camposInvalidos[0]]
       setError(primer)
       setToast({ tipo: 'error', mensaje: primer })
+      document.getElementById(camposInvalidos[0])?.focus()
       return
     }
     setEnviando(true)
@@ -114,7 +121,7 @@ export default function RegisterPage() {
         // Server-authoritative rehydrate (POST body is not trusted as a session).
         await restaurarSesion()
         setToast({ tipo: 'exito', mensaje: resultado?.mensaje || t('register.successToast') })
-        setTimeout(() => navigate(localePath('catalog')), 1500)
+        setTimeout(() => navigate(destino), 1500)
         return
       }
 
@@ -137,7 +144,7 @@ export default function RegisterPage() {
   const handleGoogleExito = () => {
     setError('')
     setToast({ tipo: 'exito', mensaje: t('register.successToast') })
-    setTimeout(() => navigate(localePath('catalog')), 1500)
+    setTimeout(() => navigate(destino), 1500)
   }
 
   const handleGoogleError = (err) => {
@@ -155,6 +162,7 @@ export default function RegisterPage() {
       const mensaje = t('register.verify.codeLengthError')
       setError(mensaje)
       setToast({ tipo: 'error', mensaje })
+      document.getElementById('codigo')?.focus()
       return
     }
     setEnviando(true)
@@ -162,7 +170,7 @@ export default function RegisterPage() {
       await api.post('/Auth/verificar-email', { email: emailRegistro, codigo })
       await restaurarSesion()
       setToast({ tipo: 'exito', mensaje: t('register.verify.verifiedToast') })
-      setTimeout(() => navigate(localePath('catalog')), 1500)
+      setTimeout(() => navigate(destino), 1500)
     } catch (err) {
       const mensajeError = err.mensaje || err.message || t('register.verify.verifyFailed')
       setError(mensajeError)
@@ -194,7 +202,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex justify-center px-4 py-12">
+    <div className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
           {paso === 'registro' ? (
@@ -219,9 +227,11 @@ export default function RegisterPage() {
                   placeholder={t('register.nombrePlaceholder')}
                   autoComplete="given-name"
                   required
+                  aria-invalid={errores.nombre ? true : undefined}
+                  aria-describedby={errores.nombre ? 'nombre-error' : undefined}
                   className={estilosInput}
                 />
-                {errores.nombre && <p className="mt-1 text-xs font-medium text-red-600">{errores.nombre}</p>}
+                {errores.nombre && <p id="nombre-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.nombre}</p>}
               </div>
               <div>
                 <label htmlFor="apellido" className="mb-1 block text-sm font-semibold text-verde-bosque">
@@ -238,9 +248,11 @@ export default function RegisterPage() {
                   placeholder={t('register.apellidoPlaceholder')}
                   autoComplete="family-name"
                   required
+                  aria-invalid={errores.apellido ? true : undefined}
+                  aria-describedby={errores.apellido ? 'apellido-error' : undefined}
                   className={estilosInput}
                 />
-                {errores.apellido && <p className="mt-1 text-xs font-medium text-red-600">{errores.apellido}</p>}
+                {errores.apellido && <p id="apellido-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.apellido}</p>}
               </div>
             </div>
             <div>
@@ -258,9 +270,11 @@ export default function RegisterPage() {
                 placeholder={t('register.telefonoPlaceholder')}
                 autoComplete="tel"
                 required
+                aria-invalid={errores.telefono ? true : undefined}
+                aria-describedby={errores.telefono ? 'telefono-error' : undefined}
                 className={estilosInput}
               />
-              {errores.telefono && <p className="mt-1 text-xs font-medium text-red-600">{errores.telefono}</p>}
+              {errores.telefono && <p id="telefono-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.telefono}</p>}
             </div>
             <div>
               <label htmlFor="email" className="mb-1 block text-sm font-semibold text-verde-bosque">
@@ -277,9 +291,11 @@ export default function RegisterPage() {
                 placeholder={t('fields.emailPlaceholder')}
                 autoComplete="email"
                 required
+                aria-invalid={errores.email ? true : undefined}
+                aria-describedby={errores.email ? 'email-error' : undefined}
                 className={estilosInput}
               />
-              {errores.email && <p className="mt-1 text-xs font-medium text-red-600">{errores.email}</p>}
+              {errores.email && <p id="email-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.email}</p>}
             </div>
             <div>
               <label htmlFor="password" className="mb-1 block text-sm font-semibold text-verde-bosque">
@@ -297,6 +313,8 @@ export default function RegisterPage() {
                   placeholder={t('register.passwordPlaceholder')}
                   autoComplete="new-password"
                   required
+                  aria-invalid={errores.password ? true : undefined}
+                  aria-describedby={errores.password ? 'password-error' : undefined}
                   className={estilosInput + ' pr-11'}
                 />
                 <button
@@ -318,7 +336,7 @@ export default function RegisterPage() {
                   )}
                 </button>
               </div>
-              {errores.password && <p className="mt-1 text-xs font-medium text-red-600">{errores.password}</p>}
+              {errores.password && <p id="password-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.password}</p>}
             </div>
             <div>
               <label htmlFor="confirmar" className="mb-1 block text-sm font-semibold text-verde-bosque">
@@ -336,6 +354,8 @@ export default function RegisterPage() {
                   placeholder={t('register.confirmPlaceholder')}
                   autoComplete="new-password"
                   required
+                  aria-invalid={errores.confirmar ? true : undefined}
+                  aria-describedby={errores.confirmar ? 'confirmar-error' : undefined}
                   className={estilosInput + ' pr-11'}
                 />
                 <button
@@ -357,7 +377,7 @@ export default function RegisterPage() {
                   )}
                 </button>
               </div>
-              {errores.confirmar && <p className="mt-1 text-xs font-medium text-red-600">{errores.confirmar}</p>}
+              {errores.confirmar && <p id="confirmar-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.confirmar}</p>}
             </div>
 
             {error && (
@@ -411,12 +431,14 @@ export default function RegisterPage() {
                     placeholder="123456"
                     maxLength={6}
                     required
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? 'codigo-error' : undefined}
                     className={estilosInput + ' text-center text-2xl font-semibold tracking-[0.5em]'}
                   />
                 </div>
 
                 {error && (
-                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+                  <p id="codigo-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                     {error}
                   </p>
                 )}
@@ -454,6 +476,7 @@ export default function RegisterPage() {
           {t('register.haveAccount')}{' '}
           <Link
             to={localePath('login')}
+            state={location.state}
             className="cursor-pointer font-semibold text-terracota transition-colors hover:text-verde-bosque"
           >
             {t('register.loginLink')}
@@ -466,6 +489,6 @@ export default function RegisterPage() {
         tipo={toast?.tipo || 'exito'}
         onCerrar={() => setToast(null)}
       />
-    </main>
+    </div>
   )
 }

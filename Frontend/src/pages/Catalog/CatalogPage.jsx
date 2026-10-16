@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { getContentLocale } from '../../i18n/config.js'
 import { getCategorias, getDepartamentos, getExperiencias, getProximasExperiencias } from '../../services/experiencias.js'
@@ -10,10 +11,6 @@ import imagenHero from '../../assets/EL-TUNCO.jpg'
 // Cuántas próximas experiencias se piden y se muestran; el subtítulo de la
 // sección las interpola desde el recurso (AD-3), nunca por concatenación.
 const PROXIMAS_LIMITE = 3
-
-// La pantalla de carga completa (logo a pantalla completa) se mantiene este tiempo
-// minimo aunque la API responda antes, para que el splash siempre se vea.
-const CARGA_MINIMA_MS = 2000
 
 // Filtro desplegable con la estetica del sitio: pastilla redondeada con borde
 // cafe, panel de opciones estilo tarjeta (hover crema, seleccion verde-bosque
@@ -128,17 +125,45 @@ export default function CatalogPage() {
   const [experiencias, setExperiencias] = useState([])
   const [proximasExperiencias, setProximasExperiencias] = useState([])
   const [cargando, setCargando] = useState(true)
+  // La lista de publicaciones y las opciones de filtro se cargan por separado:
+  // cada fallo lleva su propio estado, y ambos comparten el mismo bloque de error.
+  const [error, setError] = useState(false)
+  const [errorFiltros, setErrorFiltros] = useState(false)
+  const [reintento, setReintento] = useState(0)
   // La pantalla de carga completa solo se muestra la primera vez que se entra.
   // Al cambiar filtros o escribir en el buscador la lista se actualiza sin tapar la pantalla.
   const primeraCarga = useRef(true)
-  const temporizadorCarga = useRef(null)
 
-  const [busqueda, setBusqueda] = useState('')
-  const [categoria, setCategoria] = useState('')
-  const [zona, setZona] = useState('')
-  const [tipo, setTipo] = useState('')
-  const [precioMax, setPrecioMax] = useState('')
-  const [orden, setOrden] = useState('')
+  // El estado de filtros y búsqueda vive en la URL: así el catálogo filtrado
+  // es enlazable, sobrevive a la recarga y funciona con Atrás/Adelante. La URL
+  // es la única fuente de verdad y los valores vacíos no se escriben.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const busqueda = searchParams.get('q') ?? ''
+  const categoria = searchParams.get('categoria') ?? ''
+  const zona = searchParams.get('zona') ?? ''
+  const tipo = searchParams.get('tipo') ?? ''
+  const precioMax = searchParams.get('precio') ?? ''
+  const orden = searchParams.get('orden') ?? ''
+
+  // Escribir en el buscador reemplaza la entrada actual (no llena el historial);
+  // elegir un filtro empuja una entrada nueva para que Atrás restaure el anterior.
+  const actualizarFiltro = (clave, valor, opciones) => {
+    setSearchParams((previos) => {
+      const siguiente = new URLSearchParams(previos)
+      if (valor) siguiente.set(clave, valor)
+      else siguiente.delete(clave)
+      return siguiente
+    }, opciones)
+  }
+
+  const limpiarFiltros = () => {
+    setSearchParams((previos) => {
+      const siguiente = new URLSearchParams(previos)
+      ;['q', 'categoria', 'zona', 'tipo', 'precio', 'orden'].forEach((clave) => siguiente.delete(clave))
+      return siguiente
+    })
+  }
+
   // Mapa publicacionId -> { promedio, total }. Publicaciones sin reseñas no
   // vienen en la respuesta y la tarjeta muestra "Aún no tiene reseñas".
   const [resumenes, setResumenes] = useState({})
@@ -147,30 +172,26 @@ export default function CatalogPage() {
   const filtrosActivos = [tipo, categoria, zona, precioMax].filter(Boolean).length
 
   useEffect(() => {
-    getCategorias().then(setCategorias)
-    getDepartamentos().then(setDepartamentos)
-  }, [])
+    getCategorias().then(setCategorias).catch(() => setErrorFiltros(true))
+    getDepartamentos().then(setDepartamentos).catch(() => setErrorFiltros(true))
+  }, [reintento])
 
   useEffect(() => {
     let activo = true
     if (primeraCarga.current) setCargando(true)
-    const inicioCarga = Date.now()
 
     getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax, locale: contentLocale })
-      .then((datos) => { if (activo) setExperiencias(datos) })
-      .catch(() => { if (activo) setExperiencias([]) })
+      .then((datos) => { if (activo) { setExperiencias(datos); setError(false) } })
+      .catch(() => { if (activo) setError(true) })
       .finally(() => {
         if (primeraCarga.current) {
           primeraCarga.current = false
-          const restante = Math.max(0, CARGA_MINIMA_MS - (Date.now() - inicioCarga))
-          temporizadorCarga.current = setTimeout(() => setCargando(false), restante)
+          setCargando(false)
         }
       })
 
     return () => { activo = false }
-  }, [busqueda, categoria, zona, tipo, precioMax, contentLocale])
-
-  useEffect(() => () => clearTimeout(temporizadorCarga.current), [])
+  }, [busqueda, categoria, zona, tipo, precioMax, contentLocale, reintento])
 
   useEffect(() => {
     getProximasExperiencias(PROXIMAS_LIMITE, contentLocale)
@@ -208,6 +229,12 @@ export default function CatalogPage() {
     e.preventDefault()
   }
 
+  const reintentar = () => {
+    setError(false)
+    setErrorFiltros(false)
+    setReintento((n) => n + 1)
+  }
+
   return (
     <div>
       {/* Hero */}
@@ -242,7 +269,8 @@ export default function CatalogPage() {
               <input
                 type="search"
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={(e) => actualizarFiltro('q', e.target.value, { replace: true })}
+                aria-label={t('search.label')}
                 placeholder={t('search.placeholder')}
                 className="w-full rounded-lg border-2 border-verde-bosque bg-white py-3 pl-11 pr-4 text-neutral-800 shadow-md placeholder:text-neutral-500 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
               />
@@ -317,7 +345,7 @@ export default function CatalogPage() {
                 <button
                   key={op.valor || 'todos'}
                   type="button"
-                  onClick={() => setTipo(op.valor)}
+                  onClick={() => actualizarFiltro('tipo', op.valor)}
                   aria-pressed={tipo === op.valor}
                   className={`flex-1 cursor-pointer rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
                     tipo === op.valor
@@ -335,14 +363,14 @@ export default function CatalogPage() {
               placeholder={t('filters.categoryPlaceholder')}
               valor={categoria}
               opciones={categorias.map((c) => ({ valor: c, etiqueta: c }))}
-              onChange={setCategoria}
+              onChange={(valor) => actualizarFiltro('categoria', valor)}
             />
             <FiltroDesplegable
               etiqueta={t('filters.zoneLabel')}
               placeholder={t('filters.zonePlaceholder')}
               valor={zona}
               opciones={departamentos.map((d) => ({ valor: d.nombre, etiqueta: d.nombre }))}
-              onChange={setZona}
+              onChange={(valor) => actualizarFiltro('zona', valor)}
             />
             <FiltroDesplegable
               etiqueta={t('filters.priceLabel')}
@@ -352,18 +380,18 @@ export default function CatalogPage() {
                 valor: String(max),
                 etiqueta: t('filters.priceUpTo', { max }),
               }))}
-              onChange={setPrecioMax}
+              onChange={(valor) => actualizarFiltro('precio', valor)}
             />
             <FiltroDesplegable
               etiqueta={t('filters.sortLabel')}
               placeholder={t('filters.sortPlaceholder')}
               valor={orden}
               opciones={[{ valor: 'valoradas', etiqueta: t('filters.sortBestRated') }]}
-              onChange={setOrden}
+              onChange={(valor) => actualizarFiltro('orden', valor)}
             />
             <button
               type="button"
-              onClick={() => { setBusqueda(''); setCategoria(''); setZona(''); setTipo(''); setPrecioMax(''); setOrden('') }}
+              onClick={limpiarFiltros}
               className="w-full cursor-pointer rounded-xl border-2 border-dashed border-verde-bosque px-4 py-2.5 text-sm font-semibold text-verde-bosque transition-colors hover:border-verde-bosque hover:bg-verde-bosque hover:text-white sm:w-auto"
             >
               {t('filters.clear')}
@@ -373,6 +401,20 @@ export default function CatalogPage() {
 
         {cargando ? (
           <LoadingIguana fullscreen message={t('status.loading')} />
+        ) : error || errorFiltros ? (
+          <div
+            role="alert"
+            className="flex h-72 flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-red-200 bg-red-50/60 px-6 text-center"
+          >
+            <p className="text-lg font-semibold text-red-700">{t('status.error')}</p>
+            <button
+              type="button"
+              onClick={reintentar}
+              className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
+            >
+              {t('status.retry')}
+            </button>
+          </div>
         ) : visibles.length === 0 ? (
           <div className="flex h-72 items-center justify-center rounded-xl border-2 border-dashed border-cafe-claro bg-white/60 text-cafe">
             <p className="px-6 text-center">

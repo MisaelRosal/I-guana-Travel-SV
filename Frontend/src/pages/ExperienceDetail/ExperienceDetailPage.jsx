@@ -17,7 +17,9 @@ import {
 import { getExperienciaById } from '../../services/experiencias'
 import { getDisponibilidad } from '../../services/reservas'
 import { getResenasPublicacion } from '../../services/resenas'
+import { scrollBehavior } from '../../utils/motion.js'
 import FormularioReserva from '../../components/FormularioReserva'
+import { useModalAccesible } from '../../hooks/useModalAccesible.js'
 import Toast from '../../components/Toast.jsx'
 import { Estrellas } from '../../components/Estrellas.jsx'
 
@@ -37,15 +39,8 @@ function Galeria({ imagenes, titulo }) {
   const [ampliada, setAmpliada] = useState(false)
   const primera = imagenes[0]
 
-  // Lightbox: cerrar la imagen ampliada con la tecla Escape.
-  useEffect(() => {
-    if (!ampliada) return undefined
-    const onKey = (e) => {
-      if (e.key === 'Escape') setAmpliada(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [ampliada])
+  // Lightbox: foco, atrapado de Tab y cierre con Escape (hook compartido).
+  const refDialogo = useModalAccesible(() => setAmpliada(false), ampliada)
 
   return (
     <div>
@@ -107,6 +102,7 @@ function Galeria({ imagenes, titulo }) {
       {/* Vista ampliada (lightbox): la imagen seleccionada en grande sobre fondo oscuro */}
       {ampliada && primera && (
         <div
+          ref={refDialogo}
           role="dialog"
           aria-modal="true"
           aria-label={t('gallery.expandedAria', { title: titulo })}
@@ -263,7 +259,7 @@ function InfoBox({ experiencia, onReservar, resumenResenas }) {
 
       <button
         type="button"
-        onClick={() => document.getElementById('ubicacion')?.scrollIntoView({ behavior: 'smooth' })}
+        onClick={() => document.getElementById('ubicacion')?.scrollIntoView({ behavior: scrollBehavior() })}
         className="mt-3 block w-full cursor-pointer text-center font-medium text-azul transition-colors hover:text-azul-cielo"
       >
         {t('info.howToArrive')}
@@ -450,6 +446,7 @@ function Mapa({ latitud, longitud }) {
 function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCerrar }) {
   const { t } = useTranslation('experiencia')
   const locale = useFormatLocale()
+  const refDialogo = useModalAccesible(onCerrar)
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const [mes, setMes] = useState(() => hoy.getMonth())
@@ -588,6 +585,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
 
   return (
     <div
+      ref={refDialogo}
       className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
       aria-modal="true"
@@ -771,6 +769,24 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
   )
 }
 
+// Selección de reserva guardada antes de mandar al login a una persona sin
+// sesión: la página se desmonta en el viaje de ida y vuelta, así que las fechas
+// y la cantidad de personas se recuperan al volver. Solo aplica a la misma
+// experiencia y se descarta una vez consumida.
+const RESERVA_PENDIENTE_KEY = 'iguana_reserva_pendiente'
+
+function leerReservaPendiente(id) {
+  try {
+    const guardada = sessionStorage.getItem(RESERVA_PENDIENTE_KEY)
+    if (!guardada) return null
+    const datos = JSON.parse(guardada)
+    if (String(datos.experienciaId) !== String(id)) return null
+    return { fechaInicio: datos.fechaInicio, fechaFin: datos.fechaFin, numPersonas: datos.numPersonas }
+  } catch {
+    return null
+  }
+}
+
 export default function ExperienceDetailPage() {
   const { t, i18n } = useTranslation('experiencia')
   const { id } = useParams()
@@ -779,8 +795,10 @@ export default function ExperienceDetailPage() {
   const [experiencia, setExperiencia] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [pasoReserva, setPasoReserva] = useState('inicio')
-  const [datosReserva, setDatosReserva] = useState(null)
+  // Si hay una selección guardada, la página abre directo en el formulario.
+  const [reservaPendiente] = useState(() => leerReservaPendiente(id))
+  const [pasoReserva, setPasoReserva] = useState(reservaPendiente ? 'formulario' : 'inicio')
+  const [datosReserva, setDatosReserva] = useState(reservaPendiente)
   const [toast, setToast] = useState(null)
   const [resenas, setResenas] = useState(null)
 
@@ -811,12 +829,24 @@ export default function ExperienceDetailPage() {
     return () => { activo = false }
   }, [id, contentLocale])
 
+  // Una vez consumida, la selección guardada se descarta para que no reaparezca
+  // en una visita posterior.
+  useEffect(() => {
+    if (reservaPendiente) sessionStorage.removeItem(RESERVA_PENDIENTE_KEY)
+  }, [reservaPendiente])
+
   const seleccionarFechas = useCallback((datos) => {
     setDatosReserva(datos)
     setPasoReserva('formulario')
-  }, [])
+    // Sin sesión, ir al login desmonta esta página: dejamos lo elegido guardado
+    // para reabrir el formulario al volver (se borra al recuperarlo o al reservar).
+    if (!sessionStorage.getItem('iguana_usuario')) {
+      sessionStorage.setItem(RESERVA_PENDIENTE_KEY, JSON.stringify({ experienciaId: id, ...datos }))
+    }
+  }, [id])
 
   const manejarReservaCreada = () => {
+    sessionStorage.removeItem(RESERVA_PENDIENTE_KEY)
     setPasoReserva('inicio')
     setToast({ tipo: 'exito', mensaje: t('page.toastBooked') })
     // F5 (task 6.4): post-booking landing follows the locale route table.
@@ -824,7 +854,7 @@ export default function ExperienceDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-8">
+    <div className="mx-auto max-w-[1600px] px-4 py-8">
       <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
         ← {t('page.backToCatalog')}
       </Link>
@@ -916,7 +946,7 @@ export default function ExperienceDetailPage() {
           experiencia={experiencia}
           esHospedaje={experiencia.tipo === 'hospedaje'}
           onSeleccionarFechas={seleccionarFechas}
-          onCerrar={() => setPasoReserva('inicio')}
+          onCerrar={() => { sessionStorage.removeItem(RESERVA_PENDIENTE_KEY); setPasoReserva('inicio') }}
         />
       )}
 
@@ -936,6 +966,6 @@ export default function ExperienceDetailPage() {
         tipo={toast?.tipo || 'exito'}
         onCerrar={() => setToast(null)}
       />
-    </main>
+    </div>
   )
 }

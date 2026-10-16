@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../i18n/config.js'
 import { formatDayMonthShort, formatMonthYear, weekdayShortMonFirst } from '../i18n/format.js'
 import { api, readCsrfToken } from '../services/api.js'
+import { useModalAccesible } from '../hooks/useModalAccesible.js'
 import LocationPicker from './LocationPicker.jsx'
 
 const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
@@ -355,15 +356,24 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     onCerrar()
   }
 
+  const refModal = useModalAccesible(handleCerrar, abierto)
+  const refConfirmar = useModalAccesible(() => setConfirmarSalida(false), confirmarSalida)
+
   if (!abierto) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      ref={refModal}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="crear-publicacion-titulo"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    >
       <div
         className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-crema shadow-2xl"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cafe-claro/30 bg-crema px-4 py-4 sm:px-6">
-          <h2 className="text-xl font-bold text-verde-bosque">{esEdicion ? t('modal.editTitle') : t('modal.createTitle')}</h2>
+          <h2 id="crear-publicacion-titulo" className="text-xl font-bold text-verde-bosque">{esEdicion ? t('modal.editTitle') : t('modal.createTitle')}</h2>
           <button
             type="button"
             onClick={handleCerrar}
@@ -709,9 +719,15 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       </div>
 
       {confirmarSalida && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+        <div
+          ref={refConfirmar}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirmar-salida-titulo"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+        >
           <div className="w-full max-w-sm rounded-2xl bg-crema p-6 shadow-2xl">
-            <h3 className="mb-2 text-lg font-bold text-verde-bosque">{t('modal.leaveTitle')}</h3>
+            <h3 id="confirmar-salida-titulo" className="mb-2 text-lg font-bold text-verde-bosque">{t('modal.leaveTitle')}</h3>
             <p className="mb-5 text-sm text-cafe">{t('modal.leaveBody')}</p>
             <div className="flex justify-end gap-3">
               <button

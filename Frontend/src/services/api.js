@@ -1,5 +1,9 @@
 const BASE_URL = '/api'
 
+// Bound every request so a hung server rejects the caller's promise instead of
+// leaving the UI on an endless spinner.
+const REQUEST_TIMEOUT_MS = 15000
+
 // Readable (non-HttpOnly) CSRF cookie set by the server on login/register.
 // Double-submit pattern: the SPA echoes this value in the X-CSRF-Token header
 // on every state-changing call; the server compares header vs cookie. A
@@ -32,14 +36,22 @@ async function request(path, options = {}) {
     }
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    // The auth cookie is HttpOnly; the browser only attaches it when credentials
-    // are included. Same for the CORS credentialed policy on the server.
-    credentials: 'include',
-    ...options,
-    method,
-    headers,
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  let res
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      // The auth cookie is HttpOnly; the browser only attaches it when credentials
+      // are included. Same for the CORS credentialed policy on the server.
+      credentials: 'include',
+      ...options,
+      signal: options.signal ?? controller.signal,
+      method,
+      headers,
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   if (!res.ok) {
     let detalle = null

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { localePath } from '../../i18n/routes.jsx'
 import { api } from '../../services/api.js'
@@ -20,6 +20,10 @@ export default function AuthPage() {
   const [enviando, setEnviando] = useState(false)
   const [toast, setToast] = useState(null)
   const navigate = useNavigate()
+  // Vuelve a la página desde la que se pidió iniciar sesión (p. ej. el detalle
+  // de una experiencia); sin origen conocido, al catálogo como antes.
+  const location = useLocation()
+  const destino = location.state?.from || localePath('catalog')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -28,6 +32,7 @@ export default function AuthPage() {
       const mensaje = t('login.validation.required')
       setError(mensaje)
       setToast({ tipo: 'error', mensaje })
+      document.getElementById(!email.trim() ? 'email' : 'password')?.focus()
       return
     }
     setEnviando(true)
@@ -40,8 +45,9 @@ export default function AuthPage() {
       })
       await restaurarSesion()
       setToast({ tipo: 'exito', mensaje: t('login.successToast') })
-      // F5 (task 6.5): post-login landing follows the locale route table.
-      setTimeout(() => navigate(localePath('catalog')), 1500)
+      // F5 (task 6.5): post-login landing follows the locale route table
+      // unless the user came from a specific page.
+      setTimeout(() => navigate(destino), 1500)
     } catch (err) {
       const mensajeError = err.mensaje || err.message || t('login.genericError')
       setError(mensajeError)
@@ -56,7 +62,7 @@ export default function AuthPage() {
   const handleGoogleExito = () => {
     setError('')
     setToast({ tipo: 'exito', mensaje: t('login.successToast') })
-    setTimeout(() => navigate(localePath('catalog')), 1500)
+    setTimeout(() => navigate(destino), 1500)
   }
 
   const handleGoogleError = (err) => {
@@ -66,7 +72,7 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="flex justify-center px-4 py-12">
+    <div className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('login.heading')}</h1>
@@ -85,6 +91,8 @@ export default function AuthPage() {
                 placeholder={t('fields.emailPlaceholder')}
                 autoComplete="email"
                 required
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'login-error' : undefined}
                 className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
               />
             </div>
@@ -101,6 +109,8 @@ export default function AuthPage() {
                   placeholder={t('fields.passwordPlaceholder')}
                   autoComplete="current-password"
                   required
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'login-error' : undefined}
                   className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 pr-11 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
                 />
                 <button
@@ -125,7 +135,7 @@ export default function AuthPage() {
             </div>
 
             {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+              <p id="login-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                 {error}
               </p>
             )}
@@ -150,6 +160,7 @@ export default function AuthPage() {
           {t('login.noAccount')}{' '}
           <Link
             to={localePath('register')}
+            state={location.state}
             className="cursor-pointer font-semibold text-terracota transition-colors hover:text-verde-bosque"
           >
             {t('login.registerLink')}
@@ -162,6 +173,6 @@ export default function AuthPage() {
         tipo={toast?.tipo || 'exito'}
         onCerrar={() => setToast(null)}
       />
-    </main>
+    </div>
   )
 }

@@ -1,16 +1,21 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../i18n/config.js'
 import { localePath } from '../i18n/routes.jsx'
 import { formatDateDMY, formatPrice } from '../i18n/format.js'
 import { crearReserva } from '../services/reservas.js'
+import { useModalAccesible } from '../hooks/useModalAccesible.js'
 import Toast from './Toast.jsx'
 
 export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, numPersonas, onCancelar, onReservada }) {
   const { t } = useTranslation('experiencia')
   const locale = useFormatLocale()
+  const refDialogo = useModalAccesible(onCancelar)
   const sesion = JSON.parse(sessionStorage.getItem('iguana_usuario') || 'null')
+  // Al iniciar sesión hay que volver a esta página, no al catálogo.
+  const location = useLocation()
+  const volverA = location.pathname + location.search
   const [enviando, setEnviando] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -48,6 +53,7 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
 
   return (
     <div
+      ref={refDialogo}
       aria-label={t('form.dialogLabel')}
       className="animate-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8"
       role="dialog"
@@ -117,12 +123,14 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
             <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
                 to={localePath('login')}
+                state={{ from: volverA }}
                 className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
               >
                 {t('form.loginCta')}
               </Link>
               <Link
                 to={localePath('register')}
+                state={{ from: volverA }}
                 className="cursor-pointer rounded-lg border border-terracota px-6 py-2.5 text-sm font-bold text-terracota transition-colors hover:bg-terracota/10"
               >
                 {t('form.registerCta')}

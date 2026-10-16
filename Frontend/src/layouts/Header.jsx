@@ -26,8 +26,9 @@ function iniciales(nombre, apellido) {
 function ToggleIdioma() {
   const { t, i18n } = useTranslation('header')
   const activo = i18n.language === 'en' ? 'en' : 'es'
+  // `after:*` expands the tap target to 44x44 without growing the visible pill.
   const clasePill = (lng) =>
-    `cursor-pointer text-sm px-3 py-2 rounded-md transition-colors ${
+    `relative cursor-pointer text-sm px-3 py-2 rounded-md transition-colors after:absolute after:-inset-y-1 after:-inset-x-0.5 after:content-[''] ${
       lng === activo
         ? 'bg-white/15 text-white'
         : 'text-crema/85 hover:text-white hover:bg-white/10'

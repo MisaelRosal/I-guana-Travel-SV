@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../i18n/config.js'
@@ -20,7 +20,7 @@ vi.mock('react-leaflet', () => ({
   useMap: () => null,
 }))
 
-function renderPicker() {
+function renderPicker(onLocationChange = () => {}) {
   // lat/long present AND departamento/municipio already chosen: the
   // auto-geocode effect early-returns, so no network call is triggered.
   return render(
@@ -32,7 +32,7 @@ function renderPicker() {
         longitud="-89.200000"
         departamentoId="1"
         municipioId="2"
-        onLocationChange={() => {}}
+        onLocationChange={onLocationChange}
         onDepartamentoChange={() => {}}
         onMunicipioChange={() => {}}
       />
@@ -46,6 +46,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   cleanup()
+  vi.unstubAllGlobals()
   if (i18n.language !== 'es') {
     await i18n.changeLanguage('es')
   }
@@ -75,5 +76,38 @@ describe('ES active: extraction keeps the canonical Spanish picker byte-comparab
     expect(screen.getByPlaceholderText('Buscar ubicación...')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Buscar' })).toBeInTheDocument()
     expect(screen.getByText((_, el) => el?.textContent === 'Lat: 13.7 | Lng: -89.2')).toBeInTheDocument()
+  })
+})
+
+describe('Resultados de ubicación accesibles por teclado', () => {
+  it('los resultados son botones enfocables y se seleccionan al activarlos', async () => {
+    const onLocationChange = vi.fn()
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).includes('/reverse')) {
+        return { json: async () => ({ address: {} }) }
+      }
+      return {
+        json: async () => ([{
+          display_name: 'El Tunco, La Libertad, El Salvador',
+          lat: '13.49',
+          lon: '-89.38',
+        }]),
+      }
+    }))
+
+    renderPicker(onLocationChange)
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar ubicación...'), { target: { value: 'El Tunco' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar' }))
+
+    // Reachable: the result is a real button, so it sits in the tab order.
+    const opcion = await screen.findByRole('button', { name: 'El Tunco, La Libertad, El Salvador' })
+    opcion.focus()
+    expect(opcion).toHaveFocus()
+
+    // Selectable: activating the focused button selects the location (a native
+    // button fires this click on Enter/Space).
+    fireEvent.click(opcion)
+    expect(onLocationChange).toHaveBeenCalledWith('13.490000', '-89.380000')
   })
 })

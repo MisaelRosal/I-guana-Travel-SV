@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
@@ -140,9 +140,8 @@ describe('EN active: admin panel chrome comes from the admin namespace', () => {
     expect(screen.queryByText('Delete?')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reviews' }))
-    const reviews = screen.getByRole('main')
-    expect(within(reviews).getByText('Review management')).toBeInTheDocument()
-    expect(within(reviews).getByText('This section will be available soon.')).toBeInTheDocument()
+    expect(screen.getByText('Review management')).toBeInTheDocument()
+    expect(screen.getByText('This section will be available soon.')).toBeInTheDocument()
   })
 
   it('renders the non-admin gate in EN', async () => {
