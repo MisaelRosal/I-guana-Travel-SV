@@ -97,19 +97,19 @@ export default function DashboardGanancias({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-wrap gap-4">
           <div>
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-cafe">
+            <span className="mb-1 block text-xs font-semibold text-cafe">
               {t('dashboard.period.label')}
             </span>
-            <div className="inline-flex rounded-lg border border-cafe-claro/60 bg-white p-0.5">
+            <div className="inline-flex rounded-full border border-cafe-claro/60 bg-white p-0.5">
               {PERIODOS.map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setPeriodo(p)}
                   aria-pressed={periodo === p}
-                  className={`cursor-pointer rounded-md px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                  className={`cursor-pointer rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
                     periodo === p
-                      ? 'bg-terracota text-white'
+                      ? 'bg-iguana-hondo text-white'
                       : 'text-cafe hover:text-verde-bosque'
                   }`}
                 >
@@ -122,7 +122,7 @@ export default function DashboardGanancias({
           <div>
             <label
               htmlFor="dashboard-publicacion"
-              className="mb-1 block text-xs font-semibold uppercase tracking-wide text-cafe"
+              className="mb-1 block text-xs font-semibold text-cafe"
             >
               {t('dashboard.publication.label')}
             </label>
@@ -130,7 +130,7 @@ export default function DashboardGanancias({
               id="dashboard-publicacion"
               value={publicacionId}
               onChange={(e) => setPublicacionId(e.target.value)}
-              className="min-w-[220px] cursor-pointer rounded-lg border border-cafe-claro/60 bg-white px-3 py-2 text-sm font-semibold text-verde-bosque focus:border-verde-bosque focus:outline-none"
+              className="min-w-[220px] cursor-pointer rounded-full border border-cafe-claro/60 bg-white px-3 py-2 text-sm font-semibold text-verde-bosque focus:border-verde-bosque focus:outline-none"
             >
               <option value="">{t('dashboard.publication.all')}</option>
               {publicaciones.map((p) => (
@@ -146,7 +146,7 @@ export default function DashboardGanancias({
       </div>
 
       {accesos.length > 0 && (
-        <section className="rounded-xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-[22px] border border-cafe-claro/40 bg-white p-4 sm:p-5">
           <h3 className="mb-4 text-sm font-bold text-verde-bosque">{t('dashboard.shortcuts.title')}</h3>
           <div className="grid gap-3 sm:grid-cols-3">
             {accesos.map((a) => (
@@ -154,9 +154,9 @@ export default function DashboardGanancias({
                 key={a.key}
                 type="button"
                 onClick={a.onClick}
-                className="group flex cursor-pointer items-center gap-3 rounded-lg border border-cafe-claro/50 bg-crema/30 px-4 py-3 text-left transition-colors hover:border-terracota/50 hover:bg-crema"
+                className="group flex cursor-pointer items-center gap-3 rounded-[22px] border border-cafe-claro/50 bg-crema/30 px-4 py-3 text-left transition-colors hover:border-iguana-hondo/50 hover:bg-crema"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-terracota/10 text-terracota transition-colors group-hover:bg-terracota group-hover:text-white">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-iguana-hondo/10 text-iguana-hondo transition-colors group-hover:bg-iguana-hondo group-hover:text-white">
                   {a.icono}
                 </span>
                 <span className="min-w-0 flex-1 text-sm font-semibold text-verde-bosque">
@@ -174,11 +174,11 @@ export default function DashboardGanancias({
       )}
 
       {cargando ? (
-        <p className="rounded-xl border border-cafe-claro/40 bg-white px-6 py-14 text-center text-cafe shadow-sm">
+        <p className="rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center text-cafe">
           {t('dashboard.loading')}
         </p>
       ) : error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-6 py-14 text-center font-semibold text-red-700 shadow-sm">
+        <p className="rounded-[22px] border border-red-200 bg-red-50 px-6 py-14 text-center font-semibold text-red-700">
           {t('dashboard.error')}
         </p>
       ) : (
@@ -203,14 +203,14 @@ export default function DashboardGanancias({
             />
           </div>
 
-          <div className="rounded-xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
+          <div className="rounded-[22px] border border-cafe-claro/40 bg-white p-4 sm:p-5">
             <h3 className="mb-4 text-sm font-bold text-verde-bosque">{t('dashboard.chart.title')}</h3>
             {hayGanancias ? (
               <div className="flex h-44 items-end gap-1.5" role="img" aria-label={t('dashboard.chart.title')}>
                 {series.map((s) => (
                   <div key={s.inicio} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
                     <div
-                      className="w-full rounded-t bg-terracota/85 transition-colors hover:bg-terracota"
+                      className="w-full rounded-t bg-iguana-hondo/85 transition-colors hover:bg-iguana-hondo"
                       style={{ height: `${Math.max((Number(s.total) / maxSeries) * 100, Number(s.total) > 0 ? 3 : 0)}%` }}
                       title={`${formatPrice(s.total, locale)} · ${t('dashboard.chart.tooltip', { count: s.reservas })}`}
                     />
@@ -225,7 +225,7 @@ export default function DashboardGanancias({
             )}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
             <h3 className="border-b border-cafe-claro/30 px-4 py-3 text-sm font-bold text-verde-bosque sm:px-5">
               {t('dashboard.table.title')}
             </h3>
@@ -234,7 +234,7 @@ export default function DashboardGanancias({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-crema/70 text-xs uppercase tracking-wide text-cafe">
+                  <thead className="bg-crema/70 text-xs text-cafe">
                     <tr>
                       <th className="px-4 py-2.5 font-semibold sm:px-5">{t('dashboard.table.listing')}</th>
                       <th className="px-4 py-2.5 font-semibold sm:px-5">{t('dashboard.table.type')}</th>
@@ -248,7 +248,7 @@ export default function DashboardGanancias({
                         <td className="px-4 py-3 font-semibold text-verde-bosque sm:px-5">{p.titulo}</td>
                         <td className="px-4 py-3 text-neutral-700 sm:px-5">{tipoLabel(p.tipo)}</td>
                         <td className="px-4 py-3 text-right text-neutral-700 sm:px-5">{p.reservas}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-terracota sm:px-5">
+                        <td className="px-4 py-3 text-right font-semibold text-iguana-hondo sm:px-5">
                           {formatPrice(p.total, locale)}
                         </td>
                       </tr>
@@ -266,9 +266,9 @@ export default function DashboardGanancias({
 
 function Tarjeta({ etiqueta, valor, destacada = false }) {
   return (
-    <div className={`rounded-xl border p-4 shadow-sm ${destacada ? 'border-terracota/40 bg-terracota/5' : 'border-cafe-claro/40 bg-white'}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-cafe">{etiqueta}</p>
-      <p className={`mt-1 text-2xl font-bold ${destacada ? 'text-terracota' : 'text-verde-bosque'}`}>{valor}</p>
+    <div className={`rounded-[22px] border p-4 ${destacada ? 'border-iguana-hondo/40 bg-iguana-hondo/5' : 'border-cafe-claro/40 bg-white'}`}>
+      <p className="text-xs font-semibold text-cafe">{etiqueta}</p>
+      <p className={`mt-1 text-2xl font-bold ${destacada ? 'text-iguana-hondo' : 'text-verde-bosque'}`}>{valor}</p>
     </div>
   )
 }

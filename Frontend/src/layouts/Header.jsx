@@ -28,7 +28,7 @@ function ToggleIdioma() {
   const activo = i18n.language === 'en' ? 'en' : 'es'
   // `after:*` expands the tap target to 44x44 without growing the visible pill.
   const clasePill = (lng) =>
-    `relative cursor-pointer text-sm px-3 py-2 rounded-md transition-colors after:absolute after:-inset-y-1 after:-inset-x-0.5 after:content-[''] ${
+    `relative cursor-pointer text-sm px-3 py-2 rounded-full transition-colors after:absolute after:-inset-y-1 after:-inset-x-0.5 after:content-[''] ${
       lng === activo
         ? 'bg-white/15 text-white'
         : 'text-crema/85 hover:text-white hover:bg-white/10'
@@ -160,14 +160,14 @@ export default function Header() {
   }
 
   const claseNavLink = ({ isActive }) =>
-    `text-sm px-3 py-2 rounded-md transition-colors ${
+    `text-sm px-3 py-2 rounded-full transition-colors ${
       isActive
         ? 'bg-white/15 text-white'
         : 'text-crema/85 hover:text-white hover:bg-white/10'
     }`
 
   return (
-    <header className="bg-verde-bosque text-white sticky top-0 z-20 shadow-md">
+    <header className="bg-verde-bosque text-white sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4" data-menu-movil>
         <Link to={localePath('catalog')} aria-label={t('brand.ariaLabel')}>
           <Logo />
@@ -191,14 +191,14 @@ export default function Header() {
                 onClick={() => setMenuAbierto((v) => !v)}
                 aria-expanded={menuAbierto}
                 aria-haspopup="menu"
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-white/10"
+                className="flex cursor-pointer items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-white/10"
               >
                 <span
-                  className="h-9 w-9 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white shadow-sm"
+                  className="h-9 w-9 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white"
                   title={usuario.nombre + ' ' + (usuario.apellido || '')}
                 >
                   {esAdmin(rol) ? (
-                    <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
+                    <span className="bg-iguana-hondo text-white flex h-full w-full items-center justify-center">AD</span>
                   ) : rol === 'anfitrion' && fotoPerfil ? (
                     <img src={fotoPerfil} alt={t('user.profilePhotoAlt')} className="h-full w-full object-cover" />
                   ) : (
@@ -211,7 +211,7 @@ export default function Header() {
                 </svg>
               </button>
               {menuAbierto && (
-                <div role="menu" className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-lg border border-cafe-claro/40 bg-white shadow-lg">
+                <div role="menu" className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
                   {rol === 'anfitrion' && (
                     <Link
                       to={localePath('miPerfil')}
@@ -243,7 +243,7 @@ export default function Header() {
           ) : (
             <Link
               to={localePath('login')}
-              className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-[#00B4D8] hover:text-verde-bosque transition-colors"
+              className="cursor-pointer text-sm px-4 py-2 rounded-full bg-iguana-hondo text-white font-semibold hover:bg-verde-bosque transition-colors"
             >
               {t('session.signIn')}
             </Link>
@@ -256,7 +256,7 @@ export default function Header() {
           aria-expanded={menuMovilAbierto}
           aria-controls="menu-movil"
           aria-label={menuMovilAbierto ? t('mobileMenu.close') : t('mobileMenu.open')}
-          className="md:hidden flex cursor-pointer items-center justify-center rounded-lg p-2 text-white/90 transition-colors hover:bg-white/10"
+          className="md:hidden flex cursor-pointer items-center justify-center rounded-full p-2 text-white/90 transition-colors hover:bg-white/10"
         >
           {menuMovilAbierto ? (
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -274,7 +274,7 @@ export default function Header() {
         <nav
           id="menu-movil"
           aria-label={t('mobileMenu.label')}
-          className="md:hidden border-t border-white/10 bg-verde-bosque px-4 pb-4 pt-3 shadow-lg"
+          className="md:hidden border-t border-white/10 bg-verde-bosque px-4 pb-4 pt-3"
         >
           <div className="flex flex-col gap-1">
             {links.map((link) => (
@@ -299,11 +299,11 @@ export default function Header() {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-3 px-3 py-2">
                   <span
-                    className="h-10 w-10 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white shadow-sm"
+                    className="h-10 w-10 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white"
                     title={usuario.nombre + ' ' + (usuario.apellido || '')}
                   >
                     {esAdmin(rol) ? (
-                      <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
+                      <span className="bg-iguana-hondo text-white flex h-full w-full items-center justify-center">AD</span>
                     ) : rol === 'anfitrion' && fotoPerfil ? (
                       <img src={fotoPerfil} alt={t('user.profilePhotoAlt')} className="h-full w-full object-cover" />
                     ) : (
@@ -318,7 +318,7 @@ export default function Header() {
                   <Link
                     to={localePath('miPerfil')}
                     onClick={() => setMenuMovilAbierto(false)}
-                    className="text-sm px-3 py-2 rounded-md text-crema/85 hover:text-white hover:bg-white/10"
+                    className="text-sm px-3 py-2 rounded-full text-crema/85 hover:text-white hover:bg-white/10"
                   >
                     {t('user.myProfile')}
                   </Link>
@@ -326,7 +326,7 @@ export default function Header() {
                 <button
                   type="button"
                   onClick={cerrarSesion}
-                  className="cursor-pointer text-sm px-3 py-2 rounded-md text-left text-crema/85 hover:text-white hover:bg-white/10"
+                  className="cursor-pointer text-sm px-3 py-2 rounded-full text-left text-crema/85 hover:text-white hover:bg-white/10"
                 >
                   {t('user.signOut')}
                 </button>
@@ -335,7 +335,7 @@ export default function Header() {
               <Link
                 to={localePath('login')}
                 onClick={() => setMenuMovilAbierto(false)}
-                className="block cursor-pointer text-center text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold transition-colors"
+                className="block cursor-pointer text-center text-sm px-4 py-2 rounded-full bg-iguana-hondo text-white font-semibold transition-colors"
               >
                 {t('session.signIn')}
               </Link>

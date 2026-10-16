@@ -93,19 +93,19 @@ function SearchBar({ onSearch, disabled }) {
           onKeyDown={handleKeyDown}
           placeholder={t('location.searchPlaceholder')}
           disabled={disabled}
-          className="flex-1 rounded-l-lg border border-r-0 border-neutral-300 bg-white px-3 py-2 text-sm focus:border-verde-hoja focus:outline-none focus:ring-1 focus:ring-verde-hoja/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 rounded-l-full border border-r-0 border-neutral-300 bg-white px-3 py-2 text-sm focus:border-verde-hoja focus:outline-none focus:ring-1 focus:ring-verde-hoja/40 disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <button
           type="button"
           onClick={handleSearch}
           disabled={searching || disabled}
-          className="cursor-pointer rounded-r-lg bg-verde-bosque px-3 py-2 text-sm font-semibold text-white hover:bg-verde-bosque/90 disabled:opacity-50"
+          className="cursor-pointer rounded-r-full bg-verde-bosque px-3 py-2 text-sm font-semibold text-white hover:bg-verde-bosque/90 disabled:opacity-50"
         >
           {searching ? '...' : t('location.search')}
         </button>
       </div>
       {results.length > 0 && (
-        <ul className="absolute top-full left-0 z-[1000] mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white shadow-lg">
+        <ul className="absolute top-full left-0 z-[1000] mt-1 max-h-48 w-full overflow-y-auto rounded-[22px] border border-neutral-200 bg-white">
           {results.map((item, i) => (
             <li key={i} className="border-b border-neutral-100 last:border-0">
               {/* A real button keeps the row in the tab order and answers Enter/Space. */}
@@ -200,7 +200,7 @@ export default function LocationPicker({
   }, [latitud, longitud, departamentoId, municipioId, disabled, reverseGeocode, autoGeocodeIntento])
 
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-200">
+    <div className="overflow-hidden rounded-[22px] border border-neutral-200">
       <SearchBar onSearch={handleMarkerMove} disabled={disabled} />
       <MapContainer
         center={markerPosition || defaultPosition}

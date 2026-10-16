@@ -8,7 +8,7 @@ import Toast from '../../components/Toast.jsx'
 import GoogleSignInButton from '../../components/GoogleSignInButton.jsx'
 
 const estilosInput =
-  'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
+  'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/
 const soloTelefono = (valor) => valor.replace(/[^0-9+()\-\s]/g, '')
@@ -204,7 +204,7 @@ export default function RegisterPage() {
   return (
     <div className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+        <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
           {paso === 'registro' ? (
             <>
           <h1 className="text-2xl font-bold text-verde-bosque">{t('register.heading')}</h1>
@@ -381,7 +381,7 @@ export default function RegisterPage() {
             </div>
 
             {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+              <p className="rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                 {error}
               </p>
             )}
@@ -389,7 +389,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={enviando}
-              className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+              className="cursor-pointer w-full rounded-full bg-iguana-hondo px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
               {enviando ? t('register.submitting') : t('register.submit')}
             </button>
@@ -438,7 +438,7 @@ export default function RegisterPage() {
                 </div>
 
                 {error && (
-                  <p id="codigo-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+                  <p id="codigo-error" role="alert" className="rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                     {error}
                   </p>
                 )}
@@ -446,7 +446,7 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={enviando}
-                  className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+                  className="cursor-pointer w-full rounded-full bg-iguana-hondo px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
                 >
                   {enviando ? t('register.verify.submitting') : t('register.verify.submit')}
                 </button>
@@ -455,7 +455,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleReenviar}
                   disabled={reenviando}
-                  className="cursor-pointer w-full rounded-lg border border-cafe-claro/60 bg-white px-4 py-2.5 font-semibold text-verde-bosque hover:bg-cafe-claro/20 transition-colors disabled:opacity-50"
+                  className="cursor-pointer w-full rounded-full border border-cafe-claro/60 bg-white px-4 py-2.5 font-semibold text-verde-bosque hover:bg-cafe-claro/20 transition-colors disabled:opacity-50"
                 >
                   {reenviando ? t('register.verify.resending') : t('register.verify.resend')}
                 </button>
@@ -463,7 +463,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={handleVolver}
-                  className="cursor-pointer w-full text-center text-sm font-semibold text-cafe transition-colors hover:text-terracota"
+                  className="cursor-pointer w-full text-center text-sm font-semibold text-cafe transition-colors hover:text-iguana-hondo"
                 >
                   {t('register.verify.back')}
                 </button>
@@ -477,7 +477,7 @@ export default function RegisterPage() {
           <Link
             to={localePath('login')}
             state={location.state}
-            className="cursor-pointer font-semibold text-terracota transition-colors hover:text-verde-bosque"
+            className="cursor-pointer font-semibold text-iguana-hondo transition-colors hover:text-verde-bosque"
           >
             {t('register.loginLink')}
           </Link>

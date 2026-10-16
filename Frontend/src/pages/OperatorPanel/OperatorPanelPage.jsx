@@ -144,7 +144,7 @@ export default function OperatorPanelPage() {
         <button
           type="button"
           onClick={() => { setPubEditando(null); setModalAbierto(true) }}
-          className="flex cursor-pointer items-center gap-2 rounded-lg bg-terracota px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
+          className="flex cursor-pointer items-center gap-2 rounded-full bg-iguana-hondo px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
@@ -154,7 +154,7 @@ export default function OperatorPanelPage() {
       </div>
 
       {mensaje && (
-        <div className="mb-6 flex items-center justify-between rounded-lg border border-verde-hoja/50 bg-verde-hoja/10 px-4 py-3 text-sm font-semibold text-verde-bosque" role="status">
+        <div className="mb-6 flex items-center justify-between rounded-[22px] border border-verde-hoja/50 bg-verde-hoja/10 px-4 py-3 text-sm font-semibold text-verde-bosque" role="status">
           {mensaje}
           <button
             type="button"
@@ -169,7 +169,7 @@ export default function OperatorPanelPage() {
         </div>
       )}
 
-      <div className="mb-6 flex gap-2 border-b border-neutral-200">
+      <div className="mb-6 flex flex-wrap gap-2 border-b border-neutral-200">
         {[
           { id: 'publicaciones', etiqueta: t('tabs.publications') },
           { id: 'disponibilidad', etiqueta: t('availability.tab') },
@@ -184,7 +184,7 @@ export default function OperatorPanelPage() {
             aria-pressed={pestana === tab.id}
             className={`-mb-px cursor-pointer border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               pestana === tab.id
-                ? 'border-terracota text-terracota'
+                ? 'border-iguana-hondo text-iguana-hondo'
                 : 'border-transparent text-cafe hover:text-verde-bosque'
             }`}
           >
@@ -194,7 +194,7 @@ export default function OperatorPanelPage() {
       </div>
 
       {pestana === 'publicaciones' && (
-      <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
         {cargando ? (
           <p className="px-6 py-14 text-center text-cafe">{t('status.loading')}</p>
         ) : publicaciones.length === 0 ? (
@@ -231,7 +231,7 @@ export default function OperatorPanelPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-neutral-700">{p.categoria?.nombre ?? '—'}</td>
-                    <td className="px-4 py-3 font-semibold text-terracota">
+                    <td className="px-4 py-3 font-semibold text-iguana-hondo">
                       {formatPrice(p.precioPorNoche, locale)}
                     </td>
                     <td className="px-4 py-3 text-neutral-700">{t('capacity', { count: p.capacidadMaxima })}</td>
@@ -248,14 +248,14 @@ export default function OperatorPanelPage() {
                           <button
                             type="button"
                             onClick={() => alEliminar(p)}
-                            className="cursor-pointer rounded bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
+                            className="cursor-pointer rounded-full bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
                           >
                             {t('common:actions.deleteYes')}
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmando(null)}
-                            className="cursor-pointer rounded bg-neutral-200 px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-300"
+                            className="cursor-pointer rounded-full bg-neutral-200 px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-300"
                           >
                             {t('common:actions.cancel')}
                           </button>
@@ -265,7 +265,7 @@ export default function OperatorPanelPage() {
                           <button
                             type="button"
                             onClick={() => alEditar(p)}
-                            className="relative cursor-pointer rounded p-1.5 text-cafe transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-cafe/10 hover:text-cafe-oscuro"
+                            className="relative cursor-pointer rounded-full p-1.5 text-cafe transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-cafe/10 hover:text-verde-bosque"
                             title={t('action.editTitle')}
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
@@ -277,7 +277,7 @@ export default function OperatorPanelPage() {
                             type="button"
                             onClick={() => setConfirmando(p.id)}
                             disabled={eliminando === p.id}
-                            className="relative cursor-pointer rounded p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+                            className="relative cursor-pointer rounded-full p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
                             title={t('action.deleteTitle')}
                           >
                             {eliminando === p.id ? (
@@ -349,14 +349,14 @@ export default function OperatorPanelPage() {
           )}
 
           {listaResenas.length === 0 ? (
-            <div className="rounded-xl border border-cafe-claro/40 bg-white px-6 py-14 text-center shadow-sm">
+            <div className="rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center">
               <p className="text-lg font-semibold text-verde-bosque">{t('reviews.emptyTitle')}</p>
               <p className="mt-1 text-sm text-cafe">{t('reviews.emptyBody')}</p>
             </div>
           ) : (
             <ul className="space-y-4">
               {listaResenas.map((r) => (
-                <li key={r.id} className="rounded-xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
+                <li key={r.id} className="rounded-[22px] border border-cafe-claro/40 bg-white p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-verde-bosque">{r.hueped}</p>
@@ -372,8 +372,8 @@ export default function OperatorPanelPage() {
                   )}
 
                   {r.respuestaAnfitrion && respondiendoId !== r.id && (
-                    <div className="mt-3 rounded-lg bg-crema p-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-terracota">{t('reviews.yourReply')}</p>
+                    <div className="mt-3 rounded-[22px] bg-crema p-3">
+                      <p className="text-xs font-bold text-iguana-hondo">{t('reviews.yourReply')}</p>
                       <p className="mt-1 text-sm text-neutral-800">{r.respuestaAnfitrion}</p>
                       {r.fechaRespuesta && (
                         <p className="mt-1 text-xs text-cafe">{formatDateDMY(r.fechaRespuesta, locale)}</p>
@@ -389,7 +389,7 @@ export default function OperatorPanelPage() {
                         value={textoRespuesta}
                         onChange={(e) => setTextoRespuesta(e.target.value)}
                         placeholder={t('reviews.replyPlaceholder')}
-                        className="w-full resize-none rounded-lg border border-cafe-claro px-3 py-2 text-sm text-neutral-800 focus:border-verde-bosque focus:outline-none"
+                        className="w-full resize-none rounded-[22px] border border-cafe-claro px-3 py-2 text-sm text-neutral-800 focus:border-verde-bosque focus:outline-none"
                       />
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <span className="text-xs text-cafe">{textoRespuesta.length}/500</span>
@@ -397,7 +397,7 @@ export default function OperatorPanelPage() {
                           <button
                             type="button"
                             onClick={() => { setRespondiendoId(null); setTextoRespuesta('') }}
-                            className="cursor-pointer rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-verde-bosque hover:bg-neutral-50"
+                            className="cursor-pointer rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-verde-bosque hover:bg-neutral-50"
                           >
                             {t('common:actions.cancel')}
                           </button>
@@ -405,7 +405,7 @@ export default function OperatorPanelPage() {
                             type="button"
                             onClick={() => guardarRespuesta(r)}
                             disabled={guardandoId === r.id}
-                            className="cursor-pointer rounded-lg bg-terracota px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-bosque disabled:opacity-50"
+                            className="cursor-pointer rounded-full bg-iguana-hondo px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-bosque disabled:opacity-50"
                           >
                             {guardandoId === r.id ? t('reviews.publishing') : t('reviews.publish')}
                           </button>
@@ -416,7 +416,7 @@ export default function OperatorPanelPage() {
                     <button
                       type="button"
                       onClick={() => iniciarRespuesta(r)}
-                      className="mt-3 inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-azul transition-colors hover:text-azul-cielo"
+                      className="mt-3 inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-azul transition-colors hover:text-verde-hoja"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
                         <path d="M9 17l-5-5 5-5M4 12h11a5 5 0 0 1 5 5v1" />

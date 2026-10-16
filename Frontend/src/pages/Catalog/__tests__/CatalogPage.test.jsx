@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
+import imagenHero from '../../../assets/EL-TUNCO.jpg'
 import CatalogPage from '../CatalogPage.jsx'
 import { getCategorias, getDepartamentos, getExperiencias } from '../../../services/experiencias.js'
 
@@ -104,7 +105,7 @@ describe('EN active: catalog chrome comes from the catalog namespace', () => {
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Experiences' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Stays' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Clear filters' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
 
     // Empty list (fixture) proves the empty state is localized too. The splash
     // now ends as soon as the request resolves (no artificial minimum delay).
@@ -115,6 +116,24 @@ describe('EN active: catalog chrome comes from the catalog namespace', () => {
 
     // Partial-rollout guarantee: raw keys never surface.
     expect(screen.queryByText(/catalog:/)).toBeNull()
+  })
+
+  it('uses the former El Tunco hero image and localized catalog copy', async () => {
+    const { container } = renderCatalog()
+
+    expect(await screen.findByRole('heading', { level: 1 }))
+      .toHaveTextContent('Discover the experiences of El Salvador')
+    expect(screen.getByText(
+      'Surf, coffee, volcanoes and charming towns. Explore, book and live the country with local hosts.',
+    )).toBeInTheDocument()
+    expect(container.querySelector('section img')).toHaveAttribute('src', imagenHero)
+
+    await i18n.changeLanguage('es')
+    expect(await screen.findByRole('heading', { level: 1 }))
+      .toHaveTextContent('Descubre las experiencias de El Salvador')
+    expect(screen.getByText(
+      'Surf, café, volcanes y pueblos con encanto. Explora, reserva y vive el país con anfitriones locales.',
+    )).toBeInTheDocument()
   })
 
   it('resolves interpolated filter templates from EN resources', async () => {
@@ -189,7 +208,7 @@ describe('EN active: catalog chrome comes from the catalog namespace', () => {
     expect(screen.getByText('Café')).toBeInTheDocument()
 
     // ...while page chrome around the card is English.
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Upcoming experiences')
+    expect(screen.getByRole('heading', { level: 2, name: 'Upcoming experiences' })).toBeInTheDocument()
   })
 })
 
@@ -209,7 +228,7 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(screen.getByRole('button', { name: 'Buscar' })).toBeInTheDocument()
     expect(screen.getByText('Filtrar resultados')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Todos' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Limpiar filtros' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).not.toBeInTheDocument()
     expect(await screen.findByText('Próximas experiencias')).toBeInTheDocument()
     // JD-INFO-1 (ES): one card -> _one, following the real list length.
     expect(
@@ -320,7 +339,10 @@ describe('filters live in the URL (deep-linkable catalog)', () => {
     fireEvent.click(await screen.findByRole('option', { name: 'Café' }))
     expect(screen.getByTestId('url').textContent).toBe('/?categoria=Caf%C3%A9')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }))
+    const clearButton = screen.getByRole('button', { name: 'Limpiar filtros' })
+    expect(clearButton.parentElement).toHaveClass('flex', 'w-full', 'justify-center')
+    fireEvent.click(clearButton)
     expect(screen.getByTestId('url').textContent).toBe('/')
+    expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).not.toBeInTheDocument()
   })
 })

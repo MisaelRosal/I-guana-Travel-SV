@@ -32,7 +32,7 @@ export default function ExperienceCard({ experiencia, proximaFecha, resena }) {
     // F5 (task 6.4): the card link follows the active locale's detail form.
     <Link
       to={localePath('experienceDetail', { id: experiencia.id })}
-      className="group flex flex-col overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow"
+      className="group flex flex-col overflow-hidden rounded-[22px] border border-cafe-claro bg-white"
     >
       <div className="relative h-52 overflow-hidden">
         <img
@@ -45,12 +45,12 @@ export default function ExperienceCard({ experiencia, proximaFecha, resena }) {
           {experiencia.categoria}
         </span>
         {proximaFecha && (
-          <span className="absolute top-3 right-3 rounded-full bg-terracota px-3 py-1 text-xs font-semibold text-white">
+          <span className="absolute top-3 right-3 rounded-full bg-iguana-hondo px-3 py-1 text-xs font-semibold text-white">
             {formatDayMonthYear(proximaFecha, locale)}
           </span>
         )}
         {!proximaFecha && experiencia.popular && (
-          <span className="absolute top-3 right-3 rounded-full bg-terracota px-3 py-1 text-xs font-semibold text-white">
+          <span className="absolute top-3 right-3 rounded-full bg-iguana-hondo px-3 py-1 text-xs font-semibold text-white">
             {t('card.popular')}
           </span>
         )}
@@ -79,7 +79,7 @@ export default function ExperienceCard({ experiencia, proximaFecha, resena }) {
         <p className="mt-2 text-base text-neutral-600 line-clamp-2 flex-1">{experiencia.descripcion}</p>
         <div className="mt-3 flex items-end justify-between gap-2 border-t border-neutral-100 pt-3">
           <div className="min-w-0">
-            <span className="text-3xl font-extrabold text-terracota">{formatPrice(experiencia.precio, locale)}</span>
+            <span className="text-3xl font-extrabold text-iguana-hondo">{formatPrice(experiencia.precio, locale)}</span>
             <span className="text-sm text-cafe"> / {unidad}</span>
           </div>
           <span className="text-sm text-cafe whitespace-nowrap">{detalle}</span>

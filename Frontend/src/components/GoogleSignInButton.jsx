@@ -123,7 +123,7 @@ export default function GoogleSignInButton({ text = 'continue_with', onExito, on
     <div className="mt-6">
       <div className="flex items-center gap-3">
         <span className="h-px flex-1 bg-cafe-claro/60" aria-hidden="true" />
-        <span className="text-xs font-semibold uppercase tracking-wide text-cafe">
+        <span className="text-xs font-semibold text-cafe">
           {t('google.divider')}
         </span>
         <span className="h-px flex-1 bg-cafe-claro/60" aria-hidden="true" />

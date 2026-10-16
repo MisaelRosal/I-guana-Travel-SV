@@ -77,7 +77,7 @@ describe('ES/EN toggle pill in the Header (desktop)', () => {
     // F1 landed the catalog pilot content: page chrome now localizes through
     // resources too, so under EN the hero renders the English catalog resource.
     const heading = await screen.findByRole('heading', { level: 1 })
-    expect(heading).toHaveTextContent('Discover the experiences of')
+    expect(heading).toHaveTextContent('Discover the experiences of El Salvador')
   })
 
   it('localizes the header nav and footer chrome from resources under EN (F1 pilot)', async () => {

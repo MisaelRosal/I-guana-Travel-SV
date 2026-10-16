@@ -18,8 +18,8 @@ import { Estrellas } from '../../components/Estrellas.jsx'
 function Avatar({ anfitrion, grande }) {
   const { t, i18n } = useTranslation('perfil')
   const cls = grande
-    ? 'flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-5xl font-bold text-cafe shadow-md'
-    : 'flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-crema text-lg font-bold text-cafe shadow-sm'
+    ? 'flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-5xl font-bold text-cafe'
+    : 'flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-crema text-lg font-bold text-cafe'
   return (
     <div className={cls}>
       {anfitrion.fotoPerfil ? (
@@ -67,17 +67,17 @@ export default function PerfilAnfitrionPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
+      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-verde-hoja">
         {t('back')}
       </Link>
 
       {cargando && <p className="text-cafe">{t('loading')}</p>}
-      {error && <p className="text-terracota">{t('host.error', { error })}</p>}
+      {error && <p className="text-red-700">{t('host.error', { error })}</p>}
       {!cargando && !error && !anfitrion && <p className="text-cafe">{t('host.notFound')}</p>}
 
       {anfitrion && (
         <>
-          <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+          <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
               <Avatar anfitrion={anfitrion} grande />
               <div className="flex-1">
@@ -90,7 +90,7 @@ export default function PerfilAnfitrionPage() {
                   {anfitrion.municipio?.nombre ?? '—'}
                   {anfitrion.municipio?.departamento ? `, ${anfitrion.municipio.departamento.nombre}` : ''}
                 </p>
-                <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber-100 text-amber-700'}`}>
+                <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber/10 text-verde-bosque'}`}>
                   {anfitrion.verificado ? t('badge.verified') : t('badge.pending')}
                 </span>
                 {resumen && (
@@ -112,7 +112,7 @@ export default function PerfilAnfitrionPage() {
             </div>
 
             <div className="mt-6 border-t border-neutral-100 pt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-terracota">{t('host.aboutMe')}</h2>
+              <h2 className="text-sm font-bold text-iguana-hondo">{t('host.aboutMe')}</h2>
               <p className="mt-2 text-lg leading-relaxed text-neutral-800">
                 {anfitrion.descripcion || t('host.noDescription')}
               </p>
@@ -120,15 +120,15 @@ export default function PerfilAnfitrionPage() {
 
             <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-4 border-t border-neutral-100 pt-6 sm:grid-cols-3">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('host.email')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('host.email')}</dt>
                 <dd className="mt-0.5 text-neutral-800">{anfitrion.email}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('host.phone')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('host.phone')}</dt>
                 <dd className="mt-0.5 text-neutral-800">{anfitrion.telefono || '—'}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('host.location')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('host.location')}</dt>
                 <dd className="mt-0.5 text-neutral-800">
                   {anfitrion.municipio?.nombre ?? '—'}
                   {anfitrion.municipio?.departamento ? `, ${anfitrion.municipio.departamento.nombre}` : ''}
@@ -145,7 +145,7 @@ export default function PerfilAnfitrionPage() {
                   <Link
                     key={exp.id}
                     to={localePath('experienceDetail', { id: exp.id })}
-                    className="group overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+                    className="group overflow-hidden rounded-[22px] border border-neutral-200 bg-white"
                   >
                     <div className="aspect-[16/10] overflow-hidden bg-neutral-100">
                       {exp.imagenes[0] ? (
@@ -155,10 +155,10 @@ export default function PerfilAnfitrionPage() {
                       )}
                     </div>
                     <div className="p-4">
-                      <p className="text-sm font-semibold uppercase tracking-wide text-terracota">{exp.tipo}</p>
+                      <p className="text-sm font-semibold text-iguana-hondo">{exp.tipo}</p>
                       <h3 className="mt-0.5 text-lg font-bold text-verde-bosque">{exp.titulo}</h3>
                       <p className="mt-1 text-sm text-cafe">{exp.municipio}, {exp.departamento}</p>
-                      <p className="mt-2 font-bold text-terracota">
+                      <p className="mt-2 font-bold text-iguana-hondo">
                         {formatPrice(exp.precio, locale)}
                         <span className="text-sm font-medium text-cafe"> {exp.tipo === 'hospedaje' ? `/${t('experiencia:card.perNight')}` : `/${t('experiencia:card.perPerson')}`}</span>
                       </p>

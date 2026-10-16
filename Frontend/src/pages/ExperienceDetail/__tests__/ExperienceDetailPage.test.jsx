@@ -217,7 +217,7 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     expect(screen.getAllByText('Carlos Mendoza')).toHaveLength(2)
     expect(screen.getByText('Verified')).toBeInTheDocument()
     expect(screen.getByText("This host hasn't added a description yet.")).toBeInTheDocument()
-    expect(screen.getByText('View full profile →')).toBeInTheDocument()
+    expect(screen.getByText('View full profile')).toBeInTheDocument()
     // F5 (task 6.4): the host card link emits the English-form alias URL under EN.
     expect(screen.getByRole('link', { name: /Carlos Mendoza/ })).toHaveAttribute('href', '/hosts/7')
   })
@@ -270,7 +270,10 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     fireEvent.click(screen.getByRole('button', { name: 'Book now' }))
     const calendar = await screen.findByRole('dialog', { name: 'Choose booking date' })
     fireEvent.click(within(calendar).getByRole('button', { name: 'Continue' }))
-    const day = await within(calendar).findByRole('button', { name: '15' })
+    // Pick day 15 of the NEXT month: the calendar opens on today's month and
+    // past days are disabled, so day 15 of the current month breaks after the 15th.
+    fireEvent.click(within(calendar).getByRole('button', { name: 'Next month' }))
+    const day = within(calendar).getByRole('button', { name: '15' })
     fireEvent.click(day)
     fireEvent.click(within(calendar).getByRole('button', { name: 'Continue' }))
 
@@ -326,7 +329,7 @@ describe('ES active: extraction keeps the canonical Spanish detail byte-comparab
     expect(screen.getByRole('heading', { level: 3, name: 'Ubicación' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 3, name: 'Tu anfitrión' })).toBeInTheDocument()
     expect(screen.getByText('Verificado')).toBeInTheDocument()
-    expect(screen.getByText('Ver perfil completo →')).toBeInTheDocument()
+    expect(screen.getByText('Ver perfil completo')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Imagen anterior' }).length).toBeGreaterThan(0)
   })
 

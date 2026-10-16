@@ -13,7 +13,7 @@ import { getAgenda } from '../services/reservas.js'
 const ESTADOS = ['pendiente', 'confirmada', 'completada', 'cancelada']
 
 const BADGE_ESTADO = {
-  pendiente: 'bg-amber/15 text-amber',
+  pendiente: 'bg-amber/15 text-verde-bosque',
   confirmada: 'bg-verde-hoja/20 text-verde-bosque',
   completada: 'bg-neutral-200 text-neutral-700',
   cancelada: 'bg-red-100 text-red-700',
@@ -129,7 +129,7 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
       : `${formatDateDMY(r.fechaInicio, locale)} – ${formatDateDMY(r.fechaFin, locale)}`
 
   const renderFila = (r) => (
-    <li key={r.id} className="rounded-lg border border-cafe-claro/40 bg-white p-4 shadow-sm">
+    <li key={r.id} className="rounded-[22px] border border-cafe-claro/40 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-bold text-verde-bosque">{r.nombreHuesped}</p>
@@ -140,9 +140,9 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
         </span>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-700">
-        <span className="font-semibold text-cafe-oscuro">{rango(r)}</span>
+        <span className="font-semibold text-verde-bosque">{rango(r)}</span>
         <span>{t('agenda.guests', { count: r.numeroHuespedes })}</span>
-        <span className="font-semibold text-terracota">{formatPrice(r.precioTotal, locale)}</span>
+        <span className="font-semibold text-iguana-hondo">{formatPrice(r.precioTotal, locale)}</span>
       </div>
     </li>
   )
@@ -153,7 +153,7 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
         <div>
           <label
             htmlFor="agenda-publicacion"
-            className="mb-1 block text-xs font-semibold uppercase tracking-wide text-cafe"
+            className="mb-1 block text-xs font-semibold text-cafe"
           >
             {t('agenda.filter.label')}
           </label>
@@ -161,7 +161,7 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
             id="agenda-publicacion"
             value={publicacionId}
             onChange={(e) => setPublicacionId(e.target.value)}
-            className="min-w-[220px] cursor-pointer rounded-lg border border-cafe-claro/60 bg-white px-3 py-2 text-sm font-semibold text-verde-bosque focus:border-verde-bosque focus:outline-none"
+            className="min-w-[220px] cursor-pointer rounded-full border border-cafe-claro/60 bg-white px-3 py-2 text-sm font-semibold text-verde-bosque focus:border-verde-bosque focus:outline-none"
           >
             <option value="">{t('agenda.filter.all')}</option>
             {publicaciones.map((p) => (
@@ -173,22 +173,22 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
       </div>
 
       {cargando ? (
-        <p className="rounded-xl border border-cafe-claro/40 bg-white px-6 py-14 text-center text-cafe shadow-sm">
+        <p className="rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center text-cafe">
           {t('agenda.loading')}
         </p>
       ) : error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-6 py-14 text-center font-semibold text-red-700 shadow-sm">
+        <p className="rounded-[22px] border border-red-200 bg-red-50 px-6 py-14 text-center font-semibold text-red-700">
           {t('agenda.error')}
         </p>
       ) : (
         <>
-          <section className="rounded-xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
+          <section className="rounded-[22px] border border-cafe-claro/40 bg-white p-4 sm:p-5">
             <div className="flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => cambiarMes(-1)}
                 aria-label={t('common:calendar.prevMonth')}
-                className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10"
+                className="cursor-pointer rounded-full p-1.5 text-iguana-hondo transition-colors hover:bg-iguana-hondo/10"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
               </button>
@@ -197,7 +197,7 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
                 type="button"
                 onClick={() => cambiarMes(1)}
                 aria-label={t('common:calendar.nextMonth')}
-                className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10"
+                className="cursor-pointer rounded-full p-1.5 text-iguana-hondo transition-colors hover:bg-iguana-hondo/10"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </button>
@@ -213,11 +213,11 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
                 <div key={i}>
                   {celda.dia ? (
                     <div
-                      className={`flex h-11 flex-col items-center justify-center rounded-lg text-sm font-semibold ${
+                      className={`flex h-11 flex-col items-center justify-center rounded-full text-sm font-semibold ${
                         celda.ocupado > 0
-                          ? 'bg-terracota/90 text-white'
+                          ? 'bg-iguana-hondo/90 text-white'
                           : celda.esHoy
-                            ? 'border border-terracota text-terracota'
+                            ? 'border border-iguana-hondo text-iguana-hondo'
                             : 'text-neutral-700'
                       }`}
                       title={celda.ocupado > 0 ? t('agenda.dayOccupied', { count: celda.ocupado }) : undefined}
@@ -234,18 +234,18 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
 
             <div className="mt-3 flex flex-wrap gap-4 text-xs text-cafe">
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded bg-terracota/90" aria-hidden="true" />
+                <span className="h-3 w-3 rounded-full bg-iguana-hondo/90" aria-hidden="true" />
                 {t('agenda.legend.occupied')}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded border border-terracota" aria-hidden="true" />
+                <span className="h-3 w-3 rounded-full border border-iguana-hondo" aria-hidden="true" />
                 {t('agenda.legend.today')}
               </span>
             </div>
           </section>
 
           {filtradas.length === 0 ? (
-            <div className="rounded-xl border border-cafe-claro/40 bg-white px-6 py-14 text-center shadow-sm">
+            <div className="rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center">
               <p className="text-lg font-semibold text-verde-bosque">{t('agenda.emptyTitle')}</p>
               <p className="mt-1 text-sm text-cafe">{t('agenda.emptyBody')}</p>
             </div>
@@ -254,7 +254,7 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
               <section>
                 <h3 className="mb-3 text-sm font-bold text-verde-bosque">{t('agenda.upcomingTitle')}</h3>
                 {proximas.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-cafe-claro bg-white px-4 py-6 text-center text-sm text-cafe">
+                  <p className="rounded-[22px] border border-dashed border-cafe-claro bg-white px-4 py-6 text-center text-sm text-cafe">
                     {t('agenda.upcomingEmpty')}
                   </p>
                 ) : (

@@ -2,21 +2,19 @@
 @import "leaflet/dist/leaflet.css";
 
 @theme {
-  --color-crema: #FBF6EE;
-  --color-verde-bosque: #1B4332;
-  --color-verde-hoja: #52B788;
-  --color-azul: #1D4E89;
-  --color-azul-cielo: #48CAE4;
-  --color-cafe: #8B5E3C;
-  --color-cafe-claro: #C89F7B;
-  --color-cafe-oscuro: #4E342E;
-  --color-terracota: #00838F;
-  --color-terracota-claro: #FFE890;
-  --color-amber: #D97706;
+  --color-crema: #F7F7F3;
+  --color-verde-bosque: #10231A;
+  --color-verde-hoja: #348956;
+  --color-azul: #24417A;
+  --color-cafe: #55635C; /* texto secundario: tinta al 70% sobre cal, 5.9:1 */
+  --color-cafe-claro: #E9E6DA;
+  --color-iguana-hondo: #1F5C3A;
+  --color-amber: #B45309;
+  --font-display: 'Petrona', Georgia, serif;
 }
 
 :root {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Chivo', system-ui, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   color-scheme: light;
   font-synthesis: none;
@@ -31,8 +29,8 @@ body {
   background-color: var(--color-crema);
 }
 
-.leaflet-geosearch-bar {
-  z-index: 1000;
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
 }
 
 /* Limitar el z-index del mapa Leaflet para que nunca se sobreponga a los modales */
@@ -48,39 +46,6 @@ body {
 }
 .leaflet-popup {
   z-index: 3;
-}
-
-.leaflet-geosearch-bar form {
-  border-radius: 0.5rem;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-}
-
-.leaflet-geosearch-bar input {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem 0 0 0.5rem;
-  outline: none;
-  width: 250px;
-}
-
-.leaflet-geosearch-bar input:focus {
-  border-color: #52B788;
-  box-shadow: 0 0 0 2px rgba(82, 183, 136, 0.3);
-}
-
-.leaflet-geosearch-bar button {
-  padding: 0.5rem 0.75rem;
-  background: #1B4332;
-  color: white;
-  border: none;
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.leaflet-geosearch-bar button:hover {
-  background: #163a2a;
 }
 
 @keyframes modal-backdrop-in {

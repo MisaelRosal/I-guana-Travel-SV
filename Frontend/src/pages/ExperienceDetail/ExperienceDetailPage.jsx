@@ -44,7 +44,7 @@ function Galeria({ imagenes, titulo }) {
 
   return (
     <div>
-      <div className="relative h-[min(60vw,420px)] max-sm:h-[320px] overflow-hidden rounded-xl bg-neutral-100">
+      <div className="relative h-[min(60vw,420px)] max-sm:h-[320px] overflow-hidden rounded-[22px] bg-neutral-100">
         {primera ? (
           <>
             <img
@@ -91,7 +91,7 @@ function Galeria({ imagenes, titulo }) {
               type="button"
               onClick={() => { setIndice(i); setAmpliada(true) }}
               aria-label={t('gallery.viewLarge', { n: i + 1 })}
-              className={`cursor-pointer overflow-hidden rounded-lg border-2 ${i === indice ? 'border-terracota' : 'border-transparent'}`}
+              className={`cursor-pointer overflow-hidden rounded-[22px] border-2 ${i === indice ? 'border-iguana-hondo' : 'border-transparent'}`}
             >
               <img src={img} alt={`${titulo} ${i + 1}`} className="aspect-[16/10] w-full object-cover" />
             </button>
@@ -131,7 +131,7 @@ function Galeria({ imagenes, titulo }) {
             src={imagenes[indice % imagenes.length]}
             alt={titulo}
             onClick={(e) => e.stopPropagation()}
-            className="max-h-[88vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
+            className="max-h-[88vh] max-w-[92vw] rounded-[22px] object-contain"
           />
           {imagenes.length > 1 && (
             <button
@@ -165,7 +165,7 @@ function InfoBox({ experiencia, onReservar, resumenResenas }) {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-terracota">{experiencia.categoria}</p>
+          <p className="text-sm font-semibold text-iguana-hondo">{experiencia.categoria}</p>
           <h2 className="mt-1 text-3xl font-bold leading-tight text-verde-bosque">{experiencia.titulo}</h2>
           {resumenResenas && (
             <div className="mt-1.5 flex items-center gap-1.5 text-sm">
@@ -183,7 +183,7 @@ function InfoBox({ experiencia, onReservar, resumenResenas }) {
             </div>
           )}
           <p className="mt-2 flex items-center gap-1 text-base text-neutral-600">
-            <svg className="h-5 w-5 text-terracota" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg className="h-5 w-5 text-iguana-hondo" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
               <circle cx="12" cy="10" r="3" />
             </svg>
@@ -193,7 +193,7 @@ function InfoBox({ experiencia, onReservar, resumenResenas }) {
       </div>
 
       <div className="mt-5 flex items-baseline gap-1.5 border-b border-neutral-100 pb-5">
-        <span className="text-4xl font-extrabold text-terracota">{formatPrice(experiencia.precio, locale)}</span>
+        <span className="text-4xl font-extrabold text-iguana-hondo">{formatPrice(experiencia.precio, locale)}</span>
         <span className="text-lg font-medium text-neutral-600"> /{unidad}</span>
       </div>
 
@@ -201,50 +201,50 @@ function InfoBox({ experiencia, onReservar, resumenResenas }) {
         {esHospedaje ? (
           <>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.capacity')}</dt>
+              <dt className="text-xs font-semibold text-cafe">{t('info.capacity')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{t('info.guests', { count: experiencia.capacidad })}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.rooms')}</dt>
+              <dt className="text-xs font-semibold text-cafe">{t('info.rooms')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.habitaciones || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.beds')}</dt>
+              <dt className="text-xs font-semibold text-cafe">{t('info.beds')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.camas || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.baths')}</dt>
+              <dt className="text-xs font-semibold text-cafe">{t('info.baths')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.banos || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.checkIn')}</dt>
+              <dt className="text-xs font-semibold text-cafe">{t('info.checkIn')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.horaEntrada || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.checkOut')}</dt>
+              <dt className="text-xs font-semibold text-cafe">{t('info.checkOut')}</dt>
               <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.horaSalida || '—'}</dd>
             </div>
           </>
         ) : (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.cupos')}</dt>
+            <dt className="text-xs font-semibold text-cafe">{t('info.cupos')}</dt>
             <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{t('info.persons', { count: experiencia.capacidad })}</dd>
           </div>
         )}
         {experiencia.anfitrion && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.host')}</dt>
+            <dt className="text-xs font-semibold text-cafe">{t('info.host')}</dt>
             <dd className="mt-0.5 text-lg font-semibold text-verde-bosque">{experiencia.anfitrion}</dd>
           </div>
         )}
         {experiencia.direccion && (
           <div className="col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.address')}</dt>
+            <dt className="text-xs font-semibold text-cafe">{t('info.address')}</dt>
             <dd className="mt-0.5 text-base text-neutral-700">{experiencia.direccion}</dd>
           </div>
         )}
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('info.status')}</dt>
+          <dt className="text-xs font-semibold text-cafe">{t('info.status')}</dt>
           <dd className="mt-0.5 text-lg font-semibold text-verde-bosque capitalize">{experiencia.estado}</dd>
         </div>
       </dl>
@@ -252,7 +252,7 @@ function InfoBox({ experiencia, onReservar, resumenResenas }) {
       <button
         type="button"
         onClick={onReservar}
-        className="mt-7 block w-full cursor-pointer rounded-lg bg-terracota px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque shadow-sm"
+        className="mt-7 block w-full cursor-pointer rounded-full bg-iguana-hondo px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque"
       >
         {t('info.bookNow')}
       </button>
@@ -260,7 +260,7 @@ function InfoBox({ experiencia, onReservar, resumenResenas }) {
       <button
         type="button"
         onClick={() => document.getElementById('ubicacion')?.scrollIntoView({ behavior: scrollBehavior() })}
-        className="mt-3 block w-full cursor-pointer text-center font-medium text-azul transition-colors hover:text-azul-cielo"
+        className="mt-3 block w-full cursor-pointer text-center font-medium text-azul transition-colors hover:text-verde-hoja"
       >
         {t('info.howToArrive')}
       </button>
@@ -290,7 +290,7 @@ function SeccionResenas({ data }) {
 
           <ul className="mt-5 space-y-5">
             {resenas.map((r) => (
-              <li key={r.id} className="rounded-xl border border-neutral-100 bg-white p-4 sm:p-5">
+              <li key={r.id} className="rounded-[22px] border border-neutral-100 bg-white p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-crema text-sm font-bold text-cafe">
@@ -316,8 +316,8 @@ function SeccionResenas({ data }) {
                 </span>
 
                 {r.respuestaAnfitrion && (
-                  <div className="mt-3 rounded-lg bg-crema p-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-terracota">{t('reviews.hostReply')}</p>
+                  <div className="mt-3 rounded-[22px] bg-crema p-3">
+                    <p className="text-xs font-bold text-iguana-hondo">{t('reviews.hostReply')}</p>
                     <p className="mt-1 text-sm text-neutral-800">{r.respuestaAnfitrion}</p>
                   </div>
                 )}
@@ -326,7 +326,7 @@ function SeccionResenas({ data }) {
           </ul>
         </>
       ) : (
-        <div className="mt-4 rounded-xl border border-dashed border-cafe-claro bg-crema/40 p-6 text-center">
+        <div className="mt-4 rounded-[22px] border border-dashed border-cafe-claro bg-crema/40 p-6 text-center">
           <p className="font-semibold text-verde-bosque">{t('reviews.empty')}</p>
           <p className="mt-1 text-sm text-cafe">{t('reviews.emptyHint')}</p>
         </div>
@@ -343,7 +343,7 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
       <h3 className="text-2xl font-bold text-verde-bosque">{t('host.title')}</h3>
       <Link
         to={localePath('hostProfile', { id: anfitrionId })}
-        className="mt-4 flex items-start gap-4 rounded-xl p-1 transition-colors hover:bg-neutral-50"
+        className="mt-4 flex items-start gap-4 rounded-[22px] p-1 transition-colors hover:bg-neutral-50"
       >
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-crema text-2xl font-bold text-cafe">
           {foto ? (
@@ -364,8 +364,8 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
           <p className="mt-1 line-clamp-2 text-sm text-neutral-700">
             {descripcion || t('host.noDescription')}
           </p>
-          <span className="mt-2 inline-block font-medium text-azul hover:text-azul-cielo">
-            {t('host.fullProfile')} →
+          <span className="mt-2 inline-block font-medium text-azul hover:text-verde-hoja">
+            {t('host.fullProfile')}
           </span>
         </div>
       </Link>
@@ -389,7 +389,7 @@ function Horarios({ horarios }) {
         <p className="mt-1 text-sm text-cafe">{t('schedule.datesHint')}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {conFecha.map((h, i) => (
-            <div key={i} className="min-w-24 rounded-lg bg-crema px-4 py-2">
+            <div key={i} className="min-w-24 rounded-[22px] bg-crema px-4 py-2">
               <p className="text-sm font-bold capitalize text-verde-bosque">{formatDayMonthShort(h.fecha, locale)}</p>
               <p className="text-xs font-medium text-cafe">{rango(h)}</p>
             </div>
@@ -407,7 +407,7 @@ function Horarios({ horarios }) {
         {dias.map((dia) => {
           const hs = porDiaSemana.filter((h) => h.diaSemana === dia)
           return (
-            <div key={dia} className="min-w-28 rounded-lg bg-crema px-5 py-3">
+            <div key={dia} className="min-w-28 rounded-[22px] bg-crema px-5 py-3">
               <p className="text-base font-bold text-verde-bosque">{weekdayLong(dia, locale)}</p>
               <p className="mt-0.5 text-sm font-medium text-cafe">
                 {hs.map((h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`).join(' · ')}
@@ -426,7 +426,7 @@ function Mapa({ latitud, longitud }) {
   return (
     <section id="ubicacion" className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">{t('map.title')}</h3>
-      <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 shadow-sm">
+      <div className="mt-4 overflow-hidden rounded-[22px] border border-neutral-200">
         <MapContainer
           center={posicion || [13.7, -89.2]}
           zoom={posicion ? 14 : 9}
@@ -591,7 +591,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
       aria-modal="true"
       aria-label={t('calendar.dialogLabel')}
     >
-      <div className="animate-modal-box w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/5">
+      <div className="animate-modal-box w-full max-w-sm rounded-[22px] bg-white p-5 ring-1 ring-black/5">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-verde-bosque">
             {paso === 'personas'
@@ -604,7 +604,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             type="button"
             onClick={onCerrar}
             aria-label={t('common:modal.close')}
-            className="cursor-pointer rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+            className="cursor-pointer rounded-full p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
           >
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -626,13 +626,13 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
                 type="button"
                 onClick={() => setNumPersonas((n) => Math.max(1, n - 1))}
                 aria-label={t('calendar.less')}
-                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
+                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-iguana-hondo text-2xl font-bold text-iguana-hondo transition-colors hover:bg-iguana-hondo/10"
               >
                 −
               </button>
               <div className="w-20 text-center">
                 <p className="text-4xl font-extrabold text-verde-bosque">{numPersonas}</p>
-                <p className="text-xs font-semibold uppercase text-cafe">
+                <p className="text-xs font-semibold text-cafe">
                   {t('calendar.unit', { count: numPersonas })}
                 </p>
               </div>
@@ -640,7 +640,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
                 type="button"
                 onClick={() => setNumPersonas((n) => Math.min(experiencia.capacidad || 99, n + 1))}
                 aria-label={t('calendar.more')}
-                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-terracota text-2xl font-bold text-terracota transition-colors hover:bg-terracota/10"
+                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-iguana-hondo text-2xl font-bold text-iguana-hondo transition-colors hover:bg-iguana-hondo/10"
               >
                 +
               </button>
@@ -649,7 +649,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             <button
               type="button"
               onClick={() => setPaso('fecha')}
-              className="mt-6 w-full cursor-pointer rounded-lg bg-terracota px-4 py-3 text-base font-bold text-white transition-colors hover:bg-verde-bosque"
+              className="mt-6 w-full cursor-pointer rounded-full bg-iguana-hondo px-4 py-3 text-base font-bold text-white transition-colors hover:bg-verde-bosque"
             >
               {t('calendar.continue')}
             </button>
@@ -667,7 +667,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             type="button"
             onClick={() => cambiarMes(-1)}
             aria-label={t('common:calendar.prevMonth')}
-            className="cursor-pointer rounded-lg p-2 text-terracota transition-colors hover:bg-terracota/10"
+            className="cursor-pointer rounded-full p-2 text-iguana-hondo transition-colors hover:bg-iguana-hondo/10"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="m15 18-6-6 6-6" />
@@ -680,7 +680,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             type="button"
             onClick={() => cambiarMes(1)}
             aria-label={t('common:calendar.nextMonth')}
-            className="cursor-pointer rounded-lg p-2 text-terracota transition-colors hover:bg-terracota/10"
+            className="cursor-pointer rounded-full p-2 text-iguana-hondo transition-colors hover:bg-iguana-hondo/10"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="m9 18 6-6-6-6" />
@@ -710,7 +710,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             const esInicio = esExtremoInicio(dia)
             const esFin = esExtremoFin(dia)
             let clases =
-              'flex h-10 items-center justify-center rounded-lg text-sm transition-colors '
+              'flex h-10 items-center justify-center rounded-full text-sm transition-colors '
             if (pasado) {
               clases += 'cursor-not-allowed text-neutral-300'
             } else if (ocupado) {
@@ -718,13 +718,13 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             } else if (noDisponible) {
               clases += 'cursor-not-allowed bg-neutral-100 text-neutral-400'
             } else if (enRango) {
-              clases += 'bg-terracota/20 font-semibold text-verde-bosque hover:bg-terracota/30'
+              clases += 'bg-iguana-hondo/20 font-semibold text-verde-bosque hover:bg-iguana-hondo/30'
             } else if (esInicio || esFin) {
-              clases += 'cursor-pointer bg-terracota font-bold text-white hover:bg-terracota'
+              clases += 'cursor-pointer bg-iguana-hondo font-bold text-white hover:bg-iguana-hondo'
             } else if (esHoyDia) {
-              clases += 'cursor-pointer border border-terracota font-semibold text-terracota hover:bg-terracota/10'
+              clases += 'cursor-pointer border border-iguana-hondo font-semibold text-iguana-hondo hover:bg-iguana-hondo/10'
             } else {
-              clases += 'cursor-pointer text-neutral-700 hover:bg-terracota/10'
+              clases += 'cursor-pointer text-neutral-700 hover:bg-iguana-hondo/10'
             }
             return (
               <button
@@ -755,7 +755,7 @@ function CalendarioReserva({ experiencia, esHospedaje, onSeleccionarFechas, onCe
             type="button"
             disabled={!fechaInicio || (esHospedaje && !fechaFin)}
             onClick={confirmarSeleccion}
-            className="cursor-pointer rounded-lg bg-terracota px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-full bg-iguana-hondo px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:cursor-not-allowed disabled:opacity-50"
           >
             {t('calendar.continue')}
           </button>
@@ -855,16 +855,16 @@ export default function ExperienceDetailPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-8">
-      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
+      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-verde-hoja">
         ← {t('page.backToCatalog')}
       </Link>
 
       {cargando && <p className="text-cafe">{t('page.loading')}</p>}
-      {error && <p className="text-terracota">{t('page.error', { error })}</p>}
+      {error && <p className="text-red-700">{t('page.error', { error })}</p>}
       {!cargando && !error && !experiencia && <p className="text-cafe">{t('page.notFound')}</p>}
 
       {experiencia && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-8">
+        <div className="rounded-[22px] border border-neutral-200 bg-white p-4 sm:p-8">
           <div className="grid gap-8 lg:grid-cols-5">
             <div className="lg:col-span-3">
               <Galeria imagenes={experiencia.imagenes} titulo={experiencia.titulo} />
@@ -894,7 +894,7 @@ export default function ExperienceDetailPage() {
                 {(experiencia.experiencias ?? [])
                   .filter(item => item.descripcion || item.nombre !== experiencia.titulo)
                   .map((item, index) => (
-                    <li key={`${item.nombre}-${index}`} className="rounded-lg bg-crema/60 p-4">
+                    <li key={`${item.nombre}-${index}`} className="rounded-[22px] bg-crema/60 p-4">
                       {item.nombre !== experiencia.titulo && (
                         <h4 className="font-semibold text-verde-bosque">{item.nombre}</h4>
                       )}

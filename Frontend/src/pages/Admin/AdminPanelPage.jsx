@@ -112,7 +112,7 @@ export default function AdminPanelPage() {
       </div>
 
       {mensaje && (
-        <div className="mb-6 flex items-center justify-between rounded-lg border border-verde-hoja/50 bg-verde-hoja/10 px-4 py-3 text-sm font-semibold text-verde-bosque" role="status">
+        <div className="mb-6 flex items-center justify-between rounded-[22px] border border-verde-hoja/50 bg-verde-hoja/10 px-4 py-3 text-sm font-semibold text-verde-bosque" role="status">
           {mensaje}
           <button
             type="button"
@@ -127,15 +127,15 @@ export default function AdminPanelPage() {
         </div>
       )}
 
-      <div className="mb-6 flex gap-2 border-b border-cafe-claro/30">
+      <div className="mb-6 flex flex-wrap gap-2 border-b border-cafe-claro/30">
         {pestanas.map((p) => (
           <button
             key={p.id}
             type="button"
             onClick={() => setPestana(p.id)}
-            className={`cursor-pointer -mb-px rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            className={`cursor-pointer -mb-px rounded-t-[22px] border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               pestana === p.id
-                ? 'border-terracota text-terracota'
+                ? 'border-iguana-hondo text-iguana-hondo'
                 : 'border-transparent text-cafe hover:text-verde-bosque'
             }`}
           >
@@ -145,7 +145,7 @@ export default function AdminPanelPage() {
       </div>
 
       {pestana === 'anfitriones' && (
-        <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
           {cargando ? (
             <p className="px-6 py-14 text-center text-cafe">{t('hosts.loading')}</p>
           ) : anfitriones.length === 0 ? (
@@ -209,14 +209,14 @@ export default function AdminPanelPage() {
                             <button
                               type="button"
                               onClick={() => alEliminarAnfitrion(a)}
-                              className="cursor-pointer rounded bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
+                              className="cursor-pointer rounded-full bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
                             >
                               {t('common:actions.deleteYes')}
                             </button>
                             <button
                               type="button"
                               onClick={() => setConfirmando(null)}
-                              className="cursor-pointer rounded bg-neutral-200 px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-300"
+                              className="cursor-pointer rounded-full bg-neutral-200 px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-300"
                             >
                               {t('common:actions.cancel')}
                             </button>
@@ -226,7 +226,7 @@ export default function AdminPanelPage() {
                             <button
                               type="button"
                               onClick={() => toggleVerificado(a)}
-                              className="cursor-pointer rounded bg-verde-hoja/15 px-2.5 py-1 text-xs font-semibold text-verde-bosque transition-colors hover:bg-verde-hoja/30"
+                              className="cursor-pointer rounded-full bg-verde-hoja/15 px-2.5 py-1 text-xs font-semibold text-verde-bosque transition-colors hover:bg-verde-hoja/30"
                               title={a.verificado ? t('action.removeVerificationTitle') : t('action.verifyProfileTitle')}
                             >
                               {a.verificado ? t('action.unverify') : t('action.verify')}
@@ -235,7 +235,7 @@ export default function AdminPanelPage() {
                               type="button"
                               onClick={() => setConfirmando(a.id)}
                               disabled={!!confirmando}
-                              className="relative cursor-pointer rounded p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
+                              className="relative cursor-pointer rounded-full p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
                               title={t('action.deleteProfileTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
@@ -255,7 +255,7 @@ export default function AdminPanelPage() {
       )}
 
       {pestana === 'publicaciones' && (
-        <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
           {cargando ? (
             <p className="px-6 py-14 text-center text-cafe">{t('listings.loading')}</p>
           ) : publicaciones.length === 0 ? (
@@ -280,7 +280,7 @@ export default function AdminPanelPage() {
                         <span className="text-xs text-cafe">{p.categoria?.nombre ?? '—'}</span>
                       </td>
                       <td className="px-4 py-3 text-neutral-700">{p.anfitrion?.nombre ?? '—'}</td>
-                      <td className="px-4 py-3 font-semibold text-terracota">
+                      <td className="px-4 py-3 font-semibold text-iguana-hondo">
                         {formatPrice(p.precioPorNoche, locale)}
                       </td>
                       <td className="px-4 py-3">
@@ -295,14 +295,14 @@ export default function AdminPanelPage() {
                             <button
                               type="button"
                               onClick={() => alEliminarPublicacion(p)}
-                              className="cursor-pointer rounded bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
+                              className="cursor-pointer rounded-full bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
                             >
                               {t('common:actions.deleteYes')}
                             </button>
                             <button
                               type="button"
                               onClick={() => setConfirmandoPub(null)}
-                              className="cursor-pointer rounded bg-neutral-200 px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-300"
+                              className="cursor-pointer rounded-full bg-neutral-200 px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-300"
                             >
                               {t('common:actions.cancel')}
                             </button>
@@ -312,7 +312,7 @@ export default function AdminPanelPage() {
                             <button
                               type="button"
                               onClick={() => { setPubEditando(p); setModalAbierto(true) }}
-                              className="relative cursor-pointer rounded p-1.5 text-cafe transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-cafe/10 hover:text-cafe-oscuro"
+                              className="relative cursor-pointer rounded-full p-1.5 text-cafe transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-cafe/10 hover:text-verde-bosque"
                               title={t('action.editListingTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
@@ -324,7 +324,7 @@ export default function AdminPanelPage() {
                               type="button"
                               onClick={() => setConfirmandoPub(p.id)}
                               disabled={!!confirmandoPub}
-                              className="relative cursor-pointer rounded p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
+                              className="relative cursor-pointer rounded-full p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
                               title={t('action.deleteListingTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
@@ -344,7 +344,7 @@ export default function AdminPanelPage() {
       )}
 
       {pestana === 'resenas' && (
-        <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white px-6 py-14 text-center shadow-sm">
+        <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center">
           <p className="text-lg font-semibold text-verde-bosque">{t('reviews.title')}</p>
           <p className="mt-1 text-sm text-cafe">
             {t('reviews.soon')}

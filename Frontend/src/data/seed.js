@@ -121,5 +121,3 @@ export const departamentos = [
   { nombre: 'Sonsonate', imagen: 'https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?w=1200' },
   { nombre: 'Santa Ana', imagen: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1200' },
 ]
-
-export const categorias = ['Surf', 'Gastronomía', 'Cultura', 'Aventura', 'Hostal', 'Glamping', 'Finca', 'Hotel']

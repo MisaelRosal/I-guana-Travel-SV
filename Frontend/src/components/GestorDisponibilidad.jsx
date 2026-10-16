@@ -4,7 +4,7 @@ import { useFormatLocale } from '../i18n/config.js'
 import { formatDateDMY } from '../i18n/format.js'
 import { api } from '../services/api.js'
 
-const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
+const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
 
 function horariosConFecha(publicacion) {
   return (publicacion?.horarios ?? [])
@@ -46,7 +46,7 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
 
   if (experiencias.length === 0) {
     return (
-      <div className="rounded-xl border border-cafe-claro/40 bg-white px-6 py-14 text-center shadow-sm">
+      <div className="rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center">
         <p className="text-lg font-semibold text-verde-bosque">{t('availability.emptyTitle')}</p>
         <p className="mt-1 text-sm text-cafe">{t('availability.emptyBody')}</p>
       </div>
@@ -96,8 +96,8 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-cafe-claro/40 bg-white p-4 shadow-sm sm:p-5">
-        <label className="block text-sm font-semibold text-cafe-oscuro mb-1" htmlFor="gestor-publicacion">
+      <div className="rounded-[22px] border border-cafe-claro/40 bg-white p-4 sm:p-5">
+        <label className="block text-sm font-semibold text-verde-bosque mb-1" htmlFor="gestor-publicacion">
           {t('availability.selectLabel')}
         </label>
         <select
@@ -114,12 +114,12 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">
+        <div className="rounded-[22px] border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">
           {error}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-cafe-claro/40 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-verde-bosque text-white">
@@ -146,7 +146,7 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
                         value={v.cupos}
                         onChange={(e) => actualizar(h, { cupos: e.target.value })}
                         aria-label={t('availability.table.slots')}
-                        className="w-24 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+                        className="w-24 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -167,7 +167,7 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
                         type="button"
                         onClick={() => guardar(h)}
                         disabled={!dirty || guardandoId === h.id}
-                        className="cursor-pointer rounded-lg bg-terracota px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-verde-bosque disabled:opacity-40"
+                        className="cursor-pointer rounded-full bg-iguana-hondo px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-verde-bosque disabled:opacity-40"
                       >
                         {guardandoId === h.id ? t('availability.saving') : t('availability.save')}
                       </button>

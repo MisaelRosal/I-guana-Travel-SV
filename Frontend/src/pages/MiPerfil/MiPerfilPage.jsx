@@ -6,7 +6,7 @@ import { getMiPerfil, actualizarMiPerfilAnfitrion, getMunicipios, obtenerSesion 
 import { api } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
 
-const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
+const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
 const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 function Avatar({ anfitrion }) {
@@ -14,7 +14,7 @@ function Avatar({ anfitrion }) {
   // `anfitrion.*` fields are DB data and always render verbatim (passthrough).
   const { t } = useTranslation('perfil')
   return (
-    <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-4xl font-bold text-cafe shadow-md">
+    <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-4xl font-bold text-cafe">
       {anfitrion.fotoPerfil ? (
         <img src={anfitrion.fotoPerfil} alt={t('avatarAlt')} className="h-full w-full object-cover" />
       ) : (
@@ -162,7 +162,7 @@ export default function MiPerfilPage() {
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('title')}</h1>
           <p className="mt-3 text-cafe">{t('missing.body')}</p>
-          <Link to={localePath('becomeHost')} className="cursor-pointer mt-6 inline-block rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors">
+          <Link to={localePath('becomeHost')} className="cursor-pointer mt-6 inline-block rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors">
             {t('missing.cta')}
           </Link>
         </div>
@@ -172,16 +172,16 @@ export default function MiPerfilPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
-      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
+      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-verde-hoja">
         {t('back')}
       </Link>
 
-      <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+      <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
           <Avatar anfitrion={anfitrion} />
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-verde-bosque">{anfitrion.nombre}</h1>
-            <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber-100 text-amber-700'}`}>
+            <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber/10 text-verde-bosque'}`}>
               {anfitrion.verificado ? t('badge.verified') : t('badge.pending')}
             </span>
           </div>
@@ -195,26 +195,26 @@ export default function MiPerfilPage() {
           <div className="mt-6 border-t border-neutral-100 pt-6">
             <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.email')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.email')}</dt>
                 <dd className="mt-0.5 text-neutral-800 break-all">{anfitrion.email}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.phone')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.phone')}</dt>
                 <dd className="mt-0.5 text-neutral-800">{anfitrion.telefono || '—'}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.publications')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.publications')}</dt>
                 <dd className="mt-0.5 text-neutral-800">{anfitrion.publicacionesCount ?? 0}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.location')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.location')}</dt>
                 <dd className="mt-0.5 text-neutral-800">
                   {anfitrion.municipio?.nombre ?? '—'}
                   {anfitrion.municipio?.departamento ? `, ${anfitrion.municipio.departamento.nombre}` : ''}
                 </dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.description')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.description')}</dt>
                 <dd className="mt-0.5 whitespace-pre-line text-neutral-800">{anfitrion.descripcion || '—'}</dd>
               </div>
             </dl>
@@ -222,7 +222,7 @@ export default function MiPerfilPage() {
               <button
                 type="button"
                 onClick={() => { cargarCampos(anfitrion); setError(''); setEditando(true) }}
-                className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
+                className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
               >
                 {t('edit')}
               </button>
@@ -316,7 +316,7 @@ export default function MiPerfilPage() {
             </div>
           </div>
           {error && (
-            <p id="mp-form-error" role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+            <p id="mp-form-error" role="alert" className="mt-2 rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
               {error}
             </p>
           )}
@@ -324,14 +324,14 @@ export default function MiPerfilPage() {
             <button
               type="button"
               onClick={() => { cargarCampos(anfitrion); setError(''); setEditando(false) }}
-              className="cursor-pointer rounded-lg border border-neutral-300 bg-white px-5 py-2.5 font-semibold text-cafe hover:bg-neutral-50 transition-colors"
+              className="cursor-pointer rounded-full border border-neutral-300 bg-white px-5 py-2.5 font-semibold text-cafe hover:bg-neutral-50 transition-colors"
             >
               {t('form.cancel')}
             </button>
             <button
               type="submit"
               disabled={guardando}
-              className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+              className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
               {guardando ? t('form.saving') : t('form.save')}
             </button>

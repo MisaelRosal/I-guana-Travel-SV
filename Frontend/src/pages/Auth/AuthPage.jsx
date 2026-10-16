@@ -74,7 +74,7 @@ export default function AuthPage() {
   return (
     <div className="flex justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+        <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('login.heading')}</h1>
           <p className="mt-1 text-sm text-cafe">{t('login.welcome')}</p>
 
@@ -93,7 +93,7 @@ export default function AuthPage() {
                 required
                 aria-invalid={error ? true : undefined}
                 aria-describedby={error ? 'login-error' : undefined}
-                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
+                className="w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
               />
             </div>
             <div>
@@ -111,7 +111,7 @@ export default function AuthPage() {
                   required
                   aria-invalid={error ? true : undefined}
                   aria-describedby={error ? 'login-error' : undefined}
-                  className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 pr-11 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
+                  className="w-full rounded-full border border-neutral-300 bg-white px-3 py-2 pr-11 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
                 />
                 <button
                   type="button"
@@ -135,7 +135,7 @@ export default function AuthPage() {
             </div>
 
             {error && (
-              <p id="login-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+              <p id="login-error" role="alert" className="rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                 {error}
               </p>
             )}
@@ -143,7 +143,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={enviando}
-              className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+              className="cursor-pointer w-full rounded-full bg-iguana-hondo px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
               {enviando ? t('login.submitting') : t('login.submit')}
             </button>
@@ -161,7 +161,7 @@ export default function AuthPage() {
           <Link
             to={localePath('register')}
             state={location.state}
-            className="cursor-pointer font-semibold text-terracota transition-colors hover:text-verde-bosque"
+            className="cursor-pointer font-semibold text-iguana-hondo transition-colors hover:text-verde-bosque"
           >
             {t('login.registerLink')}
           </Link>

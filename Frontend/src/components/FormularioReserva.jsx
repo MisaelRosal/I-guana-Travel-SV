@@ -59,14 +59,14 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
       role="dialog"
       aria-modal="true"
     >
-      <div className="animate-modal-box w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
+      <div className="animate-modal-box w-full max-w-md rounded-[22px] bg-white p-6 ring-1 ring-black/5">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-verde-bosque">{t('form.title')}</h3>
           <button
             type="button"
             onClick={onCancelar}
             aria-label={t('common:modal.close')}
-            className="cursor-pointer rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+            className="cursor-pointer rounded-full p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
           >
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -74,19 +74,19 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
           </button>
         </div>
 
-        <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+        <div className="mt-4 rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
           <p className="text-sm font-semibold text-verde-bosque">{experiencia.titulo}</p>
           <p className="mt-1 text-sm text-cafe">
             {formatDateDMY(fechaInicio, locale)}
             {fechaFin ? ` → ${formatDateDMY(fechaFin, locale)}` : ''}
             {esHospedaje ? <> · {t('form.nights', { count: noches })}</> : <> · {t('form.guests', { count: numPersonas })}</>}
           </p>
-          <p className="mt-2 text-lg font-extrabold text-terracota">{formatPrice(precioTotal, locale)}</p>
+          <p className="mt-2 text-lg font-extrabold text-iguana-hondo">{formatPrice(precioTotal, locale)}</p>
         </div>
 
         {sesion ? (
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-            <div className="rounded-lg border border-verde-hoja/30 bg-verde-hoja/10 p-4">
+            <div className="rounded-[22px] border border-verde-hoja/30 bg-verde-hoja/10 p-4">
               <p className="text-sm font-semibold text-verde-bosque">{t('form.guestBanner')}</p>
               <p className="mt-1 text-base font-bold text-verde-bosque">
                 {sesion.nombre} {sesion.apellido}
@@ -99,21 +99,21 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
               <button
                 type="button"
                 onClick={onCancelar}
-                className="cursor-pointer flex-1 rounded-lg border border-cafe-claro bg-white px-4 py-2.5 text-sm font-semibold text-cafe-oscuro transition-colors hover:bg-neutral-50"
+                className="cursor-pointer flex-1 rounded-full border border-cafe-claro bg-white px-4 py-2.5 text-sm font-semibold text-verde-bosque transition-colors hover:bg-neutral-50"
               >
                 {t('form.back')}
               </button>
               <button
                 type="submit"
                 disabled={enviando}
-                className="cursor-pointer flex-1 rounded-lg bg-terracota px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:opacity-50"
+                className="cursor-pointer flex-1 rounded-full bg-iguana-hondo px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque disabled:opacity-50"
               >
                 {enviando ? t('form.submitting') : t('form.submit')}
               </button>
             </div>
           </form>
         ) : (
-          <div className="mt-5 rounded-xl border border-dashed border-terracota/40 bg-terracota/5 p-6 text-center">
+          <div className="mt-5 rounded-[22px] border border-dashed border-iguana-hondo/40 bg-iguana-hondo/5 p-6 text-center">
             <p className="text-base font-semibold text-verde-bosque">
               {t('form.loginTitle')}
             </p>
@@ -124,14 +124,14 @@ export default function FormularioReserva({ experiencia, fechaInicio, fechaFin, 
               <Link
                 to={localePath('login')}
                 state={{ from: volverA }}
-                className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+                className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
               >
                 {t('form.loginCta')}
               </Link>
               <Link
                 to={localePath('register')}
                 state={{ from: volverA }}
-                className="cursor-pointer rounded-lg border border-terracota px-6 py-2.5 text-sm font-bold text-terracota transition-colors hover:bg-terracota/10"
+                className="cursor-pointer rounded-full border border-iguana-hondo px-6 py-2.5 text-sm font-bold text-iguana-hondo transition-colors hover:bg-iguana-hondo/10"
               >
                 {t('form.registerCta')}
               </Link>

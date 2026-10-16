@@ -113,7 +113,7 @@ describe('AgendaOperador (A-20)', () => {
 
     // 2026-11-15 and 2026-11-16 are occupied; checkout 2026-11-18 means 17th is the last night? 15->18 is 3 nights: 15,16,17
     // half-open [15,18) so 15,16,17 — calendar shows 15 and 16 and 17 as occupied? Check the cell count.
-    const occupiedCells = document.querySelectorAll('.bg-terracota\\/90')
+    const occupiedCells = document.querySelectorAll('.bg-iguana-hondo\\/90')
     expect(occupiedCells.length).toBeGreaterThan(0)
   })
 

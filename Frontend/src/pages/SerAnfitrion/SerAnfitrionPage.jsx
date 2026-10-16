@@ -6,7 +6,7 @@ import { getMunicipios, registrarAnfitrion, obtenerSesion, guardarSesion } from 
 import { api, readCsrfToken } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
 
-const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
+const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
 const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 export default function SerAnfitrionPage() {
@@ -142,7 +142,7 @@ export default function SerAnfitrionPage() {
           </p>
           <Link
             to={localePath('login')}
-            className="cursor-pointer mt-6 inline-block rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
+            className="cursor-pointer mt-6 inline-block rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
           >
             {t('loginRequired.cta')}
           </Link>
@@ -154,7 +154,7 @@ export default function SerAnfitrionPage() {
   return (
     <div className="flex justify-center px-4 py-12">
       <div className="w-full max-w-2xl">
-        <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+        <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('heading')}</h1>
           <p className="mt-1 text-sm text-cafe">
             {t('subtitle')}
@@ -182,7 +182,7 @@ export default function SerAnfitrionPage() {
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="cursor-pointer font-semibold text-terracota hover:text-verde-bosque"
+                      className="cursor-pointer font-semibold text-iguana-hondo hover:text-verde-bosque"
                     >
                       {t('choosePhoto')}
                     </button>
@@ -243,7 +243,7 @@ export default function SerAnfitrionPage() {
             </div>
 
             {error && (
-              <p id="anf-form-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+              <p id="anf-form-error" role="alert" className="rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                 {error}
               </p>
             )}
@@ -251,7 +251,7 @@ export default function SerAnfitrionPage() {
             <button
               type="submit"
               disabled={enviando || subiendo}
-              className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+              className="cursor-pointer w-full rounded-full bg-iguana-hondo px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
               {subiendo ? t('submittingPhoto') : enviando ? t('submitting') : t('submit')}
             </button>

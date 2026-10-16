@@ -28,7 +28,7 @@ export default function Toast({ mensaje, tipo, onCerrar }) {
 
   return (
     <div
-      className={`fixed top-5 right-5 z-[2000] flex items-center gap-3 rounded-lg px-4 py-3 shadow-xl transition-all duration-300 ${
+      className={`fixed top-5 right-5 z-[2000] flex items-center gap-3 rounded-full border border-cafe-claro px-4 py-3 transition-all duration-300 ${
         visible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
       } ${esExito ? 'bg-verde-bosque text-white' : 'bg-red-600 text-white'}`}
       role={esExito ? 'status' : 'alert'}
@@ -47,7 +47,7 @@ export default function Toast({ mensaje, tipo, onCerrar }) {
       <button
         type="button"
         onClick={() => { setVisible(false); setTimeout(onCerrar, 300) }}
-        className="relative ml-2 cursor-pointer rounded p-0.5 opacity-80 transition-opacity after:absolute after:-inset-3 after:content-[''] hover:opacity-100"
+        className="relative ml-2 cursor-pointer rounded-full p-0.5 opacity-80 transition-opacity after:absolute after:-inset-3 after:content-[''] hover:opacity-100"
         aria-label={t('toast.close')}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
