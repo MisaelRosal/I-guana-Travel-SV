@@ -32,11 +32,12 @@ describe('publication content locale requests', () => {
   })
 
   it('requests the selected locale for the public detail endpoint', async () => {
-    api.get.mockResolvedValue({ id: 9, titulo: 'Casa', tipo: 'hospedaje' })
+    api.get.mockResolvedValue({ id: 314, titulo: 'Casa', tipo: 'hospedaje' })
 
-    await getExperienciaById(9, 'en')
+    const experiencia = await getExperienciaById(9, 'en')
 
     expect(api.get).toHaveBeenCalledWith('/Publicacione/9?contentLocale=en')
+    expect(experiencia.publicacionId).toBe(314)
   })
 
   it('excludes blocked horarios from the public availability lists', async () => {
