@@ -9,6 +9,7 @@ import SerAnfitrionPage from '../pages/SerAnfitrion/SerAnfitrionPage.jsx'
 import AdminPanelPage from '../pages/Admin/AdminPanelPage.jsx'
 import MiPerfilPage from '../pages/MiPerfil/MiPerfilPage.jsx'
 import PerfilAnfitrionPage from '../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx'
+import ChatPage from '../pages/Chat/ChatPage.jsx'
 
 // F5 (i18n-es-en) task 6.2 — localized route table (AD-1: ALIAS, never
 // redirect). Every screen owns one pair of URL forms; both are registered as
@@ -28,6 +29,7 @@ export const ROUTE_PAIRS = [
   { key: 'becomeHost', es: 'hacerse-anfitrion', en: 'become-a-host', element: <SerAnfitrionPage /> },
   { key: 'admin', es: 'admin', en: 'admin', element: <AdminPanelPage /> },
   { key: 'miPerfil', es: 'mi-perfil', en: 'my-profile', element: <MiPerfilPage /> },
+  { key: 'mensajes', es: 'mensajes', en: 'messages', element: <ChatPage /> },
   { key: 'hostProfile', es: 'anfitriones/:id', en: 'hosts/:id', element: <PerfilAnfitrionPage /> },
 ]
 

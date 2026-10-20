@@ -33,6 +33,9 @@ function mapearPublicacion(p) {
     : null
   return {
     id: p.id,
+    // Chat card context binds this explicit publication id — the detail page's
+    // route :id is the same value today, but consumers must never assume it.
+    publicacionId: p.id,
     titulo: p.titulo,
     tipo: esHospedaje ? 'hospedaje' : 'experiencia',
     categoria: categoriaNombre,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
@@ -7,7 +7,9 @@ import { formatPrice } from '../../i18n/format.js'
 import { getAnfitrionPorId } from '../../services/anfitriones.js'
 import { getExperiencias } from '../../services/experiencias.js'
 import { getResumenAnfitrion } from '../../services/resenas.js'
+import { leerSesionCache } from '../../services/session.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
+import ChatPanel from '../../components/ChatPanel.jsx'
 
 // F5 (task 6.5 + 4.5 gate closure): this public page was the one screen no
 // F1/F2 wave owned, so its frontend-owned Spanish literals are extracted here
@@ -33,7 +35,9 @@ function Avatar({ anfitrion, grande }) {
 
 export default function PerfilAnfitrionPage() {
   const { t, i18n } = useTranslation('perfil')
+  const { t: tc } = useTranslation('chat')
   const { id } = useParams()
+  const location = useLocation()
   const locale = useFormatLocale()
   const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
   const [anfitrion, setAnfitrion] = useState(null)
@@ -41,6 +45,8 @@ export default function PerfilAnfitrionPage() {
   const [resumen, setResumen] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  const [chatAbierto, setChatAbierto] = useState(false)
+  const sesion = leerSesionCache()
 
   useEffect(() => {
     let activo = true
@@ -108,6 +114,25 @@ export default function PerfilAnfitrionPage() {
                     )}
                   </div>
                 )}
+                <div className="mt-4 flex justify-center sm:justify-start">
+                  {sesion ? (
+                    <button
+                      type="button"
+                      onClick={() => setChatAbierto(true)}
+                      className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+                    >
+                      {tc('entry.contactHost')}
+                    </button>
+                  ) : (
+                    <Link
+                      to={localePath('login')}
+                      state={{ from: location.pathname + location.search }}
+                      className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+                    >
+                      {tc('entry.contactHost')}
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -168,6 +193,12 @@ export default function PerfilAnfitrionPage() {
               </div>
             </section>
           )}
+
+          <ChatPanel
+            abierto={chatAbierto}
+            anfitrionId={anfitrion.id ?? id}
+            onCerrar={() => setChatAbierto(false)}
+          />
         </>
       )}
     </div>

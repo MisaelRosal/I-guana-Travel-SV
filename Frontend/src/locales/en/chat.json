@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "inbox": "Messages"
+  },
+  "entry": {
+    "contactHost": "Contact me",
+    "messageHost": "Send a message"
+  },
+  "drawer": {
+    "title": "Message the host",
+    "close": "Close",
+    "loading": "Loading messages…",
+    "error": "We couldn't load this conversation.",
+    "retry": "Try again",
+    "empty": "No messages yet. Write the first one.",
+    "loadOlder": "See older messages",
+    "placeholder": "Write your message…",
+    "send": "Send",
+    "sending": "Sending…",
+    "counter": "{{count}}/500",
+    "counterLimit": "500 characters max",
+    "sentYou": "You",
+    "publicationCard": {
+      "label": "Listing",
+      "view": "View listing"
+    },
+    "loginTitle": "Sign in to message the host",
+    "loginBody": "You need an account to chat. Sign in and come back to this page.",
+    "loginCta": "Sign in",
+    "registerCta": "Create account"
+  },
+  "page": {
+    "title": "Your messages",
+    "loading": "Loading your conversations…",
+    "error": "We couldn't load your conversations.",
+    "empty": "You have no conversations yet. Find a host and message them from their profile or an experience.",
+    "open": "Open conversation",
+    "unread_one": "{{count}} unread",
+    "unread_other": "{{count}} unread",
+    "noPreview": "No messages yet",
+    "selectHint": "Pick a conversation to see the messages.",
+    "back": "Back to conversations",
+    "loginTitle": "Sign in to see your messages",
+    "loginBody": "Your chat inbox requires an account.",
+    "loginCta": "Sign in"
+  },
+  "badge": {
+    "aria_one": "{{count}} unread message",
+    "aria_other": "{{count}} unread messages"
+  },
+  "aria": {
+    "liveRegion": "New messages"
+  }
+}
