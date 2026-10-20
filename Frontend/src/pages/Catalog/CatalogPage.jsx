@@ -335,7 +335,7 @@ export default function CatalogPage() {
             <div
               role="group"
               aria-label={t('filters.typeGroup')}
-              className="flex w-full flex-nowrap items-center gap-1 rounded-full border-2 border-verde-bosque bg-verde-bosque/5 p-1.5 sm:min-w-[280px] sm:flex-1"
+              className="flex w-full flex-nowrap items-center gap-1 rounded-full border-2 border-verde-bosque bg-verde-bosque/5 p-1.5 sm:w-fit sm:flex-none"
             >
               {[
                 { valor: '', etiqueta: t('type.all') },
