@@ -49,7 +49,7 @@ public sealed class GraceReservaIntegrationTests
     public async Task PostShortReservation_SetsGraceWindow_AndFarReservationLeavesNull()
     {
         var user = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(user.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         var before = DateTime.Now;
@@ -92,7 +92,7 @@ public sealed class GraceReservaIntegrationTests
     public async Task ShortReservation_InGrace_EditAllowed()
     {
         var user = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(user.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
         var reservaId = await PostShortReservationAsync(user, pubId, Iso(0), Iso(1));
 
@@ -115,7 +115,7 @@ public sealed class GraceReservaIntegrationTests
     public async Task ShortReservation_InGrace_PayConfirms()
     {
         var user = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(user.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
         var reservaId = await PostShortReservationAsync(user, pubId, Iso(0), Iso(1));
 
@@ -131,7 +131,7 @@ public sealed class GraceReservaIntegrationTests
     public async Task ShortReservation_InGrace_CancelAllowed()
     {
         var user = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(user.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
         var reservaId = await PostShortReservationAsync(user, pubId, Iso(1), Iso(2));
 
@@ -148,7 +148,7 @@ public sealed class GraceReservaIntegrationTests
     public async Task ShortReservation_ExpiredGrace_BlocksEditCancelPay_AndServiceCancels()
     {
         var user = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(user.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
         var reservaId = await PostShortReservationAsync(user, pubId, Iso(0), Iso(1));
 
@@ -190,7 +190,7 @@ public sealed class GraceReservaIntegrationTests
     public async Task ShortReservation_Paid_EditAndCancelBlockedWithMessage()
     {
         var user = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(user.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
         var reservaId = await PostShortReservationAsync(user, pubId, Iso(0), Iso(1));
 
@@ -222,7 +222,7 @@ public sealed class GraceReservaIntegrationTests
     public async Task FarReservation_LegacyDateRulesIntact()
     {
         var user = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(user.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         // Seeded directly (NULL grace) so the legacy rules, not grace, apply.
@@ -342,7 +342,9 @@ public sealed class GraceReservaIntegrationTests
         return new IguanasDbContext(options);
     }
 
-    private async Task<int> SeedHostIdAsync(int usuarioId)
+    // Unlinked host (UsuarioId = null) so the booking caller is a legitimate guest;
+    // the new rule blocks a host from reserving their own publication.
+    private async Task<int> SeedHostIdAsync(int? usuarioId)
     {
         await using var db = NewDb();
         var tag = Guid.NewGuid().ToString("N");

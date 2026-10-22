@@ -56,6 +56,7 @@ vi.mock('../../../services/api.js', () => ({
 
 vi.mock('../../../services/session.js', () => ({
   restaurarSesion: vi.fn(async () => {}),
+  leerSesionCache: vi.fn(() => null),
 }))
 
 // The login-return integration spec below renders the real experience detail

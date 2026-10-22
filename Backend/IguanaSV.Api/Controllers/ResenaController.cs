@@ -56,6 +56,14 @@ public class ResenaController : ControllerBase
             return NotFound();
         }
 
+        // The publication's host cannot review their own listing, even if a legacy
+        // self-reservation already exists (the booking gate closes the normal path;
+        // this is defense in depth for rows created before that rule).
+        if (reserva.Publicacion?.Anfitrion?.UsuarioId == sub.Value)
+        {
+            return BadRequest(new { mensaje = "No podés reseñar tu propia publicación." });
+        }
+
         if (reserva.Estado != "confirmada" && reserva.Estado != "completada")
         {
             return BadRequest(new { mensaje = "Solo podés reseñar reservas confirmadas o completadas." });

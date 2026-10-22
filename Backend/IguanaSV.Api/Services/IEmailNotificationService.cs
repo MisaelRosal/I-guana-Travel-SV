@@ -50,6 +50,19 @@ public interface IEmailNotificationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sent to the guest when the host changes the experience date and the
+    /// reservation is moved with it. The guest keeps the reservation by default
+    /// and can cancel it without the normal penalties (deep-links to /reservas).
+    /// </summary>
+    Task<bool> ReservaReprogramadaAsync(
+        string destinatario,
+        string nombreHuesped,
+        string tituloPublicacion,
+        DateOnly fechaAnterior,
+        DateOnly fechaNueva,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sent to the guest once the stay/experience's arrival day is reached and
     /// the reservation can be reviewed (button deep-links to /reservas).
     /// </summary>

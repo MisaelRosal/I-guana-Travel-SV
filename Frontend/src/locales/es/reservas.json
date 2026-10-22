@@ -32,6 +32,8 @@
     "noteShortConfirmed": "Pagaste: falta menos de un día, ya no se puede editar ni cancelar.",
     "noteGraceExpired": "La hora para pagar venció. Esta reserva se cancelará automáticamente.",
     "noteBlockedSoon": "Falta un día o menos para tu entrada. Por eso esta reserva ya no se puede editar ni eliminar.",
+    "noteRescheduled": "El anfitrión cambió la fecha de esta experiencia y tu reserva se movió con ella. Podés cancelarla sin restricciones si no te sirve.",
+    "noteRescheduledFrom": "El anfitrión movió esta reserva del {{date}} a la nueva fecha. Podés cancelarla sin restricciones si no te sirve.",
     "pay": "Pagar",
     "edit": "Editar",
     "delete": "Eliminar"
@@ -98,6 +100,7 @@
     "reasonStarted": "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy.",
     "reasonCompleted": "No se puede cancelar una reserva que ya fue completada.",
     "question": "¿Estás seguro que deseas cancelar esta reserva?",
+    "freeNote": "Esta reserva fue reprogramada por el anfitrión: podés cancelarla sin restricciones.",
     "checkIn": "Check-in: {{date}}",
     "confirm": "Sí, cancelar reserva",
     "processing": "Cancelando...",

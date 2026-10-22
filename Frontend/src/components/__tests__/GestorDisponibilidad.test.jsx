@@ -12,6 +12,7 @@ import GestorDisponibilidad from '../GestorDisponibilidad.jsx'
 vi.mock('../../services/api.js', () => ({
   api: {
     put: vi.fn(async () => ({ ok: true })),
+    post: vi.fn(async () => ({ reservasMovidas: 2 })),
   },
 }))
 
@@ -100,5 +101,45 @@ describe('Gestor de disponibilidad', () => {
         cupos: 8,
       })),
     )
+  })
+
+  it('changes the date through POST /Horario/{id}/reprogramar after confirmation', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onActualizado = vi.fn()
+    const onMensaje = vi.fn()
+    renderGestor({ onActualizado, onMensaje })
+
+    await screen.findByText('Disponible')
+
+    // The reschedule button only shows once the date differs from the stored one.
+    expect(screen.queryByRole('button', { name: 'Reprogramar fecha' })).toBeNull()
+
+    const dateInputs = screen.getAllByLabelText('Nueva fecha')
+    fireEvent.change(dateInputs[0], { target: { value: '2026-12-01' } })
+
+    const reprogramar = await screen.findByRole('button', { name: 'Reprogramar fecha' })
+    fireEvent.click(reprogramar)
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith('/Horario/101/reprogramar', { nuevaFecha: '2026-12-01' }),
+    )
+    expect(onActualizado).toHaveBeenCalled()
+    expect(onMensaje).toHaveBeenCalled()
+
+    confirmSpy.mockRestore()
+  })
+
+  it('does not reschedule when the confirmation is dismissed', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderGestor()
+
+    await screen.findByText('Disponible')
+    const dateInputs = screen.getAllByLabelText('Nueva fecha')
+    fireEvent.change(dateInputs[0], { target: { value: '2026-12-01' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reprogramar fecha' }))
+
+    expect(api.post).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
   })
 })

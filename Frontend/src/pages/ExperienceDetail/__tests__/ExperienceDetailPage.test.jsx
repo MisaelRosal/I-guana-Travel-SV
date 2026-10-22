@@ -352,3 +352,29 @@ describe('ES active: extraction keeps the canonical Spanish detail byte-comparab
     expect(within(dialog).getByRole('button', { name: 'Continuar' })).toBeInTheDocument()
   })
 })
+
+describe('Anfitrión dueño de la publicación: guard de UX', () => {
+  it('oculta el botón de reservar y muestra el aviso para el anfitrión', async () => {
+    sessionStorage.setItem(
+      'iguana_usuario',
+      JSON.stringify({ id: 23, nombre: 'Kevin', apellido: 'Hernández', email: 'kevin@correo.com', telefono: '' }),
+    )
+
+    await openLoaded({ ...fixtures.hospedaje, anfitrionUsuarioId: 23 })
+
+    expect(screen.getByText('Esta es tu publicación, así que no podés reservarla.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reservar ahora' })).toBeNull()
+  })
+
+  it('mantiene el botón para un usuario que no es el anfitrión', async () => {
+    sessionStorage.setItem(
+      'iguana_usuario',
+      JSON.stringify({ id: 99, nombre: 'Ana', apellido: 'Pérez', email: 'ana@correo.com', telefono: '' }),
+    )
+
+    await openLoaded({ ...fixtures.hospedaje, anfitrionUsuarioId: 23 })
+
+    expect(screen.getByRole('button', { name: 'Reservar ahora' })).toBeInTheDocument()
+    expect(screen.queryByText('Esta es tu publicación, así que no podés reservarla.')).toBeNull()
+  })
+})

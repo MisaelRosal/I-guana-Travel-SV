@@ -232,6 +232,38 @@ public class EmailNotificationService : IEmailNotificationService
             cancellationToken: cancellationToken);
     }
 
+    public Task<bool> ReservaReprogramadaAsync(
+        string destinatario,
+        string nombreHuesped,
+        string tituloPublicacion,
+        DateOnly fechaAnterior,
+        DateOnly fechaNueva,
+        CancellationToken cancellationToken = default)
+    {
+        var enlace = $"{_options.SitioUrl.TrimEnd('/')}/reservas";
+        var cuerpo = $"""
+            <p>Hola {Esc(nombreHuesped)},</p>
+            <p>El anfitrión de "{Esc(tituloPublicacion)}" cambió la fecha de tu reserva.</p>
+            <p><strong>Fecha anterior:</strong> {fechaAnterior:dd/MM/yyyy}<br>
+               <strong>Nueva fecha:</strong> {fechaNueva:dd/MM/yyyy}</p>
+            <p>Tu reserva ya quedó movida a la nueva fecha. No necesitás hacer nada para conservarla.</p>
+            <p>Si preferís no asistir, podés cancelarla sin restricciones ni penalizaciones desde "Mis reservas".</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>
+              <td style="border-radius:8px;background:#1f4d3a;">
+                <a href="{Esc(enlace)}" style="display:inline-block;padding:12px 26px;color:#ffffff;font-weight:bold;text-decoration:none;">Ver mi reserva</a>
+              </td>
+            </tr></table>
+            <p>Gracias por viajar con nosotros.</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Cambio de fecha en tu reserva - I Guana Travel SV",
+            "reserva_reprogramada",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
     public Task<bool> ResenaDisponibleAsync(
         string destinatario, string nombre, string tituloPublicacion, CancellationToken cancellationToken = default)
     {

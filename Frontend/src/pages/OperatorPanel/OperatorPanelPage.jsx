@@ -32,6 +32,14 @@ export default function OperatorPanelPage() {
   const [textoRespuesta, setTextoRespuesta] = useState('')
   const [guardandoId, setGuardandoId] = useState(null)
 
+  const esRolAdmin = esAdmin(usuario?.rol)
+  const esAnfitrion = usuario?.rol === 'anfitrion'
+  const mostrarCrear = esRolAdmin || esAnfitrion
+  // Publishing is locked until an admin validates the host account
+  // (Anfitrione.Verificado). Admins keep the platform-wide bypass.
+  const puedeCrear = esRolAdmin || (esAnfitrion && anfitrionPropio?.verificado === true)
+  const verificacionPendiente = esAnfitrion && !cargando && !!anfitrionPropio && anfitrionPropio.verificado !== true
+
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
@@ -141,17 +149,32 @@ export default function OperatorPanelPage() {
           <h1 className="text-3xl font-bold text-verde-bosque">{t('heading')}</h1>
           <p className="mt-1 text-cafe">{t('subtitle')}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setPubEditando(null); setModalAbierto(true) }}
-          className="flex cursor-pointer items-center gap-2 rounded-full bg-iguana-hondo px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          {t('create')}
-        </button>
+        {mostrarCrear && (
+          <button
+            type="button"
+            onClick={() => {
+              if (!puedeCrear) return
+              setPubEditando(null)
+              setModalAbierto(true)
+            }}
+            disabled={!puedeCrear}
+            title={verificacionPendiente ? t('verification.pendingTooltip') : undefined}
+            className="flex cursor-pointer items-center gap-2 rounded-full bg-iguana-hondo px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-iguana-hondo"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            {t('create')}
+          </button>
+        )}
       </div>
+
+      {verificacionPendiente && (
+        <div className="mb-6 rounded-[22px] border border-amber/40 bg-amber/10 px-4 py-3 text-sm" role="status">
+          <p className="font-semibold text-verde-bosque">{t('verification.pendingTitle')}</p>
+          <p className="mt-1 text-cafe">{t('verification.pendingBody')}</p>
+        </div>
+      )}
 
       {mensaje && (
         <div className="mb-6 flex items-center justify-between rounded-[22px] border border-verde-hoja/50 bg-verde-hoja/10 px-4 py-3 text-sm font-semibold text-verde-bosque" role="status">
@@ -201,7 +224,7 @@ export default function OperatorPanelPage() {
           <div className="px-6 py-14 text-center">
             <p className="text-lg font-semibold text-verde-bosque">{t('status.emptyTitle')}</p>
             <p className="mt-1 text-sm text-cafe">
-              {t('status.emptyBody')}
+              {verificacionPendiente ? t('verification.pendingBody') : t('status.emptyBody')}
             </p>
           </div>
         ) : (
@@ -314,18 +337,20 @@ export default function OperatorPanelPage() {
       {pestana === 'agenda' && (
         <AgendaOperador
           publicaciones={publicaciones}
-          esAdmin={esAdmin(usuario?.rol)}
+          esAdmin={esRolAdmin}
         />
       )}
 
       {pestana === 'dashboard' && (
         <DashboardGanancias
           publicaciones={publicaciones}
-          esAdmin={esAdmin(usuario?.rol)}
+          esAdmin={esRolAdmin}
           totalResenas={listaResenas.length}
           onVerPublicaciones={() => setPestana('publicaciones')}
           onVerResenas={() => setPestana('resenas')}
-          onCrearPublicacion={() => { setPubEditando(null); setModalAbierto(true) }}
+          onCrearPublicacion={puedeCrear
+            ? () => { setPubEditando(null); setModalAbierto(true) }
+            : undefined}
         />
       )}
 

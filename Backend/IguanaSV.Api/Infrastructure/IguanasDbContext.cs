@@ -526,6 +526,13 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.ResenasNotificadasEn)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("resenas_notificadas_en");
+            entity.Property(e => e.CancelacionLibre)
+                .HasDefaultValue(false)
+                .HasColumnName("cancelacion_libre");
+            entity.Property(e => e.ReprogramadaDesde).HasColumnName("reprogramada_desde");
+            entity.Property(e => e.ReprogramadaEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("reprogramada_en");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")

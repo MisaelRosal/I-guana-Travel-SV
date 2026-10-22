@@ -786,6 +786,12 @@ namespace IguanaSV.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("CancelacionLibre")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("cancelacion_libre");
+
                     b.Property<DateTime?>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp without time zone")
@@ -849,6 +855,14 @@ namespace IguanaSV.Api.Migrations
                     b.Property<int>("PublicacionId")
                         .HasColumnType("integer")
                         .HasColumnName("publicacion_id");
+
+                    b.Property<DateOnly?>("ReprogramadaDesde")
+                        .HasColumnType("date")
+                        .HasColumnName("reprogramada_desde");
+
+                    b.Property<DateTime?>("ReprogramadaEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("reprogramada_en");
 
                     b.Property<DateTime?>("ResenasNotificadasEn")
                         .HasColumnType("timestamp without time zone")

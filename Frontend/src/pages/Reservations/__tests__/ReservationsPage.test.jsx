@@ -300,6 +300,48 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
   })
 })
 
+describe('Reserva reprogramada por el anfitrión (cancelación libre)', () => {
+  const reprogramada = {
+    id: 99, publicacionId: 7, experienciaTitulo: 'Ruta del café en Apan',
+    experienciaCategoria: 'Café', experienciaImagen: '', tipo: 'experiencia',
+    precioPorNoche: 25, capacidadMaxima: 4, fechasDisponibles: [],
+    // New date is today, so the normal cancel rule would block it; the free
+    // cancellation flag is what must keep the button usable.
+    fechaInicio: todayISO(), fechaFin: todayISO(), personas: 2,
+    precioTotal: 50, estado: 'confirmada', fechaExpiracionGracia: null,
+    cancelacionLibre: true, reprogramadaDesde: '2026-05-01',
+    nombreHuesped: 'Ana Pérez', emailHuesped: 'ana@correo.com', telefonoHuesped: '',
+  }
+
+  it('muestra el aviso y permite cancelar sin restricciones aunque la fecha sea hoy', async () => {
+    await i18n.changeLanguage('es')
+    getMisReservas.mockResolvedValueOnce([reprogramada])
+    renderReservations()
+
+    expect(await screen.findByText(
+      'El anfitrión movió esta reserva del 01/05/2026 a la nueva fecha. Podés cancelarla sin restricciones si no te sirve.',
+    )).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Cancelar reserva' })
+    expect(within(dialog).getByText(
+      'Esta reserva fue reprogramada por el anfitrión: podés cancelarla sin restricciones.',
+    )).toBeInTheDocument()
+    // The blocking "already started" message must not appear.
+    expect(within(dialog).queryByText(
+      'No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy.',
+    )).toBeNull()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar reserva' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Reserva cancelada exitosamente.')
+  })
+})
+
+function todayISO() {
+  const ahora = new Date()
+  return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
+}
+
 describe('loading failure surfaces a clear error state (not the empty state)', () => {
   it('shows the error state with a retry control when the bookings request fails', async () => {
     getMisReservas.mockRejectedValueOnce(new Error('boom'))

@@ -212,6 +212,16 @@ public class ReservaController : ControllerBase
             return BadRequest($"La capacidad máxima de esta publicación es de {publicacion.CapacidadMaxima} personas.");
         }
 
+        // Same advisory lock as PostReserva/reprogramar so an edit can't race a
+        // host reschedule of this publication.
+        var esExperiencia = string.Equals(publicacion.Tipo, "experiencia", StringComparison.OrdinalIgnoreCase);
+        await using var tx = await _context.Database.BeginTransactionAsync();
+        if (esExperiencia)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock({0}::bigint)", publicacion.Id);
+        }
+
         // Effective dates honor the half-open [check-in, check-out) rule (TD2); an
         // experience collapses to a single day so it self-exempts from the lodging
         // exclusion and is governed by per-slot capacity instead (TD3).
@@ -258,6 +268,8 @@ public class ReservaController : ControllerBase
             return Conflict(OverlapConflict());
         }
 
+        await tx.CommitAsync();
+
         return NoContent();
     }
 
@@ -269,10 +281,22 @@ public class ReservaController : ControllerBase
     [Authorize]
     public async Task<ActionResult<Reserva>> PostReserva(CreateReservaDto dto)
     {
-        var publicacion = await _context.Publicaciones.FirstOrDefaultAsync(p => p.Id == dto.PublicacionId);
+        var publicacion = await _context.Publicaciones
+            .Include(p => p.Anfitrion)
+            .FirstOrDefaultAsync(p => p.Id == dto.PublicacionId);
         if (publicacion == null)
         {
             return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
+        }
+
+        // A host may not book their own listing: it would let them fabricate
+        // stays, skew availability and later review their own publication. The
+        // host is the publicacion's anfitrion owner (a NULL UsuarioId is a legacy
+        // unlinked host, so there is nobody to block).
+        var sub = User.GetSubjectId();
+        if (sub.HasValue && publicacion.Anfitrion?.UsuarioId == sub.Value)
+        {
+            return BadRequest(new { mensaje = "No podés reservar tu propia publicación." });
         }
 
         if (dto.FechaFin < dto.FechaInicio)
@@ -283,6 +307,17 @@ public class ReservaController : ControllerBase
         if (dto.NumeroHuespedes > publicacion.CapacidadMaxima)
         {
             return BadRequest($"La capacidad máxima de esta publicación es de {publicacion.CapacidadMaxima} personas.");
+        }
+
+        // Serialize with a host rescheduling this publication: the reschedule
+        // takes the same advisory lock, so a booking can't land on the date
+        // while it is being moved to another one.
+        var esExperiencia = string.Equals(publicacion.Tipo, "experiencia", StringComparison.OrdinalIgnoreCase);
+        await using var tx = await _context.Database.BeginTransactionAsync();
+        if (esExperiencia)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock({0}::bigint)", publicacion.Id);
         }
 
         // Effective dates: lodging keeps the caller's [check-in, check-out) range;
@@ -309,7 +344,7 @@ public class ReservaController : ControllerBase
         var reserva = new Reserva
         {
             PublicacionId = dto.PublicacionId,
-            UsuarioId = User.GetSubjectId(),
+            UsuarioId = sub,
             NombreHuesped = dto.NombreHuesped,
             EmailHuesped = dto.EmailHuesped,
             TelefonoHuesped = dto.TelefonoHuesped,
@@ -343,6 +378,8 @@ public class ReservaController : ControllerBase
             // rejected by the database and surfaces here as a 409 (not a 500).
             return Conflict(OverlapConflict());
         }
+
+        await tx.CommitAsync();
 
         // Confirmation + simulated payment reminder to the guest address given in
         // the booking form (not the account's login email: a guest can book for
@@ -480,7 +517,14 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = "No se puede cancelar una reserva ya completada." });
         }
 
-        if (reserva.FechaExpiracionGracia != null)
+        // A host rescheduled the experience onto another date: the guest did not
+        // choose this change, so declining it must never carry the normal
+        // penalty/grace restrictions.
+        if (reserva.CancelacionLibre)
+        {
+            // Unrestricted cancellation; only the terminal-state checks above apply.
+        }
+        else if (reserva.FechaExpiracionGracia != null)
         {
             // Short reservation: cancel is allowed only while pending and inside
             // grace. A paid reservation and an expired grace both lock the row.
@@ -530,7 +574,12 @@ public class ReservaController : ControllerBase
             return Forbid();
         }
 
-        if (reserva.FechaExpiracionGracia != null)
+        if (reserva.CancelacionLibre)
+        {
+            // Rescheduled by the host: the guest may delete it at any time, the
+            // same way cancellation is unrestricted.
+        }
+        else if (reserva.FechaExpiracionGracia != null)
         {
             // Short reservation: delete mirrors the edit gate (grace window, not
             // the "1 day or less" rule).

@@ -350,6 +350,29 @@ public sealed class ResenaIntegrationTests
 
     [SkippableFact]
     [Trait("Category", "Resena")]
+    public async Task Post_PropiaPublicacion_Returns400_YNoSePersiste()
+    {
+        // Legacy self-reservation (seeded before the booking gate existed): the
+        // host owns the publication AND the reservation, so the owner check passes
+        // but the self-review guard must still refuse it.
+        var host = await RegisterUserAsync();
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId));
+        var reservaId = await SeedReservaAsync(pubId, host.UserId, Iso(0), Iso(1), "completada");
+
+        var res = await AuthedClient(host).PostAsync("/api/Resena", Json(new
+        {
+            reservaId,
+            calificacion = 5,
+            comentario = "Me reseño a mí mismo",
+        }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        Assert.Contains("propia", await res.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, await CountResenasAsync(pubId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Resena")]
     public async Task Post_SinSesion_Returns401()
     {
         var guest = await RegisterUserAsync();
@@ -699,6 +722,10 @@ public sealed class ResenaIntegrationTests
         public Task<bool> ReservaCreadaAsync(string destinatario, string nombreHuesped,
             string tituloPublicacion, DateOnly fechaInicio, DateOnly fechaFin, int huespedes,
             decimal precioTotal, CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
+
+        public Task<bool> ReservaReprogramadaAsync(string destinatario, string nombreHuesped,
+            string tituloPublicacion, DateOnly fechaAnterior, DateOnly fechaNueva,
+            CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
 
         public Task<bool> ResenaRecibidaAsync(string destinatario, string nombreAnfitrion,
             string tituloPublicacion, short calificacion,

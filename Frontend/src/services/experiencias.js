@@ -40,6 +40,7 @@ function mapearPublicacion(p) {
     precio: p.precioPorNoche,
     anfitrion: p.anfitrion?.nombre ?? '',
     anfitrionId: p.anfitrion?.id ?? null,
+    anfitrionUsuarioId: p.anfitrion?.usuarioId ?? null,
     anfitrionFoto: p.anfitrion?.fotoPerfil ?? '',
     anfitrionDescripcion: p.anfitrion?.descripcion ?? '',
     anfitrionVerificado: p.anfitrion?.verificado ?? false,
@@ -73,6 +74,7 @@ function mapearPublicacion(p) {
         fecha: h.fecha ?? null,
         horaInicio: h.horaInicio,
         horaFin: h.horaFin,
+        disponible: h.disponible ?? true,
       })),
     fechasDisponibles: (p.horarios ?? [])
       .filter(Boolean)

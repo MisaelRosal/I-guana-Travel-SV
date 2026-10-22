@@ -43,6 +43,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const [imagenesExistentes, setImagenesExistentes] = useState([])
   const [imagenesAEliminar, setImagenesAEliminar] = useState([])
   const [fechasSeleccionadas, setFechasSeleccionadas] = useState([])
+  const [fechasOriginalesExp, setFechasOriginalesExp] = useState([])
   const [horaInicioExp, setHoraInicioExp] = useState('08:00')
   const [horaFinExp, setHoraFinExp] = useState('17:00')
   const [mesCal, setMesCal] = useState(() => new Date().getMonth())
@@ -93,7 +94,9 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setImagenesAEliminar([])
       const horariosPub = pubExistente.horarios || []
       const conFecha = horariosPub.filter((h) => h.fecha)
-      setFechasSeleccionadas(conFecha.map((h) => h.fecha))
+      const fechasOrig = conFecha.map((h) => String(h.fecha).slice(0, 10))
+      setFechasSeleccionadas(fechasOrig)
+      setFechasOriginalesExp(fechasOrig)
       setHoraInicioExp(conFecha[0]?.horaInicio?.slice(0, 5) || '08:00')
       setHoraFinExp(conFecha[0]?.horaFin?.slice(0, 5) || '17:00')
       setError(null)
@@ -120,6 +123,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setImagenesExistentes([])
     setImagenesAEliminar([])
     setFechasSeleccionadas([])
+    setFechasOriginalesExp([])
     setHoraInicioExp('08:00')
     setHoraFinExp('17:00')
     setError(null)
@@ -213,9 +217,15 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
 
   const toggleFecha = (fecha) => {
-    setFechasSeleccionadas((prev) =>
-      prev.includes(fecha) ? prev.filter((f) => f !== fecha) : [...prev, fecha]
-    )
+    setFechasSeleccionadas((prev) => {
+      if (prev.includes(fecha)) {
+        if (esEdicion && tipo === 'experiencia' && fechasOriginalesExp.includes(fecha)) {
+          return prev
+        }
+        return prev.filter((f) => f !== fecha)
+      }
+      return [...prev, fecha]
+    })
   }
 
   const formatearFechaChip = (fecha) => formatDayMonthShort(fecha, locale)
@@ -623,7 +633,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
             <fieldset className="mb-6">
               <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.datesLegend')}</legend>
               <p className="mb-3 text-sm text-cafe">
-                {t('modal.datesHint')}
+                {esEdicion ? t('modal.datesHintEdit') : t('modal.datesHint')}
               </p>
 
               <div className="rounded-[22px] border border-neutral-200 bg-white p-4">
@@ -688,15 +698,25 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {[...fechasSeleccionadas].sort().map((f) => (
-                      <span key={f} className="flex items-center gap-1.5 rounded-full bg-verde-bosque/10 px-3 py-1 text-xs font-semibold text-verde-bosque">
-                        {formatearFechaChip(f)}
-                        <button type="button" onClick={() => toggleFecha(f)} aria-label={t('modal.removeDate')} className="cursor-pointer rounded-full p-0.5 hover:bg-verde-bosque/20">
-                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                        </button>
-                      </span>
-                    ))}
+                    {[...fechasSeleccionadas].sort().map((f) => {
+                      const esOriginal = esEdicion && fechasOriginalesExp.includes(f)
+                      return (
+                        <span key={f} className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${esOriginal ? 'bg-neutral-100 text-neutral-500' : 'bg-verde-bosque/10 text-verde-bosque'}`}>
+                          {formatearFechaChip(f)}
+                          {esEdicion && tipo === 'experiencia' && esOriginal ? (
+                            <span className="text-[10px]" title={t('modal.cannotRemoveDate')}>🔒</span>
+                          ) : (
+                            <button type="button" onClick={() => toggleFecha(f)} aria-label={t('modal.removeDate')} className="cursor-pointer rounded-full p-0.5 hover:bg-verde-bosque/20">
+                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                            </button>
+                          )}
+                        </span>
+                      )
+                    })}
                   </div>
+                )}
+                {esEdicion && tipo === 'experiencia' && fechasOriginalesExp.length > 0 && (
+                  <p className="mt-2 text-xs text-amber-700">{t('modal.cannotRemoveDateHint')}</p>
                 )}
               </div>
             </fieldset>

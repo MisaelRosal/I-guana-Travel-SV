@@ -56,7 +56,7 @@ public sealed class OverlapIntegrationTests
         // Under [check-in, check-out) the two dateranges are disjoint, so BOTH
         // must be accepted. This is the "Adjacent range allowed" spec scenario.
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         var a = await AuthedClient(host).PostAsync("/api/Reserva", Json(new
@@ -87,7 +87,7 @@ public sealed class OverlapIntegrationTests
     public async Task OverlappingRange_SecondReturns409_WithMessage()
     {
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         var first = await AuthedClient(host).PostAsync("/api/Reserva", Json(new
@@ -141,7 +141,7 @@ public sealed class OverlapIntegrationTests
         //     none ever reaches the contended INSERT path and no deadlock
         //     window exists.
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         async Task<HttpStatusCode> Post(string email)
@@ -189,7 +189,7 @@ public sealed class OverlapIntegrationTests
         // must be accepted. This is the "Cancelled reservation does not block"
         // spec scenario.
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         // Seed an active reservation for [t+50, t+55) and then cancel it. A
@@ -223,7 +223,7 @@ public sealed class OverlapIntegrationTests
         // is rejected with SQLSTATE 23P01; the controller maps it to 409. A 500
         // would fail this assertion.
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         await SeedReservaWithEstadoNullAsync(pubId, Iso(60), Iso(65));
@@ -252,7 +252,7 @@ public sealed class OverlapIntegrationTests
         // against a slot on a publication whose capacidad_maxima is 4: the first
         // link is accepted (0+3 <= 4), the second is refused (3+3 > 4) with a 409.
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "experiencia",
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "experiencia",
             precioPorNoche: 50m, capacidad: 4);
         var horarioId = await SeedHorarioAsync(pubId, Iso(70));
 
@@ -375,7 +375,9 @@ public sealed class OverlapIntegrationTests
         return new IguanasDbContext(options);
     }
 
-    private async Task<int> SeedHostIdAsync(int usuarioId)
+    // Unlinked host (UsuarioId = null) so the booking caller is a legitimate guest;
+    // the new rule blocks a host from reserving their own publication.
+    private async Task<int> SeedHostIdAsync(int? usuarioId)
     {
         await using var db = NewDb();
         var tag = Guid.NewGuid().ToString("N");

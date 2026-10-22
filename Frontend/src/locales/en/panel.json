@@ -6,6 +6,11 @@
     "loading": "Loading listings…",
     "emptyTitle": "No listings yet"
   },
+  "verification": {
+    "pendingTitle": "Verification pending",
+    "pendingBody": "An administrator must verify your host account before you can create listings.",
+    "pendingTooltip": "Your host account has not been verified yet."
+  },
   "table": {
     "listing": "Listing",
     "category": "Category",
@@ -45,9 +50,15 @@
     "available": "Available",
     "blocked": "Blocked",
     "save": "Save",
-    "saving": "Saving…",
+    "saving": "Saving.",
     "saved": "Availability updated successfully.",
-    "error": "The availability could not be updated."
+    "error": "The availability could not be updated.",
+    "newDate": "New date",
+    "reprogram": "Reschedule date",
+    "reprogramming": "Rescheduling.",
+    "reprogramConfirm": "Move this date to {{date}}? The reservations for that day will move too and guests will get an email. They will be able to cancel without restrictions.",
+    "reprogrammed": "Date rescheduled. Reservations moved: {{count}}.",
+    "reprogramError": "The date could not be rescheduled."
   },
   "agenda": {
     "tab": "Agenda",

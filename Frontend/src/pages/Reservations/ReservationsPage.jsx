@@ -69,6 +69,11 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar, on
   // Far reservation: the legacy "1 day or less" block still applies.
   const bloqueadaLejana = !esCorta && fechaBloqueada(reserva.fechaInicio)
 
+  // Host rescheduled the experience onto this date: the guest was not the one
+  // who chose it, so every cancel/delete window is lifted (server-enforced via
+  // reservas.cancelacion_libre) and the card explains what happened.
+  const cancelacionLibre = reserva.cancelacionLibre === true
+
   return (
     <article className="flex flex-col overflow-hidden rounded-[22px] border border-cafe-claro bg-white sm:flex-row">
       <img
@@ -120,8 +125,47 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar, on
         </dl>
 
         <div className="mt-4 border-t border-neutral-100 pt-4">
+          {cancelacionLibre && !cancelada && (
+            <div className="mb-3 flex items-start gap-2 rounded-[22px] border border-iguana-hondo/30 bg-iguana-hondo/5 px-3 py-2.5">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-iguana-hondo" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4M12 16h.01" />
+              </svg>
+              <p className="text-xs text-verde-bosque">
+                {reserva.reprogramadaDesde
+                  ? t('card.noteRescheduledFrom', { date: formatDateDMY(reserva.reprogramadaDesde, locale) })
+                  : t('card.noteRescheduled')}
+              </p>
+            </div>
+          )}
           {cancelada ? (
             <p className="text-sm text-neutral-500">{t('card.noteCancelled')}</p>
+          ) : cancelacionLibre ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {onCancelar && (
+                <button
+                  type="button"
+                  onClick={() => onCancelar(reserva)}
+                  className="cursor-pointer rounded-full border border-red-300 px-4 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+                >
+                  {t('common:actions.cancel')}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onEditar(reserva)}
+                className="cursor-pointer rounded-full border border-verde-bosque/30 px-4 py-1.5 text-sm font-semibold text-verde-bosque transition-colors hover:bg-verde-bosque hover:text-white"
+              >
+                {t('card.edit')}
+              </button>
+              <button
+                type="button"
+                onClick={() => onEliminar(reserva)}
+                className="cursor-pointer rounded-full border border-red-300 px-4 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+              >
+                {t('card.delete')}
+              </button>
+            </div>
           ) : esCorta && confirmada ? (
             <div className="flex items-start gap-2 rounded-[22px] border border-amber/40 bg-amber/10 px-3 py-2.5">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden="true">
@@ -757,7 +801,10 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
   const fechaInicio = new Date(reserva.fechaInicio + 'T00:00:00')
   const yaEmpezada = fechaInicio <= hoy
   const esCompletada = reserva.estado === 'completada'
-  const noSePuedeCancelar = yaEmpezada || esCompletada
+  // A host-rescheduled reservation can always be declined, even on/after the
+  // new date; only an already-completed stay stays locked.
+  const cancelacionLibre = reserva.cancelacionLibre === true
+  const noSePuedeCancelar = !cancelacionLibre && (yaEmpezada || esCompletada)
 
   const motivo = yaEmpezada ? t('cancel.reasonStarted') : t('cancel.reasonCompleted')
 
@@ -801,6 +848,9 @@ function ModalCancelar({ reserva, onCerrar, onExito }) {
             <p className="text-sm text-red-700 font-semibold">{motivo}</p>
           ) : (
             <>
+              {cancelacionLibre && (
+                <p className="mb-2 text-xs font-semibold text-iguana-hondo">{t('cancel.freeNote')}</p>
+              )}
               <p className="text-sm text-cafe">{t('cancel.question')}</p>
               <p className="mt-2 text-sm font-semibold text-verde-bosque">
                 {t('bookingRef', { id: reserva.id })} — {formatPrice(reserva.precioTotal, locale)}

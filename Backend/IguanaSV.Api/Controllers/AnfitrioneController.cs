@@ -357,6 +357,13 @@ public class AnfitrioneController : ControllerBase
             return Forbid();
         }
 
+        // Verificacion is admin-only: never let a non-admin mass-assign it
+        // through this generic create route (registrar already forces false).
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            anfitrione.Verificado = false;
+        }
+
         if (!await _context.Municipios.AnyAsync(m => m.Id == anfitrione.MunicipioId))
         {
             return NotFound($"El municipio con id {anfitrione.MunicipioId} no existe.");
