@@ -178,7 +178,7 @@ export function ChatConversation({ conversacionId, publicacionId = null }) {
         role="log"
         aria-live="polite"
         aria-label={t('aria.liveRegion')}
-        className="flex-1 space-y-3 overflow-y-auto px-4 py-3"
+        className="flex-1 space-y-4 overflow-y-auto px-5 py-4"
       >
         {cargando && <p className="py-6 text-center text-sm text-cafe">{t('drawer.loading')}</p>}
         {!cargando && error && <p className="py-6 text-center text-sm text-red-700">{error}</p>}
@@ -201,8 +201,8 @@ export function ChatConversation({ conversacionId, publicacionId = null }) {
           const propio = miId != null && m.emisor_usuario_id === miId
           return (
             <div key={m.id} className={propio ? 'flex flex-col items-end' : 'flex flex-col items-start'}>
-              <div className={`rounded-[22px] px-4 py-2.5 text-sm ${propio ? 'bg-iguana-hondo text-white' : 'bg-white border border-cafe-claro/50 text-neutral-800'}`}>
-                <p className="text-xs font-semibold opacity-80">
+              <div className={`max-w-[90%] rounded-[22px] px-5 py-3 text-base leading-6 sm:max-w-[80%] ${propio ? 'bg-iguana-hondo text-white' : 'bg-white border border-cafe-claro/50 text-neutral-800'}`}>
+                <p className="text-sm font-semibold opacity-80">
                   {propio ? t('drawer.sentYou') : m.emisor_nombre}
                   <span className="mx-1 opacity-60">·</span>
                   {formatoMomento(m.creado_en, locale)}
@@ -216,14 +216,14 @@ export function ChatConversation({ conversacionId, publicacionId = null }) {
         })}
       </div>
 
-      <form onSubmit={enviar} className="border-t border-cafe-claro/30 bg-crema px-4 py-3">
+      <form onSubmit={enviar} className="border-t border-cafe-claro/30 bg-crema px-4 py-4">
         <textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          rows={2}
+          rows={3}
           placeholder={t('drawer.placeholder')}
           aria-label={t('drawer.placeholder')}
-          className="w-full rounded-[22px] border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+          className="w-full rounded-[22px] border border-neutral-300 bg-white px-4 py-3 text-base leading-6 text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
         >
         </textarea>
         <div className="mt-1 flex items-center justify-between gap-3">
@@ -279,7 +279,7 @@ export default function ChatPanel({ abierto, anfitrionId, publicacionId = null, 
       aria-labelledby="chat-panel-titulo"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-[22px] bg-crema">
+      <div className="flex h-[90vh] max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[22px] bg-crema">
         <div className="flex items-center justify-between border-b border-cafe-claro/30 px-4 py-3">
           <h2 id="chat-panel-titulo" className="text-base font-bold text-verde-bosque">
             {t('drawer.title')}

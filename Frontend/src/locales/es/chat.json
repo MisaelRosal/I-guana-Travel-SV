@@ -2,6 +2,10 @@
   "nav": {
     "inbox": "Mensajes"
   },
+  "floating": {
+    "open": "Abrir mensajes",
+    "title": "Tus mensajes"
+  },
   "entry": {
     "contactHost": "Contáctame",
     "messageHost": "Enviar un mensaje"

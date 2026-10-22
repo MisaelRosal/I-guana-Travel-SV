@@ -57,7 +57,8 @@ public sealed class ChatIntegrationTests
     public async Task AbrirPorPrimeraVez_CreaConversacion_YRespondeSnakeCase()
     {
         var viajero = await RegistrarUsuarioAsync();
-        var host = await SembrarHostDe(viajero);
+        var hostOwner = await RegistrarUsuarioAsync();
+        var host = await SembrarHostDe(hostOwner);
 
         var res = await AuthedClient(viajero).GetAsync($"/api/Chat/anfitrion/{host.anfitrionId}");
 
@@ -75,7 +76,8 @@ public sealed class ChatIntegrationTests
     public async Task SegundaApertura_DevuelveLaMismaConversacion_SinDuplicar()
     {
         var viajero = await RegistrarUsuarioAsync();
-        var host = await SembrarHostDe(viajero);
+        var hostOwner = await RegistrarUsuarioAsync();
+        var host = await SembrarHostDe(hostOwner);
         var cliente = AuthedClient(viajero);
 
         var primero = await cliente.GetAsync($"/api/Chat/anfitrion/{host.anfitrionId}");
@@ -93,10 +95,30 @@ public sealed class ChatIntegrationTests
 
     [SkippableFact]
     [Trait("Category", "Chat")]
+    public async Task HostAbreSuPropioChat_Responde400_NoCreaConversacion()
+    {
+        var host = await RegistrarUsuarioAsync();
+        var anfitrionId = await SembrarAnfitrionAsync(host.UserId);
+
+        var res = await AuthedClient(host).GetAsync($"/api/Chat/anfitrion/{anfitrionId}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        using (var body = JsonDocument.Parse(await res.Content.ReadAsStringAsync()))
+        {
+            Assert.True(body.RootElement.TryGetProperty("mensaje", out _));
+        }
+
+        await using var db = NewDb();
+        Assert.Equal(0, await db.Conversaciones.CountAsync(c => c.AnfitrionId == anfitrionId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Chat")]
     public async Task CarreraCreacion_Paralela_UnoGana_ElPerdedorRecibe409Reintentable()
     {
         var viajero = await RegistrarUsuarioAsync();
-        var host = await SembrarHostDe(viajero);
+        var hostOwner = await RegistrarUsuarioAsync();
+        var host = await SembrarHostDe(hostOwner);
         var cliente = AuthedClient(viajero);
 
         var t1 = cliente.GetAsync($"/api/Chat/anfitrion/{host.anfitrionId}");
@@ -193,6 +215,42 @@ public sealed class ChatIntegrationTests
             Assert.Equal("Sí, quedan dos cupos.", fila.GetProperty("ultimo_mensaje_texto").GetString());
             Assert.True(fila.TryGetProperty("ultimo_mensaje_en", out var en) && en.ValueKind == JsonValueKind.String);
         }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Chat")]
+    public async Task ConversacionPropiaExistente_NoPermiteEnviar_NoGuardaMensajeNiPreview()
+    {
+        var host = await RegistrarUsuarioAsync();
+        var anfitrionId = await SembrarAnfitrionAsync(host.UserId);
+        int conversacionId;
+        await using (var db = NewDb())
+        {
+            var conversacion = new Conversacione
+            {
+                ViajeroUsuarioId = host.UserId,
+                AnfitrionId = anfitrionId,
+                CreadoEn = DateTime.Now,
+            };
+            db.Conversaciones.Add(conversacion);
+            await db.SaveChangesAsync();
+            conversacionId = conversacion.Id;
+        }
+
+        var res = await AuthedClient(host).PostAsync(
+            $"/api/Chat/{conversacionId}/mensajes", Json(new { mensaje = "Mensaje a mí mismo." }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        using (var body = JsonDocument.Parse(await res.Content.ReadAsStringAsync()))
+        {
+            Assert.True(body.RootElement.TryGetProperty("mensaje", out _));
+        }
+
+        await using var verifyDb = NewDb();
+        Assert.Equal(0, await verifyDb.Mensajes.CountAsync(m => m.ConversacionId == conversacionId));
+        var guardada = await verifyDb.Conversaciones.AsNoTracking().SingleAsync(c => c.Id == conversacionId);
+        Assert.Null(guardada.UltimoMensajeEn);
+        Assert.Null(guardada.UltimoMensajeTexto);
     }
 
     [SkippableFact]

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
+import MessageLauncher from '../components/MessageLauncher.jsx'
 import { localePath } from '../i18n/routes.jsx'
 import { LOCALE_STORAGE_KEY } from '../i18n/config.js'
 import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
@@ -146,7 +147,6 @@ export default function Header() {
     { to: localePath('catalog'), label: t('nav.home') },
   ]
   links.push({ to: localePath('reservations'), label: t('nav.reservations') })
-  links.push({ to: localePath('mensajes'), label: t('chat:nav.inbox'), badge: noLeidos })
   if (rol === 'anfitrion') {
     links.push({ to: localePath('panel'), label: t('nav.operatorPanel') })
   }
@@ -171,6 +171,7 @@ export default function Header() {
     }`
 
   return (
+    <>
     <header className="bg-verde-bosque text-white sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4" data-menu-movil>
         <Link to={localePath('catalog')} aria-label={t('brand.ariaLabel')}>
@@ -354,5 +355,7 @@ export default function Header() {
         </nav>
       )}
     </header>
+    {usuario && <MessageLauncher unreadCount={noLeidos} />}
+    </>
   )
 }

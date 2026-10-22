@@ -51,6 +51,11 @@ public class ChatController : ControllerBase
             return NotFound(new { mensaje = "El anfitrión no está disponible para mensajes." });
         }
 
+        if (anfitrion.UsuarioId == sub.Value)
+        {
+            return BadRequest(new { mensaje = "No se puede conversar con uno mismo." });
+        }
+
         var existente = await _context.Conversaciones
             .FirstOrDefaultAsync(c => c.ViajeroUsuarioId == sub.Value && c.AnfitrionId == anfitrionId);
         if (existente is not null)
@@ -242,6 +247,11 @@ public class ChatController : ControllerBase
         if (conversacion is null)
         {
             return NotFoundConversacion();
+        }
+
+        if (conversacion.ViajeroUsuarioId == conversacion.Anfitrion.UsuarioId)
+        {
+            return BadRequest(new { mensaje = "No se puede conversar con uno mismo." });
         }
 
         var texto = (dto.Mensaje ?? string.Empty).Trim();
