@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
@@ -20,6 +20,7 @@ import { getResenasPublicacion } from '../../services/resenas'
 import { leerSesionCache } from '../../services/session.js'
 import { scrollBehavior } from '../../utils/motion.js'
 import FormularioReserva from '../../components/FormularioReserva'
+import ChatPanel from '../../components/ChatPanel'
 import { useModalAccesible } from '../../hooks/useModalAccesible.js'
 import Toast from '../../components/Toast.jsx'
 import { Estrellas } from '../../components/Estrellas.jsx'
@@ -342,9 +343,12 @@ function SeccionResenas({ data }) {
   )
 }
 
-function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
+function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado, onContactar }) {
   const { t } = useTranslation('experiencia')
+  const { t: tc } = useTranslation('chat')
+  const location = useLocation()
   if (!anfitrionId) return null
+  const sesion = leerSesionCache()
   return (
     <section className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">{t('host.title')}</h3>
@@ -376,6 +380,28 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
           </span>
         </div>
       </Link>
+      {/* Chat entry (spec THM8): opens the drawer bound to this host with the
+          listing card; signed-out users get the login link, same pattern as
+          the booking form. */}
+      <div className="mt-4">
+        {sesion ? (
+          <button
+            type="button"
+            onClick={onContactar}
+            className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+          >
+            {tc('entry.messageHost')}
+          </button>
+        ) : (
+          <Link
+            to={localePath('login')}
+            state={{ from: location.pathname + location.search }}
+            className="inline-block cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+          >
+            {tc('entry.messageHost')}
+          </Link>
+        )}
+      </div>
     </section>
   )
 }
@@ -817,6 +843,7 @@ export default function ExperienceDetailPage() {
   // UI-only hint: the server is the authority (PostReserva rejects a host
   // booking their own listing). Reading the cache just lets us hide the CTA.
   const [usuarioId, setUsuarioId] = useState(() => leerSesionCache()?.id ?? null)
+  const [chatAbierto, setChatAbierto] = useState(false)
 
   useEffect(() => {
     let activo = true
@@ -954,6 +981,16 @@ export default function ExperienceDetailPage() {
             foto={experiencia.anfitrionFoto}
             descripcion={experiencia.anfitrionDescripcion}
             verificado={experiencia.anfitrionVerificado}
+            onContactar={() => setChatAbierto(true)}
+          />
+
+          {/* Drawer bound to the publication id carried by the mapped
+              experience — never re-derived from the route :id here. */}
+          <ChatPanel
+            abierto={chatAbierto}
+            anfitrionId={experiencia.anfitrionId}
+            publicacionId={experiencia.publicacionId}
+            onCerrar={() => setChatAbierto(false)}
           />
 
           {experiencia.amenidades.length > 0 && (

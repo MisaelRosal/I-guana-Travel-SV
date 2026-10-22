@@ -131,9 +131,9 @@ public sealed class SchemaMigrationsIntegrationTests
             // AddReservaFechaExpiracionGracia, plus the email-verification
             // AddVerificacionEmailYNotificaciones, AddResenas, publication English
             // overlay, public user-content English overlays, the availability
-            // manager AddHorarioCupos, and the host reschedule
-            // AddReservaReprogramacion = fourteen at head.
-            Assert.Equal(14, applied);
+            // manager AddHorarioCupos, host reschedule AddReservaReprogramacion,
+            // and chat AddChatConversaciones = fifteen at head.
+            Assert.Equal(15, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""

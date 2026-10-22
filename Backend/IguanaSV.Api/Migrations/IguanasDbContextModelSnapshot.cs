@@ -193,6 +193,59 @@ namespace IguanaSV.Api.Migrations
                     b.ToTable("categorias", (string)null);
                 });
 
+            modelBuilder.Entity("IguanaSV.Api.Entities.Conversacione", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AnfitrionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("anfitrion_id");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("creado_en")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("UltimoLeidoAnfitrionEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("ultimo_leido_anfitrion_en");
+
+                    b.Property<DateTime?>("UltimoLeidoViajeroEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("ultimo_leido_viajero_en");
+
+                    b.Property<DateTime?>("UltimoMensajeEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("ultimo_mensaje_en");
+
+                    b.Property<string>("UltimoMensajeTexto")
+                        .HasColumnType("text")
+                        .HasColumnName("ultimo_mensaje_texto");
+
+                    b.Property<int>("ViajeroUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("viajero_usuario_id");
+
+                    b.HasKey("Id")
+                        .HasName("conversaciones_pkey");
+
+                    b.HasIndex(new[] { "ViajeroUsuarioId", "AnfitrionId" }, "conversaciones_viajero_usuario_id_anfitrion_id_key")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "AnfitrionId" }, "idx_conversaciones_anfitrion");
+
+                    b.HasIndex(new[] { "UltimoMensajeEn" }, "idx_conversaciones_ultimo_mensaje")
+                        .IsDescending();
+
+                    b.ToTable("conversaciones", (string)null);
+                });
+
             modelBuilder.Entity("IguanaSV.Api.Entities.Departamento", b =>
                 {
                     b.Property<int>("Id")
@@ -398,6 +451,54 @@ namespace IguanaSV.Api.Migrations
                     b.HasIndex(new[] { "PublicacionId" }, "idx_imagenes_publicacion_publicacion");
 
                     b.ToTable("imagenes_publicacion", (string)null);
+                });
+
+            modelBuilder.Entity("IguanaSV.Api.Entities.Mensaje", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConversacionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("conversacion_id");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("creado_en")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("EmisorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("emisor_usuario_id");
+
+                    b.Property<int?>("PublicacionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("publicacion_id");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mensaje");
+
+                    b.HasKey("Id")
+                        .HasName("mensajes_pkey");
+
+                    b.HasIndex("EmisorUsuarioId");
+
+                    b.HasIndex("PublicacionId");
+
+                    b.HasIndex(new[] { "ConversacionId", "CreadoEn", "Id" }, "idx_mensajes_conversacion_creado")
+                        .IsDescending(false, true, true);
+
+                    b.ToTable("mensajes", null, t =>
+                        {
+                            t.HasCheckConstraint("mensajes_mensaje_check", "char_length(mensaje) BETWEEN 1 AND 500");
+                        });
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.Municipio", b =>
@@ -1060,6 +1161,27 @@ namespace IguanaSV.Api.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("IguanaSV.Api.Entities.Conversacione", b =>
+                {
+                    b.HasOne("IguanaSV.Api.Entities.Anfitrione", "Anfitrion")
+                        .WithMany()
+                        .HasForeignKey("AnfitrionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("conversaciones_anfitrion_id_fkey");
+
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "ViajeroUsuario")
+                        .WithMany()
+                        .HasForeignKey("ViajeroUsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("conversaciones_viajero_usuario_id_fkey");
+
+                    b.Navigation("Anfitrion");
+
+                    b.Navigation("ViajeroUsuario");
+                });
+
             modelBuilder.Entity("IguanaSV.Api.Entities.Experiencia", b =>
                 {
                     b.HasOne("IguanaSV.Api.Entities.Publicacione", "Publicacion")
@@ -1092,6 +1214,35 @@ namespace IguanaSV.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("imagenes_publicacion_publicacion_id_fkey");
+
+                    b.Navigation("Publicacion");
+                });
+
+            modelBuilder.Entity("IguanaSV.Api.Entities.Mensaje", b =>
+                {
+                    b.HasOne("IguanaSV.Api.Entities.Conversacione", "Conversacion")
+                        .WithMany("Mensajes")
+                        .HasForeignKey("ConversacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("mensajes_conversacion_id_fkey");
+
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "EmisorUsuario")
+                        .WithMany()
+                        .HasForeignKey("EmisorUsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("mensajes_emisor_usuario_id_fkey");
+
+                    b.HasOne("IguanaSV.Api.Entities.Publicacione", "Publicacion")
+                        .WithMany()
+                        .HasForeignKey("PublicacionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("mensajes_publicacion_id_fkey");
+
+                    b.Navigation("Conversacion");
+
+                    b.Navigation("EmisorUsuario");
 
                     b.Navigation("Publicacion");
                 });
@@ -1276,6 +1427,11 @@ namespace IguanaSV.Api.Migrations
             modelBuilder.Entity("IguanaSV.Api.Entities.Categoria", b =>
                 {
                     b.Navigation("Publicaciones");
+                });
+
+            modelBuilder.Entity("IguanaSV.Api.Entities.Conversacione", b =>
+                {
+                    b.Navigation("Mensajes");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.Departamento", b =>

@@ -41,6 +41,7 @@ vi.mock('../../pages/SerAnfitrion/SerAnfitrionPage.jsx', () => mockScreen('becom
 vi.mock('../../pages/Admin/AdminPanelPage.jsx', () => mockScreen('admin', false))
 vi.mock('../../pages/MiPerfil/MiPerfilPage.jsx', () => mockScreen('my-profile', false))
 vi.mock('../../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx', () => mockScreen('host-profile', true))
+vi.mock('../../pages/Chat/ChatPage.jsx', () => mockScreen('mensajes', false))
 
 // The real Header revalidates the cached session on mount; answer 401 so the
 // signed-out chrome (Sign in / nav / footer) renders deterministically with
@@ -82,6 +83,7 @@ const ES_PATHS = [
   ['/hacerse-anfitrion', 'become-host'],
   ['/admin', 'admin'],
   ['/mi-perfil', 'my-profile'],
+  ['/mensajes', 'mensajes'],
   ['/anfitriones/42', 'host-profile:42'],
 ]
 
@@ -91,6 +93,7 @@ const EN_ALIASES = [
   ['/bookings', 'reservations'],
   ['/become-a-host', 'become-host'],
   ['/my-profile', 'my-profile'],
+  ['/messages', 'mensajes'],
   ['/hosts/42', 'host-profile:42'],
 ]
 
@@ -168,7 +171,7 @@ describe("unmatched paths keep today's no-match behavior (no catch-all added)", 
   }
 })
 
-describe('ROUTE_PAIRS mirrors the AD-1 table (10 pairs, alias-only)', () => {
+describe('ROUTE_PAIRS mirrors the AD-1 table (11 pairs, alias-only)', () => {
   it('exposes exactly the key/es/en forms of the design', () => {
     expect(ROUTE_PAIRS.map(({ key, es, en }) => ({ key, es, en }))).toEqual([
       { key: 'catalog', es: '/', en: '/' },
@@ -180,6 +183,7 @@ describe('ROUTE_PAIRS mirrors the AD-1 table (10 pairs, alias-only)', () => {
       { key: 'becomeHost', es: 'hacerse-anfitrion', en: 'become-a-host' },
       { key: 'admin', es: 'admin', en: 'admin' },
       { key: 'miPerfil', es: 'mi-perfil', en: 'my-profile' },
+      { key: 'mensajes', es: 'mensajes', en: 'messages' },
       { key: 'hostProfile', es: 'anfitriones/:id', en: 'hosts/:id' },
     ])
   })
