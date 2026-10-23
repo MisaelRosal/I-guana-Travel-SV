@@ -6,7 +6,14 @@
     "stayRooms_other": "{{count}} rooms",
     "stayGuests_one": "{{count}} guest",
     "stayGuests_other": "{{count}} guests",
-    "popular": "Popular"
+    "popular": "Popular",
+    "saveAria": "Save publication",
+    "unsaveAria": "Remove publication from saved"
+  },
+  "favoritos": {
+    "save": "Save",
+    "saved": "Saved",
+    "error": "We couldn't update the saved publication. Please try again."
   },
   "form": {
     "dialogLabel": "Booking form",

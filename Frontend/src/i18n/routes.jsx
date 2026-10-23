@@ -8,7 +8,9 @@ import OperatorPanelPage from '../pages/OperatorPanel/OperatorPanelPage.jsx'
 import SerAnfitrionPage from '../pages/SerAnfitrion/SerAnfitrionPage.jsx'
 import AdminPanelPage from '../pages/Admin/AdminPanelPage.jsx'
 import MiPerfilPage from '../pages/MiPerfil/MiPerfilPage.jsx'
+import MiCuentaPage from '../pages/MiCuenta/MiCuentaPage.jsx'
 import PerfilAnfitrionPage from '../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx'
+import ProtectedRoute from '../components/ProtectedRoute.jsx'
 
 // F5 (i18n-es-en) task 6.2 — localized route table (AD-1: ALIAS, never
 // redirect). Every screen owns one pair of URL forms; both are registered as
@@ -23,11 +25,12 @@ export const ROUTE_PAIRS = [
   { key: 'experienceDetail', es: 'experiencias/:id', en: 'experiences/:id', element: <ExperienceDetailPage /> },
   { key: 'login', es: 'login', en: 'login', element: <AuthPage /> },
   { key: 'register', es: 'registro', en: 'register', element: <RegisterPage /> },
-  { key: 'reservations', es: 'reservas', en: 'bookings', element: <ReservationsPage /> },
-  { key: 'panel', es: 'panel', en: 'panel', element: <OperatorPanelPage /> },
-  { key: 'becomeHost', es: 'hacerse-anfitrion', en: 'become-a-host', element: <SerAnfitrionPage /> },
-  { key: 'admin', es: 'admin', en: 'admin', element: <AdminPanelPage /> },
-  { key: 'miPerfil', es: 'mi-perfil', en: 'my-profile', element: <MiPerfilPage /> },
+  { key: 'reservations', es: 'reservas', en: 'bookings', element: <ProtectedRoute><ReservationsPage /></ProtectedRoute> },
+  { key: 'panel', es: 'panel', en: 'panel', element: <ProtectedRoute rolesPermitidos={['anfitrion', 'admin']}><OperatorPanelPage /></ProtectedRoute> },
+  { key: 'becomeHost', es: 'hacerse-anfitrion', en: 'become-a-host', element: <ProtectedRoute><SerAnfitrionPage /></ProtectedRoute> },
+  { key: 'admin', es: 'admin', en: 'admin', element: <ProtectedRoute rolesPermitidos={['admin']}><AdminPanelPage /></ProtectedRoute> },
+  { key: 'miPerfil', es: 'mi-perfil', en: 'my-profile', element: <ProtectedRoute rolesPermitidos={['anfitrion']}><MiPerfilPage /></ProtectedRoute> },
+  { key: 'miCuenta', es: 'mi-cuenta', en: 'my-account', element: <ProtectedRoute><MiCuentaPage /></ProtectedRoute> },
   { key: 'hostProfile', es: 'anfitriones/:id', en: 'hosts/:id', element: <PerfilAnfitrionPage /> },
 ]
 

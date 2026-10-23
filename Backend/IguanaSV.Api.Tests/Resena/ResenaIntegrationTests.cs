@@ -703,6 +703,10 @@ public sealed class ResenaIntegrationTests
         public Task<bool> ResenaRecibidaAsync(string destinatario, string nombreAnfitrion,
             string tituloPublicacion, short calificacion,
             CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
+
+        public Task<bool> CalificacionRecibidaAsync(string destinatario, string nombreHuesped,
+            string tituloPublicacion, short calificacion,
+            CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
     }
 
     /// <summary>

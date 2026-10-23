@@ -31,6 +31,25 @@ public class ResenaController : ControllerBase
         _logger = logger ?? NullLogger<ResenaController>.Instance;
     }
 
+    // Public: global star average of a normal user (public user profile).
+    // Hosts rate guests post-reservation via POST /api/Resena/huesped.
+    [HttpGet("usuario/{usuarioId}")]
+    public async Task<IActionResult> GetResumenUsuario(int usuarioId)
+    {
+        var resumen = await _context.Resenas
+            .AsNoTracking()
+            .Where(r => r.UsuarioDestinoId == usuarioId)
+            .GroupBy(r => 1)
+            .Select(g => new ResumenResenasDto
+            {
+                Promedio = Math.Round(g.Average(r => (double)r.Calificacion), 1),
+                Total = g.Count(),
+            })
+            .FirstOrDefaultAsync() ?? new ResumenResenasDto();
+
+        return Ok(resumen);
+    }
+
     // Create: the reservation row is the single source of eligibility. The
     // server re-validates every rule (owner, arrival day reached, confirmed or
     // completed, not yet reviewed) so a crafted body cannot bypass the UI.
@@ -115,6 +134,109 @@ public class ResenaController : ControllerBase
         });
     }
 
+    // Host rates guest (host→guest review) after completed reservation.
+    // Only the host who owns the publication can submit; one review per reservation.
+    // Time window: host has 14 days after checkout (FechaFin) to rate the guest.
+    [HttpPost("huesped")]
+    [Authorize]
+    public async Task<ActionResult<object>> PostResenaHuesped(CrearResenaHuespedDto dto)
+    {
+        var sub = User.GetSubjectId();
+        if (!sub.HasValue)
+        {
+            return Forbid();
+        }
+
+        // Verify the caller is a host (rol = anfitrion)
+        var caller = await _context.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sub.Value);
+        if (caller == null || caller.Rol != "anfitrion")
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { mensaje = "Solo los anfitriones pueden calificar huéspedes." });
+        }
+
+        var reserva = await _context.Reservas
+            .Include(r => r.Resena)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p!.Anfitrion)
+            .Include(r => r.Usuario) // Guest user for email notification
+            .FirstOrDefaultAsync(r => r.Id == dto.ReservaId);
+
+        if (reserva == null || reserva.Publicacion == null || reserva.Publicacion.Anfitrion == null)
+        {
+            return NotFound();
+        }
+
+        // Verify the caller owns the publication
+        if (reserva.Publicacion.Anfitrion.UsuarioId != sub.Value)
+        {
+            return Forbid();
+        }
+
+        // Only completed reservations can be reviewed by the host
+        if (reserva.Estado != "completada")
+        {
+            return BadRequest(new { mensaje = "Solo podés calificar huéspedes de reservas completadas." });
+        }
+
+        // Time window: 14 days after checkout (FechaFin)
+        var diasDesdeCheckout = (DateTime.Today - reserva.FechaFin.ToDateTime(TimeOnly.MinValue)).Days;
+        if (diasDesdeCheckout > 14)
+        {
+            return BadRequest(new { mensaje = "El plazo para calificar al huésped venció (14 días después del check-out)." });
+        }
+
+        // Check if host already reviewed this guest for this reservation
+        if (reserva.Resena != null && reserva.Resena.UsuarioDestinoId.HasValue)
+        {
+            return Conflict(new { mensaje = "Ya calificaste a este huésped para esta reserva." });
+        }
+
+        // Verify the reservation has a guest user (UsuarioId)
+        if (!reserva.UsuarioId.HasValue || reserva.Usuario == null)
+        {
+            return BadRequest(new { mensaje = "La reserva no tiene un huésped registrado." });
+        }
+
+        var resena = new Resena
+        {
+            ReservaId = reserva.Id,
+            PublicacionId = reserva.PublicacionId,
+            UsuarioId = sub.Value, // The host writing the review
+            UsuarioDestinoId = reserva.UsuarioId.Value, // The guest being reviewed
+            Calificacion = dto.Calificacion,
+            Comentario = string.IsNullOrWhiteSpace(dto.Comentario) ? null : dto.Comentario.Trim(),
+            CreadoEn = DateTime.Now,
+        };
+        _context.Resenas.Add(resena);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return Conflict(new { mensaje = "Ya calificaste a este huésped para esta reserva." });
+        }
+
+        // Notify the guest that they received a rating from the host
+        if (!string.IsNullOrWhiteSpace(reserva.Usuario.Email))
+        {
+            await _notificaciones.CalificacionRecibidaAsync(
+                reserva.Usuario.Email,
+                reserva.Usuario.Nombre,
+                reserva.Publicacion?.Titulo ?? "tu experiencia",
+                resena.Calificacion);
+        }
+
+        return Ok(new
+        {
+            resena.Id,
+            resena.Calificacion,
+            resena.Comentario,
+            Fecha = resena.CreadoEn,
+        });
+    }
+
     // Public reviews of one publication (comment area on the detail page).
     // Projects only what a stranger may see: never the guest's email.
     [HttpGet("publicacion/{publicacionId}")]
@@ -122,7 +244,7 @@ public class ResenaController : ControllerBase
         int publicacionId,
         [FromQuery] string? contentLocale = null)
     {
-        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        if (!PublicacionContentLocale.TryNormalizeContentLocale(contentLocale, out var locale))
         {
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
@@ -220,7 +342,7 @@ public class ResenaController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetMisResenas([FromQuery] string? contentLocale = null)
     {
-        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        if (!PublicacionContentLocale.TryNormalizeContentLocale(contentLocale, out var locale))
         {
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
@@ -406,11 +528,4 @@ public class ResenaController : ControllerBase
             reviewId,
             $"persistence_error_{exception.GetType().Name}");
 
-    private static bool TryNormalizeContentLocale(string? contentLocale, out string locale)
-    {
-        locale = string.IsNullOrWhiteSpace(contentLocale)
-            ? "es"
-            : contentLocale.Trim().ToLowerInvariant();
-        return locale is "es" or "en";
-    }
 }

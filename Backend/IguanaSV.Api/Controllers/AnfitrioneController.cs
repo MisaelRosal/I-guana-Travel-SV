@@ -39,7 +39,7 @@ public class AnfitrioneController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAnfitriones([FromQuery] string? contentLocale = null)
     {
-        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        if (!PublicacionContentLocale.TryNormalizeContentLocale(contentLocale, out var locale))
         {
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
@@ -62,7 +62,7 @@ public class AnfitrioneController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetAnfitrione(int id, [FromQuery] string? contentLocale = null)
     {
-        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        if (!PublicacionContentLocale.TryNormalizeContentLocale(contentLocale, out var locale))
         {
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
@@ -561,14 +561,6 @@ public class AnfitrioneController : ControllerBase
         locale == "en" && !string.IsNullOrWhiteSpace(anfitrion.DescripcionEn)
             ? anfitrion.DescripcionEn
             : anfitrion.Descripcion;
-
-    private static bool TryNormalizeContentLocale(string? contentLocale, out string locale)
-    {
-        locale = string.IsNullOrWhiteSpace(contentLocale)
-            ? "es"
-            : contentLocale.Trim().ToLowerInvariant();
-        return locale is "es" or "en";
-    }
 
     private async Task<MiPerfilAnfitrionDto> ToMiPerfilAsync(Anfitrione a)
     {

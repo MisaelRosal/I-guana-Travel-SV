@@ -40,20 +40,64 @@ vi.mock('../../pages/OperatorPanel/OperatorPanelPage.jsx', () => mockScreen('pan
 vi.mock('../../pages/SerAnfitrion/SerAnfitrionPage.jsx', () => mockScreen('become-host', false))
 vi.mock('../../pages/Admin/AdminPanelPage.jsx', () => mockScreen('admin', false))
 vi.mock('../../pages/MiPerfil/MiPerfilPage.jsx', () => mockScreen('my-profile', false))
+vi.mock('../../pages/MiCuenta/MiCuentaPage.jsx', () => mockScreen('my-account', false))
 vi.mock('../../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx', () => mockScreen('host-profile', true))
 
-// The real Header revalidates the cached session on mount; answer 401 so the
-// signed-out chrome (Sign in / nav / footer) renders deterministically with
-// no network. (Same stub strategy as the F0 runtime suite.)
-beforeEach(() => {
-  localStorage.clear()
-  sessionStorage.clear()
+// Helper to mock a session with a specific role
+function mockSession(role = 'usuario') {
+  const usuario = {
+    id: 1,
+    nombre: 'Usuario',
+    apellido: 'Prueba',
+    email: 'test@test.com',
+    rol: role,
+    emailVerificado: true,
+    createdAt: new Date().toISOString(),
+    // anfitrion profile fields for roles that need it
+    fotoPerfil: '',
+    verificado: true,
+    descripcion: '',
+    municipioId: 1,
+    municipio: { nombre: 'San Salvador', departamento: { nombre: 'San Salvador', departamentoId: 1 } },
+    telefono: '+503 7000 0000',
+    publicacionesCount: 0,
+  }
+  sessionStorage.setItem('iguana_usuario', JSON.stringify(usuario))
+  globalThis.fetch = vi.fn(async (url) => {
+    const protectedEndpoints = ['/Auth/me', '/api/Auth/me']
+    const isAuthCheck = protectedEndpoints.some((ep) => String(url).includes(ep))
+    if (isAuthCheck) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => usuario,
+      }
+    }
+    return {
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      json: async () => ({}),
+    }
+  })
+}
+
+// Helper to mock no session (signed out)
+function mockNoSession() {
+  sessionStorage.removeItem('iguana_usuario')
   globalThis.fetch = vi.fn(async () => ({
     ok: false,
     status: 401,
     statusText: 'Unauthorized',
     json: async () => ({}),
   }))
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  sessionStorage.clear()
+  mockNoSession()
 })
 
 afterEach(async () => {
@@ -72,17 +116,31 @@ async function renderAt(path) {
   })
 }
 
-const ES_PATHS = [
+// Public routes (no auth required)
+const PUBLIC_ES_PATHS = [
   ['/', 'catalog'],
   ['/experiencias/42', 'experience-detail:42'],
   ['/login', 'login'],
   ['/registro', 'register'],
-  ['/reservas', 'reservations'],
-  ['/panel', 'panel'],
-  ['/hacerse-anfitrion', 'become-host'],
-  ['/admin', 'admin'],
-  ['/mi-perfil', 'my-profile'],
   ['/anfitriones/42', 'host-profile:42'],
+]
+
+// Protected routes that need a session (user role is enough)
+const PROTECTED_USER_ES_PATHS = [
+  ['/mi-cuenta', 'my-account'],
+  ['/reservas', 'reservations'],
+  ['/hacerse-anfitrion', 'become-host'],
+]
+
+// Protected routes that need host role
+const PROTECTED_HOST_ES_PATHS = [
+  ['/mi-perfil', 'my-profile'],
+  ['/panel', 'panel'],
+]
+
+// Protected routes that need admin role
+const PROTECTED_ADMIN_ES_PATHS = [
+  ['/admin', 'admin'],
 ]
 
 const EN_ALIASES = [
@@ -90,13 +148,42 @@ const EN_ALIASES = [
   ['/register', 'register'],
   ['/bookings', 'reservations'],
   ['/become-a-host', 'become-host'],
+  ['/my-account', 'my-account'],
   ['/my-profile', 'my-profile'],
   ['/hosts/42', 'host-profile:42'],
 ]
 
 describe('Spanish routes render their screens under ES (approval: unchanged today)', () => {
-  for (const [path, marker] of ES_PATHS) {
+  // Public routes
+  for (const [path, marker] of PUBLIC_ES_PATHS) {
     it(`${path} renders ${marker}`, async () => {
+      await renderAt(path)
+      expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
+    })
+  }
+
+  // Protected routes - user role
+  for (const [path, marker] of PROTECTED_USER_ES_PATHS) {
+    it(`${path} renders ${marker}`, async () => {
+      mockSession('usuario')
+      await renderAt(path)
+      expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
+    })
+  }
+
+  // Protected routes - host role
+  for (const [path, marker] of PROTECTED_HOST_ES_PATHS) {
+    it(`${path} renders ${marker}`, async () => {
+      mockSession('anfitrion')
+      await renderAt(path)
+      expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
+    })
+  }
+
+  // Protected routes - admin role
+  for (const [path, marker] of PROTECTED_ADMIN_ES_PATHS) {
+    it(`${path} renders ${marker}`, async () => {
+      mockSession('admin')
       await renderAt(path)
       expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
     })
@@ -108,8 +195,36 @@ describe('Spanish routes keep resolving under EN (compatibility MUST)', () => {
     await i18n.changeLanguage('en')
   })
 
-  for (const [path, marker] of ES_PATHS) {
+  // Public routes
+  for (const [path, marker] of PUBLIC_ES_PATHS) {
     it(`${path} still renders ${marker} with English active`, async () => {
+      await renderAt(path)
+      expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
+    })
+  }
+
+  // Protected routes - user role
+  for (const [path, marker] of PROTECTED_USER_ES_PATHS) {
+    it(`${path} still renders ${marker} with English active`, async () => {
+      mockSession('usuario')
+      await renderAt(path)
+      expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
+    })
+  }
+
+  // Protected routes - host role
+  for (const [path, marker] of PROTECTED_HOST_ES_PATHS) {
+    it(`${path} still renders ${marker} with English active`, async () => {
+      mockSession('anfitrion')
+      await renderAt(path)
+      expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
+    })
+  }
+
+  // Protected routes - admin role
+  for (const [path, marker] of PROTECTED_ADMIN_ES_PATHS) {
+    it(`${path} still renders ${marker} with English active`, async () => {
+      mockSession('admin')
       await renderAt(path)
       expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
     })
@@ -121,8 +236,19 @@ describe('English aliases resolve to the same screens under EN', () => {
     await i18n.changeLanguage('en')
   })
 
+  // Public routes
   for (const [path, marker] of EN_ALIASES) {
     it(`${path} renders ${marker}`, async () => {
+      // Check if path is protected by matching against known paths
+      const isProtectedUser = ['/bookings', '/become-a-host', '/my-account'].includes(path)
+      const isProtectedHost = ['/my-profile', '/panel'].includes(path)
+      const isProtectedAdmin = ['/admin'].includes(path)
+
+      if (isProtectedUser) mockSession('usuario')
+      else if (isProtectedHost) mockSession('anfitrion')
+      else if (isProtectedAdmin) mockSession('admin')
+      else mockNoSession()
+
       await renderAt(path)
       expect(screen.getByText(`screen:${marker}`)).toBeInTheDocument()
     })
@@ -158,6 +284,7 @@ describe("unmatched paths keep today's no-match behavior (no catch-all added)", 
   for (const locale of ['es', 'en']) {
     it(`renders neither layout nor screen for /noexiste under ${locale.toUpperCase()}`, async () => {
       await i18n.changeLanguage(locale)
+      mockNoSession()
       await renderAt('/noexiste')
 
       expect(screen.queryByText(/screen:/)).toBeNull()
@@ -168,7 +295,7 @@ describe("unmatched paths keep today's no-match behavior (no catch-all added)", 
   }
 })
 
-describe('ROUTE_PAIRS mirrors the AD-1 table (10 pairs, alias-only)', () => {
+describe('ROUTE_PAIRS mirrors the AD-1 table (11 pairs, alias-only)', () => {
   it('exposes exactly the key/es/en forms of the design', () => {
     expect(ROUTE_PAIRS.map(({ key, es, en }) => ({ key, es, en }))).toEqual([
       { key: 'catalog', es: '/', en: '/' },
@@ -180,6 +307,7 @@ describe('ROUTE_PAIRS mirrors the AD-1 table (10 pairs, alias-only)', () => {
       { key: 'becomeHost', es: 'hacerse-anfitrion', en: 'become-a-host' },
       { key: 'admin', es: 'admin', en: 'admin' },
       { key: 'miPerfil', es: 'mi-perfil', en: 'my-profile' },
+      { key: 'miCuenta', es: 'mi-cuenta', en: 'my-account' },
       { key: 'hostProfile', es: 'anfitriones/:id', en: 'hosts/:id' },
     ])
   })
@@ -195,6 +323,7 @@ describe('localePath(key, params) emits the active-locale URL', () => {
     expect(localePath('becomeHost')).toBe('/hacerse-anfitrion')
     expect(localePath('admin')).toBe('/admin')
     expect(localePath('miPerfil')).toBe('/mi-perfil')
+    expect(localePath('miCuenta')).toBe('/mi-cuenta')
     expect(localePath('experienceDetail', { id: 42 })).toBe('/experiencias/42')
     expect(localePath('hostProfile', { id: '7' })).toBe('/anfitriones/7')
   })
@@ -209,6 +338,7 @@ describe('localePath(key, params) emits the active-locale URL', () => {
     expect(localePath('reservations')).toBe('/bookings')
     expect(localePath('becomeHost')).toBe('/become-a-host')
     expect(localePath('miPerfil')).toBe('/my-profile')
+    expect(localePath('miCuenta')).toBe('/my-account')
     expect(localePath('experienceDetail', { id: 42 })).toBe('/experiences/42')
     expect(localePath('hostProfile', { id: '7' })).toBe('/hosts/7')
   })
@@ -221,6 +351,7 @@ describe('localePath(key, params) emits the active-locale URL', () => {
 describe('in-app navigation emits locale-aware paths (Header + Footer chrome)', () => {
   it('under EN the nav and footer links point at English-form URLs', async () => {
     await i18n.changeLanguage('en')
+    mockNoSession() // signed out for nav test
     await renderAt('/')
     expect(screen.getByText('screen:catalog')).toBeInTheDocument()
 
@@ -249,6 +380,7 @@ describe('in-app navigation emits locale-aware paths (Header + Footer chrome)', 
   })
 
   it('under ES the same links keep the canonical Spanish URLs (approval)', async () => {
+    mockNoSession() // signed out for nav test
     await renderAt('/')
 
     const bookings = screen.getAllByRole('link', { name: 'Mis reservas' })
@@ -270,5 +402,17 @@ describe('in-app navigation emits locale-aware paths (Header + Footer chrome)', 
     }
 
     expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute('href', '/login')
+  })
+
+  it('under EN when signed in shows user menu instead of sign in', async () => {
+    await i18n.changeLanguage('en')
+    mockSession('usuario')
+    await renderAt('/')
+    expect(screen.getByText('screen:catalog')).toBeInTheDocument()
+
+    // User menu button should be present
+    expect(screen.getByRole('button', { name: /UPUsuario Prueba/ })).toBeInTheDocument()
+    // Sign in link should NOT be present
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
   })
 })

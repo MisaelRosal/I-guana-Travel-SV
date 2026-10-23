@@ -23,7 +23,7 @@ const imagenesDepartamentos = {
   'Usulután': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200',
 }
 
-function mapearPublicacion(p) {
+export function mapearPublicacion(p) {
   const experiencias = p.experiencia ?? []
   const categoriaNombre = p.categoria?.nombre ?? ''
   const esHospedaje = (p.tipo || (experiencias.length === 0 ? 'hospedaje' : 'experiencia')) === 'hospedaje'

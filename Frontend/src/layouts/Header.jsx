@@ -212,6 +212,20 @@ export default function Header() {
               </button>
               {menuAbierto && (
                 <div role="menu" className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
+                  {rol !== 'anfitrion' && (
+                    <Link
+                      to={localePath('miCuenta')}
+                      role="menuitem"
+                      onClick={() => setMenuAbierto(false)}
+                      className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-cafe transition-colors hover:bg-crema hover:text-verde-bosque"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                        <circle cx="12" cy="8" r="4" />
+                        <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
+                      </svg>
+                      {t('user.myAccount')}
+                    </Link>
+                  )}
                   {rol === 'anfitrion' && (
                     <Link
                       to={localePath('miPerfil')}
@@ -321,6 +335,15 @@ export default function Header() {
                     className="text-sm px-3 py-2 rounded-full text-crema/85 hover:text-white hover:bg-white/10"
                   >
                     {t('user.myProfile')}
+                  </Link>
+                )}
+                {rol !== 'anfitrion' && (
+                  <Link
+                    to={localePath('miCuenta')}
+                    onClick={() => setMenuMovilAbierto(false)}
+                    className="text-sm px-3 py-2 rounded-full text-crema/85 hover:text-white hover:bg-white/10"
+                  >
+                    {t('user.myAccount')}
                   </Link>
                 )}
                 <button

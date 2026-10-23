@@ -7,6 +7,8 @@ import { getResumenResenas } from '../../services/resenas.js'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
 import ExperienceCard from '../../components/ExperienceCard.jsx'
 import LoadingIguana from '../../components/LoadingIguana.jsx'
+import Toast from '../../components/Toast.jsx'
+import useFavoritos from '../../hooks/useFavoritos.js'
 
 // Cuántas próximas experiencias se piden y se muestran; el subtítulo de la
 // sección las interpola desde el recurso (AD-3), nunca por concatenación.
@@ -171,6 +173,18 @@ export default function CatalogPage() {
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
   const filtrosActivos = [tipo, categoria, zona, precioMax].filter(Boolean).length
 
+  // Guardar publicación (Fase 2): cada card pinta su corazón desde el set de ids
+  // que trae el servidor para la sesión actual. El toggle es optimista; si la
+  // llamada falla, useFavoritos revierte el estado y sube `error`, que dispara
+  // el toast (sin sesión el propio hook ya manda a la pantalla de login).
+  const { guardado, alternar, error: errorFavoritos } = useFavoritos()
+  const { t: tExperiencia } = useTranslation('experiencia')
+  const [avisoFavoritos, setAvisoFavoritos] = useState(null)
+
+  useEffect(() => {
+    if (errorFavoritos > 0) setAvisoFavoritos(tExperiencia('favoritos.error'))
+  }, [errorFavoritos, tExperiencia])
+
   useEffect(() => {
     getCategorias().then(setCategorias).catch(() => setErrorFiltros(true))
     getDepartamentos().then(setDepartamentos).catch(() => setErrorFiltros(true))
@@ -237,6 +251,11 @@ export default function CatalogPage() {
 
   return (
     <div>
+      <Toast
+        mensaje={avisoFavoritos}
+        tipo="error"
+        onCerrar={() => setAvisoFavoritos(null)}
+      />
       <section className="relative overflow-hidden bg-verde-bosque text-white">
         <img
           src={imagenHero}
@@ -436,6 +455,8 @@ export default function CatalogPage() {
                 experiencia={e}
                 proximaFecha={e.proximaFecha}
                 resena={resumenes[e.id]}
+                guardado={guardado(e.id)}
+                onToggleGuardado={alternar}
               />
             ))}
           </div>
@@ -463,6 +484,8 @@ export default function CatalogPage() {
                   experiencia={e}
                   proximaFecha={e.proximaFecha}
                   resena={resumenes[e.id]}
+                  guardado={guardado(e.id)}
+                  onToggleGuardado={alternar}
                 />
               ))}
             </div>

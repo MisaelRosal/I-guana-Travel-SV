@@ -4,11 +4,10 @@ using System.Text.Json.Serialization;
 namespace IguanaSV.Api.Entities;
 
 /// <summary>
-/// A guest's rating for a reservation, allowed only once the stay/experience has
-/// started (arrival day) for a confirmed (or already completed) reservation.
-/// One row per reservation (unique reserva_id) keeps the publication average
-/// free of duplicate votes from the same booking. The host may post a single
-/// public reply (<see cref="RespuestaAnfitrion"/>).
+/// A rating for a reservation. Can be:
+/// - Guest → Host (public, tied to publication) — existing flow
+/// - Host → Guest (private, not tied to publication) — new flow for user reputation
+/// One row per reservation (unique reserva_id) keeps reviews free of duplicates.
 /// </summary>
 public partial class Resena
 {
@@ -18,7 +17,11 @@ public partial class Resena
 
     public int PublicacionId { get; set; }
 
+    /// <summary>The user who wrote the review (guest for guest→host, host for host→guest).</summary>
     public int UsuarioId { get; set; }
+
+    /// <summary>The user being reviewed. Null for legacy guest→host reviews; set for host→guest.</summary>
+    public int? UsuarioDestinoId { get; set; }
 
     /// <summary>0 to 5 stars, inclusive.</summary>
     public short Calificacion { get; set; }
@@ -29,7 +32,7 @@ public partial class Resena
     [JsonIgnore]
     public string? ComentarioEn { get; set; }
 
-    /// <summary>Public host reply; single reply, edited in place.</summary>
+    /// <summary>Public host reply; single reply, edited in place (only for guest→host reviews).</summary>
     public string? RespuestaAnfitrion { get; set; }
 
     [JsonIgnore]
@@ -46,4 +49,7 @@ public partial class Resena
     public virtual Reserva Reserva { get; set; } = null!;
 
     public virtual Usuario Usuario { get; set; } = null!;
+
+    /// <summary>Target user for host→guest reviews.</summary>
+    public virtual Usuario? UsuarioDestino { get; set; }
 }

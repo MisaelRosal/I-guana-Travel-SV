@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { localePath } from '../../i18n/routes.jsx'
 import { api } from '../../services/api.js'
@@ -20,10 +20,12 @@ export default function AuthPage() {
   const [enviando, setEnviando] = useState(false)
   const [toast, setToast] = useState(null)
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
   // Vuelve a la página desde la que se pidió iniciar sesión (p. ej. el detalle
   // de una experiencia); sin origen conocido, al catálogo como antes.
-  const location = useLocation()
-  const destino = location.state?.from || localePath('catalog')
+  // Soporta tanto `location.state.from` (nav programática) como `?redirect=` (query param).
+  const destino = location.state?.from || searchParams.get('redirect') || localePath('catalog')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -159,8 +161,7 @@ export default function AuthPage() {
         <p className="mt-5 text-center text-sm text-cafe">
           {t('login.noAccount')}{' '}
           <Link
-            to={localePath('register')}
-            state={location.state}
+            to={`${localePath('register')}?redirect=${encodeURIComponent(destino)}`}
             className="cursor-pointer font-semibold text-iguana-hondo transition-colors hover:text-verde-bosque"
           >
             {t('login.registerLink')}

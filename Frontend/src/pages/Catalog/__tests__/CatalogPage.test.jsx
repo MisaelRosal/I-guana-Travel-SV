@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
-import { MemoryRouter, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
 import imagenHero from '../../../assets/EL-TUNCO.jpg'
 import CatalogPage from '../CatalogPage.jsx'
 import { getCategorias, getDepartamentos, getExperiencias } from '../../../services/experiencias.js'
+import { guardarPublicacion } from '../../../services/favoritos.js'
 
 // F1 (i18n-es-en): pilot content — the catalog page reads its chrome from the
 // `catalog` namespace. Specs
@@ -45,6 +46,11 @@ const fixtures = vi.hoisted(() => ({
   // this BEFORE render (JD-INFO-1 invariant: the section label interpolates
   // the REAL list length, never the fetch cap PROXIMAS_LIMITE).
   proximas: [],
+  // Fase 2 (guardar publicación): session cache seen by useFavoritos plus the
+  // ids the server reports as saved. Anonymous by default, like a first visit.
+  sinSesion: true,
+  sesion: { id: 7, nombre: 'Ana', apellido: 'Pérez', rol: 'usuario' },
+  favoritosIds: [],
 }))
 
 vi.mock('../../../services/experiencias.js', () => ({
@@ -55,6 +61,21 @@ vi.mock('../../../services/experiencias.js', () => ({
   // N upcoming cards -> DB passthrough surface + localized section header
   // whose plural resolves from the same N through _one/_other.
   getProximasExperiencias: vi.fn(async () => fixtures.proximas),
+}))
+
+// Fase 2: the heart reads the session through the same local cache the header
+// restores, and the saved-id set through /api/Favorito/ids. Both are mocked
+// here so the catalog suite keeps its anonymous-by-default world.
+vi.mock('../../../services/session.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  leerSesionCache: vi.fn(() => (fixtures.sinSesion ? null : fixtures.sesion)),
+}))
+
+vi.mock('../../../services/favoritos.js', () => ({
+  getIdsFavoritos: vi.fn(async () => fixtures.favoritosIds),
+  getGuardadas: vi.fn(async () => []),
+  guardarPublicacion: vi.fn(async () => ({ guardado: true })),
+  quitarPublicacionGuardada: vi.fn(async () => null),
 }))
 
 function renderCatalog() {
@@ -71,6 +92,9 @@ beforeEach(() => {
   localStorage.clear()
   // Default: exactly one upcoming card (label MUST say "one", not the cap 3).
   fixtures.proximas = [fixtures.experiencia]
+  fixtures.sinSesion = true
+  fixtures.favoritosIds = []
+  vi.mocked(guardarPublicacion).mockClear()
 })
 
 afterEach(async () => {
@@ -344,5 +368,81 @@ describe('filters live in the URL (deep-linkable catalog)', () => {
     fireEvent.click(clearButton)
     expect(screen.getByTestId('url').textContent).toBe('/')
     expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).not.toBeInTheDocument()
+  })
+})
+
+// Fase 2 (guardar publicación): every catalog card carries the heart button,
+// wired to the shared useFavoritos hook (optimistic, server-scoped). Anonymous
+// visitors get the button too — clicking it routes to login instead of a
+// doomed API call; signed-in guests toggle through /api/Favorito/{id} and the
+// pressed state flips immediately.
+function renderCatalogWithLogin() {
+  return render(
+    <I18nextProvider i18n={i18n}>
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<CatalogPage />} />
+          <Route path="/login" element={<span>screen:login</span>} />
+        </Routes>
+      </MemoryRouter>
+    </I18nextProvider>,
+  )
+}
+
+describe('save toggle (Fase 2): the heart on every catalog card', () => {
+  beforeEach(() => {
+    fixtures.proximas = []
+    getExperiencias.mockImplementation(async () => [fixtures.experiencia])
+  })
+
+  afterEach(() => {
+    getExperiencias.mockImplementation(async () => [])
+  })
+
+  it('renders one unpressed heart per card, outside the card link', async () => {
+    renderCatalog()
+
+    expect(await screen.findByText('Ruta del café en Apan')).toBeInTheDocument()
+    const corazones = screen.getAllByRole('button', { name: 'Guardar publicación' })
+    expect(corazones).toHaveLength(1)
+    expect(corazones[0]).toHaveAttribute('aria-pressed', 'false')
+    // A <button> inside the <a> would be invalid HTML and a click that
+    // navigates by accident: the heart is a sibling of the link.
+    expect(screen.getByRole('link', { name: /Ruta del café en Apan/ })
+      .contains(corazones[0])).toBe(false)
+  })
+
+  it('paints the pressed heart for the ids the server reports as saved', async () => {
+    // Signed-in guest: the hook asks /api/Favorito/ids for the pressed state.
+    fixtures.sinSesion = false
+    fixtures.favoritosIds = [42]
+    renderCatalog()
+
+    expect(await screen.findByText('Ruta del café en Apan')).toBeInTheDocument()
+    // The id set resolves from /api/Favorito/ids after the first paint.
+    expect(await screen.findByRole('button', { name: 'Quitar publicación de guardados' }))
+      .toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('saves through the API and flips the pressed state for a signed-in guest', async () => {
+    fixtures.sinSesion = false
+    renderCatalog()
+
+    const corazon = await screen.findByRole('button', { name: 'Guardar publicación' })
+    fireEvent.click(corazon)
+
+    expect(guardarPublicacion).toHaveBeenCalledWith(42)
+    expect(await screen.findByRole('button', { name: 'Quitar publicación de guardados' }))
+      .toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('routes an anonymous click to login instead of calling the API', async () => {
+    renderCatalogWithLogin()
+
+    const corazon = await screen.findByRole('button', { name: 'Guardar publicación' })
+    fireEvent.click(corazon)
+
+    expect(await screen.findByText('screen:login')).toBeInTheDocument()
+    expect(guardarPublicacion).not.toHaveBeenCalled()
   })
 })

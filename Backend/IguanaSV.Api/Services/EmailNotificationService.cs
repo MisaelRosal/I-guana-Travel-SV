@@ -282,6 +282,34 @@ public class EmailNotificationService : IEmailNotificationService
     }
 
     /// <summary>
+    /// Sent to the guest when a host rates them after a completed reservation.
+    /// </summary>
+    public Task<bool> CalificacionRecibidaAsync(
+        string destinatario, string nombreHuesped, string tituloPublicacion, short calificacion, CancellationToken cancellationToken = default)
+    {
+        var estrellas = new string('★', Math.Clamp((int)calificacion, 0, 5)) + new string('☆', 5 - Math.Clamp((int)calificacion, 0, 5));
+        var enlace = $"{_options.SitioUrl.TrimEnd('/')}/mi-cuenta";
+        var cuerpo = $"""
+            <p>Hola {Esc(nombreHuesped)},</p>
+            <p>El anfitrión de tu estancia en "{Esc(tituloPublicacion)}" te ha calificado:</p>
+            <p style="font-size:22px;margin:14px 0;color:#f5a623;letter-spacing:3px;">{estrellas} <span style="font-size:15px;color:#3a3a3a;font-weight:700;">{calificacion}/5</span></p>
+            <p>Podés ver tu calificación en tu cuenta. ¡Gracias por ser un gran huésped!</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>
+              <td style="border-radius:8px;background:#1f4d3a;">
+                <a href="{Esc(enlace)}" style="display:inline-block;padding:12px 26px;color:#ffffff;font-weight:bold;text-decoration:none;">Ver mi cuenta</a>
+              </td>
+            </tr></table>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Nueva calificación recibida - I Guana Travel SV",
+            "calificacion_recibida",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
     /// Branded HTML shell every outgoing email is wrapped in: dark-green header
     /// with the brand mark, white rounded card holding the title and body, and a
     /// muted footer. Inline styles + table layout only (email-client safe:
