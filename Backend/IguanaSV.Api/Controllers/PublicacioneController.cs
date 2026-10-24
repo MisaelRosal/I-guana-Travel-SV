@@ -244,13 +244,73 @@ public class PublicacioneController : ControllerBase
             }
         }
 
-        // Horarios: el frontend manda la lista completa, se reemplazan
+        // Horarios: el frontend manda la lista completa. Antes se borraban y
+        // recreaban todos; ahora se reconcilian por (fecha, hora, día) para
+        // conservar los ids. Una fecha con reservas activas no se puede quitar
+        // ni cambiar de horario desde acá: hay que reprogramarla con el gestor
+        // de disponibilidad, que mueve a los huéspedes y les avisa por correo.
         var horariosActuales = await _context.Horarios
             .Where(h => h.PublicacionId == id)
             .ToListAsync();
-        _context.Horarios.RemoveRange(horariosActuales);
+        var solicitados = dto.Horarios ?? new List<CreateHorarioDto>();
 
-        foreach (var h in dto.Horarios ?? new List<CreateHorarioDto>())
+        foreach (var h in horariosActuales)
+        {
+            if (h.Fecha == null)
+            {
+                continue;
+            }
+
+            var sigueIgual = solicitados.Any(s =>
+                s.Fecha == h.Fecha && s.HoraInicio == h.HoraInicio
+                && s.HoraFin == h.HoraFin && s.DiaSemana == h.DiaSemana);
+
+            if (sigueIgual)
+            {
+                continue;
+            }
+
+            var tieneReservas = await _context.Reservas.AnyAsync(r =>
+                r.PublicacionId == id
+                && r.FechaInicio == h.Fecha
+                && (r.Estado == null || (r.Estado != "cancelada" && r.Estado != "completada")));
+
+            if (tieneReservas)
+            {
+                return Conflict(new
+                {
+                    mensaje = "No podés quitar ni cambiar el horario de una fecha con reservas activas. Usá el gestor de disponibilidad para reprogramar a los huéspedes.",
+                });
+            }
+        }
+
+        var pendientes = new List<CreateHorarioDto>(solicitados);
+        foreach (var h in horariosActuales)
+        {
+            var idx = pendientes.FindIndex(s =>
+                s.Fecha == h.Fecha && s.HoraInicio == h.HoraInicio
+                && s.HoraFin == h.HoraFin && s.DiaSemana == h.DiaSemana);
+
+            if (idx >= 0)
+            {
+                var s = pendientes[idx];
+                h.PublicacionId = id;
+                h.DiaSemana = s.DiaSemana;
+                h.Fecha = s.Fecha;
+                h.HoraInicio = s.HoraInicio;
+                h.HoraFin = s.HoraFin;
+                h.Disponible = s.Disponible ?? true;
+                h.Cupos = s.Cupos;
+                h.UpdatedAt = DateTime.Now;
+                pendientes.RemoveAt(idx);
+            }
+            else
+            {
+                _context.Horarios.Remove(h);
+            }
+        }
+
+        foreach (var h in pendientes)
         {
             _context.Horarios.Add(new Horario
             {
@@ -310,6 +370,18 @@ public class PublicacioneController : ControllerBase
         if (!User.IsInRole(AuthConstants.AdminRole) && !await CallerOwnsAnfitrionAsync(dto.AnfitrionId))
         {
             return Forbid();
+        }
+
+        // ...and only once an admin has validated that host account. New hosts
+        // start with Verificado = false (registrar), so publishing stays locked
+        // until the admin verification gate unlocks it.
+        if (!User.IsInRole(AuthConstants.AdminRole)
+            && !await _context.Anfitriones.AnyAsync(a => a.Id == dto.AnfitrionId && a.Verificado == true))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                mensaje = "Tu cuenta de anfitrión todavía no fue verificada por un administrador. Podés crear publicaciones cuando la validación esté completa.",
+            });
         }
 
         if (!await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId))

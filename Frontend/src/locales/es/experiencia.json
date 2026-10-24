@@ -130,6 +130,7 @@
     "address": "Dirección",
     "status": "Estado",
     "bookNow": "Reservar ahora",
+    "ownListing": "Esta es tu publicación, así que no podés reservarla.",
     "howToArrive": "Cómo llegar"
   },
   "host": {

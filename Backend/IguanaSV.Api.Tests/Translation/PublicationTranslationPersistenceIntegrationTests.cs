@@ -343,6 +343,9 @@ public sealed class PublicationTranslationPersistenceIntegrationTests
         public Task<bool> ReservaCreadaAsync(string destinatario, string nombreHuesped, string tituloPublicacion,
             DateOnly fechaInicio, DateOnly fechaFin, int huespedes, decimal precioTotal,
             CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> ReservaReprogramadaAsync(string destinatario, string nombreHuesped, string tituloPublicacion,
+            DateOnly fechaAnterior, DateOnly fechaNueva,
+            CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> ResenaDisponibleAsync(string destinatario, string nombre, string tituloPublicacion,
             CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> ResenaRecibidaAsync(string destinatario, string nombreAnfitrion, string tituloPublicacion,

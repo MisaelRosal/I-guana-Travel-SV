@@ -42,6 +42,7 @@ vi.mock('../../pages/Admin/AdminPanelPage.jsx', () => mockScreen('admin', false)
 vi.mock('../../pages/MiPerfil/MiPerfilPage.jsx', () => mockScreen('my-profile', false))
 vi.mock('../../pages/MiCuenta/MiCuentaPage.jsx', () => mockScreen('my-account', false))
 vi.mock('../../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx', () => mockScreen('host-profile', true))
+vi.mock('../../pages/Chat/ChatPage.jsx', () => mockScreen('mensajes', false))
 
 // Helper to mock a session with a specific role
 function mockSession(role = 'usuario') {
@@ -123,6 +124,7 @@ const PUBLIC_ES_PATHS = [
   ['/login', 'login'],
   ['/registro', 'register'],
   ['/anfitriones/42', 'host-profile:42'],
+  ['/mensajes', 'mensajes'],
 ]
 
 // Protected routes that need a session (user role is enough)
@@ -150,6 +152,7 @@ const EN_ALIASES = [
   ['/become-a-host', 'become-host'],
   ['/my-account', 'my-account'],
   ['/my-profile', 'my-profile'],
+  ['/messages', 'mensajes'],
   ['/hosts/42', 'host-profile:42'],
 ]
 
@@ -295,7 +298,7 @@ describe("unmatched paths keep today's no-match behavior (no catch-all added)", 
   }
 })
 
-describe('ROUTE_PAIRS mirrors the AD-1 table (11 pairs, alias-only)', () => {
+describe('ROUTE_PAIRS mirrors the AD-1 table (12 pairs, alias-only)', () => {
   it('exposes exactly the key/es/en forms of the design', () => {
     expect(ROUTE_PAIRS.map(({ key, es, en }) => ({ key, es, en }))).toEqual([
       { key: 'catalog', es: '/', en: '/' },
@@ -308,6 +311,7 @@ describe('ROUTE_PAIRS mirrors the AD-1 table (11 pairs, alias-only)', () => {
       { key: 'admin', es: 'admin', en: 'admin' },
       { key: 'miPerfil', es: 'mi-perfil', en: 'my-profile' },
       { key: 'miCuenta', es: 'mi-cuenta', en: 'my-account' },
+      { key: 'mensajes', es: 'mensajes', en: 'messages' },
       { key: 'hostProfile', es: 'anfitriones/:id', en: 'hosts/:id' },
     ])
   })

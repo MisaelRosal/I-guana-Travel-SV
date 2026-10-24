@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createElement } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -32,6 +33,7 @@ vi.mock('react-leaflet', () => ({
 const fixtures = vi.hoisted(() => {
   const base = {
     id: 42,
+    publicacionId: 314,
     titulo: 'Ruta del café en Apan',
     categoria: 'Café',
     descripcion: 'Senderismo entre fincas cafetaleras.',
@@ -81,6 +83,16 @@ vi.mock('../../../services/reservas.js', () => ({
 
 vi.mock('../../../services/resenas.js', () => ({
   getResenasPublicacion: vi.fn(async () => ({ promedio: 0, total: 0, resenas: [] })),
+}))
+
+vi.mock('../../../components/ChatPanel.jsx', () => ({
+  default: (props) => props.abierto
+    ? createElement('div', {
+        'data-testid': 'chat-panel',
+        'data-host-id': props.anfitrionId,
+        'data-publication-id': props.publicacionId ?? '',
+      })
+    : null,
 }))
 
 import { getExperienciaById } from '../../../services/experiencias.js'
@@ -222,6 +234,15 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     expect(screen.getByRole('link', { name: /Carlos Mendoza/ })).toHaveAttribute('href', '/hosts/7')
   })
 
+  it('opens chat with the mapped publication id, not a route-derived id', async () => {
+    await openLoaded(fixtures.experiencia)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send a message' }))
+
+    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-host-id', '7')
+    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-publication-id', '314')
+  })
+
   it('localizes gallery accessibility names and the lightbox', async () => {
     await openLoaded()
 
@@ -350,5 +371,31 @@ describe('ES active: extraction keeps the canonical Spanish detail byte-comparab
     expect(within(dialog).getByText('¿Para cuántas personas?')).toBeInTheDocument()
     expect(within(dialog).getByText('Capacidad máxima: 8 personas')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Continuar' })).toBeInTheDocument()
+  })
+})
+
+describe('Anfitrión dueño de la publicación: guard de UX', () => {
+  it('oculta el botón de reservar y muestra el aviso para el anfitrión', async () => {
+    sessionStorage.setItem(
+      'iguana_usuario',
+      JSON.stringify({ id: 23, nombre: 'Kevin', apellido: 'Hernández', email: 'kevin@correo.com', telefono: '' }),
+    )
+
+    await openLoaded({ ...fixtures.hospedaje, anfitrionUsuarioId: 23 })
+
+    expect(screen.getByText('Esta es tu publicación, así que no podés reservarla.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reservar ahora' })).toBeNull()
+  })
+
+  it('mantiene el botón para un usuario que no es el anfitrión', async () => {
+    sessionStorage.setItem(
+      'iguana_usuario',
+      JSON.stringify({ id: 99, nombre: 'Ana', apellido: 'Pérez', email: 'ana@correo.com', telefono: '' }),
+    )
+
+    await openLoaded({ ...fixtures.hospedaje, anfitrionUsuarioId: 23 })
+
+    expect(screen.getByRole('button', { name: 'Reservar ahora' })).toBeInTheDocument()
+    expect(screen.queryByText('Esta es tu publicación, así que no podés reservarla.')).toBeNull()
   })
 })

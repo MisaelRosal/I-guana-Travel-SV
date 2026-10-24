@@ -160,6 +160,11 @@ public sealed class AuthzIntegrationTests
         var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
         var client = AuthedClient(owner);
 
+        // New hosts start unverified; creation requires the admin validation.
+        var verif = await AuthedClient(AdminSession())
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.NoContent, verif.StatusCode);
+
         var post = await client.PostAsync("/api/Publicacione",
             PublicationBody(seed.AnfitrionId, seed.CategoriaId));
         Assert.Equal(HttpStatusCode.Created, post.StatusCode);
@@ -170,6 +175,29 @@ public sealed class AuthzIntegrationTests
 
         var delete = await client.DeleteAsync($"/api/Publicacione/{seed.PublicacionId}");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task Owner_UnverifiedHost_CannotCreatePublication_UntilAdminVerifies()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var client = AuthedClient(owner);
+
+        // New host rows start unverified: creation is locked by the admin gate.
+        var blocked = await client.PostAsync("/api/Publicacione",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Forbidden, blocked.StatusCode);
+
+        // The admin verification unlocks the same request for the owner.
+        var verif = await AuthedClient(AdminSession())
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.NoContent, verif.StatusCode);
+
+        var created = await client.PostAsync("/api/Publicacione",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
     }
 
     [SkippableFact]
@@ -235,6 +263,30 @@ public sealed class AuthzIntegrationTests
             .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
         Assert.Equal(HttpStatusCode.NoContent, adminRes.StatusCode);
         Assert.True(await ReadHostVerifiedAsync(seed.AnfitrionId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task PostAnfitrione_NonAdmin_CannotSelfVerify()
+    {
+        // The generic create route binds the whole entity: a non-admin could
+        // historically send verificado = true and bypass the admin gate.
+        var owner = await RegisterUserAsync();
+        var (municipioId, _) = await SeedGeoAndCategoryAsync();
+
+        var res = await AuthedClient(owner).PostAsync("/api/Anfitrione", Json(new
+        {
+            usuarioId = owner.UserId,
+            municipioId,
+            nombre = "Self-verified attempt",
+            email = NewEmail(),
+            verificado = true,
+        }));
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        var hostId = doc.RootElement.GetProperty("id").GetInt32();
+        Assert.False(await ReadHostVerifiedAsync(hostId));
     }
 
     [SkippableFact]

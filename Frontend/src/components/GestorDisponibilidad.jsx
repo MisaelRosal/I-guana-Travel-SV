@@ -28,8 +28,11 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
 
   const [pubId, setPubId] = useState(null)
   const [ediciones, setEdiciones] = useState({})
+  const [fechas, setFechas] = useState({})
   const [guardandoId, setGuardandoId] = useState(null)
+  const [reprogramandoId, setReprogramandoId] = useState(null)
   const [error, setError] = useState(null)
+  const [confirmRepro, setConfirmRepro] = useState(null)
 
   useEffect(() => {
     if (experiencias.length === 0) {
@@ -41,6 +44,7 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
 
   useEffect(() => {
     setEdiciones({})
+    setFechas({})
     setError(null)
   }, [pubId])
 
@@ -71,6 +75,10 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
     return v.cupos !== cuposOriginal || v.disponible !== (h.disponible !== false)
   }
 
+  const fechaEditable = (h) => fechas[h.id] ?? (h.fecha ? String(h.fecha).slice(0, 10) : '')
+
+  const cambioFecha = (h) => fechaEditable(h) !== '' && fechaEditable(h) !== String(h.fecha).slice(0, 10)
+
   const guardar = async (h) => {
     const v = valor(h)
     setGuardandoId(h.id)
@@ -91,6 +99,32 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
       setError(e?.mensaje || e?.message || t('availability.error'))
     } finally {
       setGuardandoId(null)
+    }
+  }
+
+  const pedirReprogramar = (h) => {
+    const nuevaFecha = fechaEditable(h)
+    if (!cambioFecha(h)) {
+      return
+    }
+    setConfirmRepro({ horario: h, nuevaFecha })
+  }
+
+  const confirmarReprogramar = async () => {
+    if (!confirmRepro) return
+    const { horario: h, nuevaFecha } = confirmRepro
+    setConfirmRepro(null)
+    setReprogramandoId(h.id)
+    setError(null)
+    try {
+      const res = await api.post(`/Horario/${h.id}/reprogramar`, { nuevaFecha })
+      const movidas = res?.reservasMovidas ?? 0
+      onMensaje?.(t('availability.reprogrammed', { count: movidas }))
+      onActualizado?.()
+    } catch (e) {
+      setError(e?.mensaje || e?.message || t('availability.reprogramError'))
+    } finally {
+      setReprogramandoId(null)
     }
   }
 
@@ -137,7 +171,16 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
                 const dirty = cambio(h)
                 return (
                   <tr key={h.id} className={v.disponible ? '' : 'bg-red-50/50'}>
-                    <td className="px-4 py-3 font-semibold text-verde-bosque">{formatDateDMY(h.fecha, locale)}</td>
+                    <td className="px-4 py-3 font-semibold text-verde-bosque">
+                      <div>{formatDateDMY(h.fecha, locale)}</div>
+                      <input
+                        type="date"
+                        value={fechaEditable(h)}
+                        onChange={(e) => setFechas((prev) => ({ ...prev, [h.id]: e.target.value }))}
+                        aria-label={t('availability.newDate')}
+                        className="mt-1 w-40 rounded-full border border-neutral-300 bg-white px-3 py-1 text-xs text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+                      />
+                    </td>
                     <td className="px-4 py-3 text-neutral-700">{horaCorta(h.horaInicio)} – {horaCorta(h.horaFin)}</td>
                     <td className="px-4 py-3">
                       <input
@@ -163,14 +206,26 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
                       </label>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => guardar(h)}
-                        disabled={!dirty || guardandoId === h.id}
-                        className="cursor-pointer rounded-full bg-iguana-hondo px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-verde-bosque disabled:opacity-40"
-                      >
-                        {guardandoId === h.id ? t('availability.saving') : t('availability.save')}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => guardar(h)}
+                          disabled={!dirty || guardandoId === h.id}
+                          className="cursor-pointer rounded-full bg-iguana-hondo px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-verde-bosque disabled:opacity-40"
+                        >
+                          {guardandoId === h.id ? t('availability.saving') : t('availability.save')}
+                        </button>
+                        {cambioFecha(h) && (
+                          <button
+                            type="button"
+                            onClick={() => pedirReprogramar(h)}
+                            disabled={reprogramandoId === h.id}
+                            className="cursor-pointer rounded-full border border-iguana-hondo px-3 py-1.5 text-xs font-semibold text-iguana-hondo transition-colors hover:bg-iguana-hondo hover:text-white disabled:opacity-40"
+                          >
+                            {reprogramandoId === h.id ? t('availability.reprogramming') : t('availability.reprogram')}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -179,6 +234,33 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
           </table>
         </div>
       </div>
+
+      {confirmRepro && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div role="dialog" aria-label={t('availability.reprogram')} className="w-full max-w-md rounded-[22px] bg-crema p-6">
+            <h3 className="text-lg font-bold text-verde-bosque">{t('availability.reprogram')}</h3>
+            <p className="mt-2 text-sm text-neutral-700">
+              {t('availability.reprogramConfirm', { date: formatDateDMY(confirmRepro.nuevaFecha, locale) })}
+            </p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmRepro(null)}
+                className="cursor-pointer rounded-full border border-cafe-claro bg-white px-4 py-2 text-sm font-semibold text-verde-bosque transition-colors hover:bg-neutral-50"
+              >
+                {t('common:actions.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmarReprogramar}
+                className="cursor-pointer rounded-full bg-iguana-hondo px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
+              >
+                {t('availability.reprogram')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

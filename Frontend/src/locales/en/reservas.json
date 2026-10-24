@@ -31,6 +31,8 @@
     "noteShortConfirmed": "Paid: less than a day left, editing and cancelling are no longer available.",
     "noteGraceExpired": "The payment hour expired. This booking will be cancelled automatically.",
     "noteBlockedSoon": "Your start date is a day away or earlier, so this booking can no longer be edited or deleted.",
+    "noteRescheduled": "The host changed this experience's date and your booking moved with it. You can cancel without restrictions if it no longer works for you.",
+    "noteRescheduledFrom": "The host moved this booking from {{date}} to the new date. You can cancel without restrictions if it no longer works for you.",
     "pay": "Pay",
     "edit": "Edit",
     "delete": "Delete"
@@ -97,6 +99,7 @@
     "reasonStarted": "A booking whose start date already passed or is today cannot be cancelled.",
     "reasonCompleted": "A booking that was already completed cannot be cancelled.",
     "question": "Are you sure you want to cancel this booking?",
+    "freeNote": "This booking was rescheduled by the host: you can cancel it without restrictions.",
     "checkIn": "Check-in: {{date}}",
     "confirm": "Yes, cancel booking",
     "processing": "Cancelling...",

@@ -7,6 +7,11 @@
     "emptyTitle": "Aún no hay publicaciones",
     "emptyBody": "Usa el botón «Crear publicación» para agregar la primera."
   },
+  "verification": {
+    "pendingTitle": "Verificación pendiente",
+    "pendingBody": "Un administrador debe verificar tu cuenta de anfitrión antes de que puedas crear publicaciones.",
+    "pendingTooltip": "Tu cuenta de anfitrión todavía no fue verificada."
+  },
   "table": {
     "listing": "Publicación",
     "category": "Categoría",
@@ -48,7 +53,13 @@
     "save": "Guardar",
     "saving": "Guardando…",
     "saved": "Disponibilidad actualizada correctamente.",
-    "error": "No se pudo actualizar la disponibilidad."
+    "error": "No se pudo actualizar la disponibilidad.",
+    "newDate": "Nueva fecha",
+    "reprogram": "Reprogramar fecha",
+    "reprogramming": "Reprogramando…",
+    "reprogramConfirm": "¿Mover esta fecha al {{date}}? Las reservas de ese día se moverán también y los huéspedes recibirán un correo. Podrán cancelar sin restricciones.",
+    "reprogrammed": "Fecha reprogramada. Reservas movidas: {{count}}.",
+    "reprogramError": "No se pudo reprogramar la fecha."
   },
   "agenda": {
     "tab": "Agenda",

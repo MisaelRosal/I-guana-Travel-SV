@@ -132,7 +132,8 @@ public sealed class SchemaMigrationsIntegrationTests
             // AddVerificacionEmailYNotificaciones, AddResenas, publication English
             // overlay, public user-content English overlays, the availability
             // manager AddHorarioCupos, the saved-publications table
-            // AddPublicacionesFavoritas, and the new AddUsuarioDestinoToResena = fifteen at head.
+            // AddPublicacionesFavoritas, the new AddUsuarioDestinoToResena, host reschedule AddReservaReprogramacion,
+            // and chat AddChatConversaciones = fifteen at head.
             Assert.Equal(15, applied);
 
             // Drift columns + ownership column now exist from migrations alone.

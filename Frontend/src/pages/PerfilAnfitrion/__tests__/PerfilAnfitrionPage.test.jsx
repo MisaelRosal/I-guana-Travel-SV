@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
@@ -63,6 +63,12 @@ vi.mock('../../../services/experiencias.js', () => ({
   getExperiencias: vi.fn(async () => fixtures.publicaciones),
 }))
 
+vi.mock('../../../components/ChatPanel.jsx', () => ({
+  default: ({ abierto, anfitrionId, publicacionId }) => abierto
+    ? <div data-testid="chat-panel" data-host-id={anfitrionId} data-publication-id={publicacionId ?? ''} />
+    : null,
+}))
+
 function renderHostProfile() {
   return render(
     <I18nextProvider i18n={i18n}>
@@ -78,6 +84,7 @@ function renderHostProfile() {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  sessionStorage.clear()
   fixtures.falla = false
   fixtures.sinPerfil = false
 })
@@ -146,6 +153,16 @@ describe('EN active: host-profile chrome comes from the perfil namespace', () =>
     renderHostProfile()
     // {{error}} interpolation carries the API message verbatim.
     expect(await screen.findByText('Error: boom')).toBeInTheDocument()
+  })
+
+  it('opens the host chat without publication context', async () => {
+    sessionStorage.setItem('iguana_usuario', JSON.stringify({ id: 10, rol: 'usuario' }))
+    renderHostProfile()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Contact me' }))
+
+    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-host-id', '7')
+    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-publication-id', '')
   })
 })
 

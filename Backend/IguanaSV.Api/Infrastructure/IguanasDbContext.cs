@@ -16,6 +16,8 @@ public class IguanasDbContext : DbContext
 
     public virtual DbSet<Categoria> Categorias { get; set; }
 
+    public virtual DbSet<Conversacione> Conversaciones { get; set; }
+
     public virtual DbSet<Departamento> Departamentos { get; set; }
 
     public virtual DbSet<Experiencia> Experiencias { get; set; }
@@ -23,6 +25,8 @@ public class IguanasDbContext : DbContext
     public virtual DbSet<Horario> Horarios { get; set; }
 
     public virtual DbSet<ImagenesPublicacion> ImagenesPublicacions { get; set; }
+
+    public virtual DbSet<Mensaje> Mensajes { get; set; }
 
     public virtual DbSet<Municipio> Municipios { get; set; }
 
@@ -153,6 +157,49 @@ public class IguanasDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<Conversacione>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("conversaciones_pkey");
+
+            entity.ToTable("conversaciones");
+
+            entity.HasIndex(e => new { e.ViajeroUsuarioId, e.AnfitrionId }, "conversaciones_viajero_usuario_id_anfitrion_id_key").IsUnique();
+
+            entity.HasIndex(e => e.AnfitrionId, "idx_conversaciones_anfitrion");
+
+            entity.HasIndex(e => e.UltimoMensajeEn, "idx_conversaciones_ultimo_mensaje").IsDescending(true);
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AnfitrionId).HasColumnName("anfitrion_id");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+            entity.Property(e => e.UltimoLeidoAnfitrionEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("ultimo_leido_anfitrion_en");
+            entity.Property(e => e.UltimoLeidoViajeroEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("ultimo_leido_viajero_en");
+            entity.Property(e => e.UltimoMensajeEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("ultimo_mensaje_en");
+            entity.Property(e => e.UltimoMensajeTexto)
+                .HasColumnType("text")
+                .HasColumnName("ultimo_mensaje_texto");
+            entity.Property(e => e.ViajeroUsuarioId).HasColumnName("viajero_usuario_id");
+
+            entity.HasOne(d => d.Anfitrion).WithMany()
+                .HasForeignKey(d => d.AnfitrionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("conversaciones_anfitrion_id_fkey");
+
+            entity.HasOne(d => d.ViajeroUsuario).WithMany()
+                .HasForeignKey(d => d.ViajeroUsuarioId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("conversaciones_viajero_usuario_id_fkey");
+        });
+
         modelBuilder.Entity<Departamento>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("departamentos_pkey");
@@ -277,6 +324,44 @@ public class IguanasDbContext : DbContext
             entity.HasOne(d => d.Publicacion).WithMany(p => p.ImagenesPublicacions)
                 .HasForeignKey(d => d.PublicacionId)
                 .HasConstraintName("imagenes_publicacion_publicacion_id_fkey");
+        });
+
+        modelBuilder.Entity<Mensaje>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("mensajes_pkey");
+
+            entity.ToTable("mensajes", t => t.HasCheckConstraint(
+                "mensajes_mensaje_check", "char_length(mensaje) BETWEEN 1 AND 500"));
+
+            entity.HasIndex(e => new { e.ConversacionId, e.CreadoEn, e.Id }, "idx_mensajes_conversacion_creado")
+                .IsDescending(false, true, true);
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ConversacionId).HasColumnName("conversacion_id");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+            entity.Property(e => e.EmisorUsuarioId).HasColumnName("emisor_usuario_id");
+            entity.Property(e => e.PublicacionId).HasColumnName("publicacion_id");
+            entity.Property(e => e.Texto)
+                .HasColumnType("text")
+                .HasColumnName("mensaje");
+
+            entity.HasOne(d => d.Conversacion).WithMany(p => p.Mensajes)
+                .HasForeignKey(d => d.ConversacionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("mensajes_conversacion_id_fkey");
+
+            entity.HasOne(d => d.EmisorUsuario).WithMany()
+                .HasForeignKey(d => d.EmisorUsuarioId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("mensajes_emisor_usuario_id_fkey");
+
+            entity.HasOne(d => d.Publicacion).WithMany()
+                .HasForeignKey(d => d.PublicacionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("mensajes_publicacion_id_fkey");
         });
 
         modelBuilder.Entity<Municipio>(entity =>
@@ -554,6 +639,13 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.ResenasNotificadasEn)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("resenas_notificadas_en");
+            entity.Property(e => e.CancelacionLibre)
+                .HasDefaultValue(false)
+                .HasColumnName("cancelacion_libre");
+            entity.Property(e => e.ReprogramadaDesde).HasColumnName("reprogramada_desde");
+            entity.Property(e => e.ReprogramadaEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("reprogramada_en");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")

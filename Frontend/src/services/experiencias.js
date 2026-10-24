@@ -33,6 +33,9 @@ export function mapearPublicacion(p) {
     : null
   return {
     id: p.id,
+    // Chat card context binds this explicit publication id — the detail page's
+    // route :id is the same value today, but consumers must never assume it.
+    publicacionId: p.id,
     titulo: p.titulo,
     tipo: esHospedaje ? 'hospedaje' : 'experiencia',
     categoria: categoriaNombre,
@@ -40,6 +43,7 @@ export function mapearPublicacion(p) {
     precio: p.precioPorNoche,
     anfitrion: p.anfitrion?.nombre ?? '',
     anfitrionId: p.anfitrion?.id ?? null,
+    anfitrionUsuarioId: p.anfitrion?.usuarioId ?? null,
     anfitrionFoto: p.anfitrion?.fotoPerfil ?? '',
     anfitrionDescripcion: p.anfitrion?.descripcion ?? '',
     anfitrionVerificado: p.anfitrion?.verificado ?? false,
@@ -73,6 +77,7 @@ export function mapearPublicacion(p) {
         fecha: h.fecha ?? null,
         horaInicio: h.horaInicio,
         horaFin: h.horaFin,
+        disponible: h.disponible ?? true,
       })),
     fechasDisponibles: (p.horarios ?? [])
       .filter(Boolean)

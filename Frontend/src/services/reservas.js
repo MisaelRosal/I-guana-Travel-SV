@@ -39,6 +39,8 @@ export async function getMisReservas() {
       precioTotal: r.precioTotal ?? 0,
       estado: r.estado ?? 'pendiente',
       fechaExpiracionGracia: r.fechaExpiracionGracia ?? null,
+      cancelacionLibre: r.cancelacionLibre === true,
+      reprogramadaDesde: r.reprogramadaDesde ? formatearFecha(r.reprogramadaDesde) : null,
       resena: r.resena ?? null,
       nombreHuesped: r.nombreHuesped ?? '',
       emailHuesped: r.emailHuesped ?? '',

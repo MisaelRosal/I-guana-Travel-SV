@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
+import MessageLauncher from '../components/MessageLauncher.jsx'
 import { localePath } from '../i18n/routes.jsx'
 import { LOCALE_STORAGE_KEY } from '../i18n/config.js'
 import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
+import { useChatNoLeidos } from '../hooks/useChatNoLeidos.js'
 
 // NOTE (W3a): the role/name read from the session here drives VISIBILITY only
 // (which links/buttons to show). It is a UI convenience backed by the cache that
@@ -64,6 +66,8 @@ export default function Header() {
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
   const navigate = useNavigate()
+  // Shared unread-chat badge for every authenticated role (15 s poll).
+  const noLeidos = useChatNoLeidos(!!usuario)
 
   useEffect(() => {
     // JD-INFO-2: `iguana_locale` is owned by the i18n runtime (config.js has
@@ -167,6 +171,7 @@ export default function Header() {
     }`
 
   return (
+    <>
     <header className="bg-verde-bosque text-white sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4" data-menu-movil>
         <Link to={localePath('catalog')} aria-label={t('brand.ariaLabel')}>
@@ -179,8 +184,14 @@ export default function Header() {
               key={link.to}
               to={link.to}
               className={claseNavLink}
+              aria-label={link.badge ? `${link.label} — ${t('chat:badge.aria', { count: link.badge })}` : undefined}
             >
               {link.label}
+              {link.badge > 0 && (
+                <span aria-hidden="true" className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-iguana-hondo px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                  {link.badge}
+                </span>
+              )}
             </NavLink>
           ))}
           <ToggleIdioma />
@@ -367,5 +378,7 @@ export default function Header() {
         </nav>
       )}
     </header>
+    {usuario && <MessageLauncher unreadCount={noLeidos} />}
+    </>
   )
 }

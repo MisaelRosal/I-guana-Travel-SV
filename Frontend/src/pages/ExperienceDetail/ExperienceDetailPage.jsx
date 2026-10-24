@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
@@ -17,8 +17,10 @@ import {
 import { getExperienciaById } from '../../services/experiencias'
 import { getDisponibilidad } from '../../services/reservas'
 import { getResenasPublicacion } from '../../services/resenas'
+import { leerSesionCache } from '../../services/session.js'
 import { scrollBehavior } from '../../utils/motion.js'
 import FormularioReserva from '../../components/FormularioReserva'
+import ChatPanel from '../../components/ChatPanel'
 import { useModalAccesible } from '../../hooks/useModalAccesible.js'
 import useFavoritos from '../../hooks/useFavoritos.js'
 import Toast from '../../components/Toast.jsx'
@@ -155,7 +157,7 @@ function Galeria({ imagenes, titulo }) {
   )
 }
 
-function InfoBox({ experiencia, onReservar, resumenResenas, guardado, onToggleGuardado }) {
+function InfoBox({ experiencia, onReservar, resumenResenas, guardado, onToggleGuardado, esMiPublicacion }) {
   const { t } = useTranslation('experiencia')
   const locale = useFormatLocale()
   const esHospedaje = experiencia.tipo === 'hospedaje'
@@ -279,13 +281,19 @@ function InfoBox({ experiencia, onReservar, resumenResenas, guardado, onToggleGu
         </div>
       </dl>
 
-      <button
-        type="button"
-        onClick={onReservar}
-        className="mt-7 block w-full cursor-pointer rounded-full bg-iguana-hondo px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque"
-      >
-        {t('info.bookNow')}
-      </button>
+      {esMiPublicacion ? (
+        <p className="mt-7 block w-full rounded-full bg-crema px-4 py-4 text-center text-base font-semibold text-cafe">
+          {t('info.ownListing')}
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={onReservar}
+          className="mt-7 block w-full cursor-pointer rounded-full bg-iguana-hondo px-4 py-4 text-center text-lg font-bold text-white transition-colors hover:bg-verde-bosque"
+        >
+          {t('info.bookNow')}
+        </button>
+      )}
 
       <button
         type="button"
@@ -365,9 +373,12 @@ function SeccionResenas({ data }) {
   )
 }
 
-function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
+function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado, onContactar }) {
   const { t } = useTranslation('experiencia')
+  const { t: tc } = useTranslation('chat')
+  const location = useLocation()
   if (!anfitrionId) return null
+  const sesion = leerSesionCache()
   return (
     <section className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">{t('host.title')}</h3>
@@ -399,20 +410,46 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado }) {
           </span>
         </div>
       </Link>
+      {/* Chat entry (spec THM8): opens the drawer bound to this host with the
+          listing card; signed-out users get the login link, same pattern as
+          the booking form. */}
+      <div className="mt-4">
+        {sesion ? (
+          <button
+            type="button"
+            onClick={onContactar}
+            className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+          >
+            {tc('entry.messageHost')}
+          </button>
+        ) : (
+          <Link
+            to={localePath('login')}
+            state={{ from: location.pathname + location.search }}
+            className="inline-block cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+          >
+            {tc('entry.messageHost')}
+          </Link>
+        )}
+      </div>
     </section>
   )
 }
 
-function Horarios({ horarios }) {
+function Horarios({ horarios = [] }) {
   const { t } = useTranslation('experiencia')
   const locale = useFormatLocale()
-  if (!horarios.length) return null
+  if (!Array.isArray(horarios) || horarios.length === 0) return null
 
-  const conFecha = horarios.filter((h) => h.fecha).slice().sort((a, b) => a.fecha.localeCompare(b.fecha))
-  const porDiaSemana = horarios.filter((h) => !h.fecha && h.diaSemana != null)
+  const conFecha = horarios
+    .filter((h) => h && h.fecha && h.disponible !== false && h.disponible !== 0)
+    .slice()
+    .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+
+  const porDiaSemana = horarios.filter((h) => h && !h.fecha && h.diaSemana != null)
 
   if (conFecha.length > 0) {
-    const rango = (h) => `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`
+    const rango = (h) => `${String(h.horaInicio || '').slice(0, 5)} – ${String(h.horaFin || '').slice(0, 5)}`
     return (
       <section className="mt-8 border-t border-neutral-100 pt-8">
         <h3 className="text-2xl font-bold text-verde-bosque">{t('schedule.datesTitle')}</h3>
@@ -428,6 +465,8 @@ function Horarios({ horarios }) {
       </section>
     )
   }
+
+  if (porDiaSemana.length === 0) return null
 
   const dias = [...new Set(porDiaSemana.map((h) => h.diaSemana))].sort()
   return (
@@ -839,6 +878,10 @@ export default function ExperienceDetailPage() {
     if (errorFavoritos > 0) setToast({ tipo: 'error', mensaje: t('favoritos.error') })
   }, [errorFavoritos, t])
   const [resenas, setResenas] = useState(null)
+  // UI-only hint: the server is the authority (PostReserva rejects a host
+  // booking their own listing). Reading the cache just lets us hide the CTA.
+  const [usuarioId, setUsuarioId] = useState(() => leerSesionCache()?.id ?? null)
+  const [chatAbierto, setChatAbierto] = useState(false)
 
   useEffect(() => {
     let activo = true
@@ -873,6 +916,16 @@ export default function ExperienceDetailPage() {
     if (reservaPendiente) sessionStorage.removeItem(RESERVA_PENDIENTE_KEY)
   }, [reservaPendiente])
 
+  useEffect(() => {
+    const actualizar = () => setUsuarioId(leerSesionCache()?.id ?? null)
+    window.addEventListener('auth-change', actualizar)
+    window.addEventListener('storage', actualizar)
+    return () => {
+      window.removeEventListener('auth-change', actualizar)
+      window.removeEventListener('storage', actualizar)
+    }
+  }, [])
+
   const seleccionarFechas = useCallback((datos) => {
     setDatosReserva(datos)
     setPasoReserva('formulario')
@@ -890,6 +943,20 @@ export default function ExperienceDetailPage() {
     // F5 (task 6.4): post-booking landing follows the locale route table.
     setTimeout(() => navigate(localePath('reservations')), 2000)
   }
+
+  const esMiPublicacion =
+    usuarioId != null &&
+    experiencia?.anfitrionUsuarioId != null &&
+    Number(usuarioId) === Number(experiencia.anfitrionUsuarioId)
+
+  // A host never gets the calendar/form, even if a pending selection survived
+  // in sessionStorage from a previous visit.
+  useEffect(() => {
+    if (esMiPublicacion && pasoReserva !== 'inicio') {
+      sessionStorage.removeItem(RESERVA_PENDIENTE_KEY)
+      setPasoReserva('inicio')
+    }
+  }, [esMiPublicacion, pasoReserva])
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-8">
@@ -910,10 +977,11 @@ export default function ExperienceDetailPage() {
             <div className="lg:col-span-2">
               <InfoBox
                 experiencia={experiencia}
-                onReservar={() => setPasoReserva('calendario')}
+                onReservar={() => { if (!esMiPublicacion) setPasoReserva('calendario') }}
                 resumenResenas={resenas}
                 guardado={guardado(experiencia.id)}
                 onToggleGuardado={alternar}
+                esMiPublicacion={esMiPublicacion}
               />
             </div>
           </div>
@@ -953,6 +1021,16 @@ export default function ExperienceDetailPage() {
             foto={experiencia.anfitrionFoto}
             descripcion={experiencia.anfitrionDescripcion}
             verificado={experiencia.anfitrionVerificado}
+            onContactar={() => setChatAbierto(true)}
+          />
+
+          {/* Drawer bound to the publication id carried by the mapped
+              experience — never re-derived from the route :id here. */}
+          <ChatPanel
+            abierto={chatAbierto}
+            anfitrionId={experiencia.anfitrionId}
+            publicacionId={experiencia.publicacionId}
+            onCerrar={() => setChatAbierto(false)}
           />
 
           {experiencia.amenidades.length > 0 && (

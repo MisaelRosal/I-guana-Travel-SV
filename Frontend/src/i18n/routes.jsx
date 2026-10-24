@@ -10,6 +10,7 @@ import AdminPanelPage from '../pages/Admin/AdminPanelPage.jsx'
 import MiPerfilPage from '../pages/MiPerfil/MiPerfilPage.jsx'
 import MiCuentaPage from '../pages/MiCuenta/MiCuentaPage.jsx'
 import PerfilAnfitrionPage from '../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx'
+import ChatPage from '../pages/Chat/ChatPage.jsx'
 import ProtectedRoute from '../components/ProtectedRoute.jsx'
 
 // F5 (i18n-es-en) task 6.2 — localized route table (AD-1: ALIAS, never
@@ -31,6 +32,7 @@ export const ROUTE_PAIRS = [
   { key: 'admin', es: 'admin', en: 'admin', element: <ProtectedRoute rolesPermitidos={['admin']}><AdminPanelPage /></ProtectedRoute> },
   { key: 'miPerfil', es: 'mi-perfil', en: 'my-profile', element: <ProtectedRoute rolesPermitidos={['anfitrion']}><MiPerfilPage /></ProtectedRoute> },
   { key: 'miCuenta', es: 'mi-cuenta', en: 'my-account', element: <ProtectedRoute><MiCuentaPage /></ProtectedRoute> },
+  { key: 'mensajes', es: 'mensajes', en: 'messages', element: <ChatPage /> },
   { key: 'hostProfile', es: 'anfitriones/:id', en: 'hosts/:id', element: <PerfilAnfitrionPage /> },
 ]
 

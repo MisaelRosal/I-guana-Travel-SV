@@ -130,6 +130,7 @@
     "address": "Address",
     "status": "Status",
     "bookNow": "Book now",
+    "ownListing": "This is your listing, so you can't book it.",
     "howToArrive": "How to get there"
   },
   "host": {

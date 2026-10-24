@@ -239,6 +239,238 @@ public sealed class DisponibilidadIntegrationTests
         Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
     }
 
+    // ---- A-23: host reschedule of a dated experience -----------------------------
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task Owner_ReprogramaFecha_MovesReservationsAndEmailsGuests()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-01-10", disponible: true, cupos: 6);
+        var reservaId = await SeedReservaAsync(
+            seed.PublicacionId, usuarioId: null, inicio: "2027-01-10", fin: "2027-01-10");
+
+        var res = await AuthedClient(owner).PostAsync($"/api/Horario/{horarioId}/reprogramar",
+            Json(new { nuevaFecha = "2027-02-15" }));
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+
+        using (var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(1, doc.RootElement.GetProperty("reservasMovidas").GetInt32());
+            // The move never depends on the email: with no SMTP in the test host
+            // the send is attempted once and reported as failed.
+            var enviados = doc.RootElement.GetProperty("correosEnviados").GetInt32();
+            var fallidos = doc.RootElement.GetProperty("correosFallidos").GetInt32();
+            Assert.Equal(1, enviados + fallidos);
+        }
+
+        await using var db = NewDb();
+        var horario = await db.Horarios.AsNoTracking().FirstAsync(h => h.Id == horarioId);
+        Assert.Equal(new DateOnly(2027, 2, 15), horario.Fecha);
+
+        var reserva = await db.Reservas.AsNoTracking().FirstAsync(r => r.Id == reservaId);
+        Assert.Equal(new DateOnly(2027, 2, 15), reserva.FechaInicio);
+        Assert.Equal(new DateOnly(2027, 2, 15), reserva.FechaFin);
+        Assert.True(reserva.CancelacionLibre);
+        Assert.Equal(new DateOnly(2027, 1, 10), reserva.ReprogramadaDesde);
+        Assert.NotNull(reserva.ReprogramadaEn);
+        Assert.Null(reserva.FechaExpiracionGracia);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task Reprogramar_DestinationWithActiveReservation_Returns409()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-03-10", disponible: true);
+        await SeedReservaAsync(seed.PublicacionId, usuarioId: null, inicio: "2027-04-20", fin: "2027-04-20");
+
+        var res = await AuthedClient(owner).PostAsync($"/api/Horario/{horarioId}/reprogramar",
+            Json(new { nuevaFecha = "2027-04-20" }));
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+
+        await using var db = NewDb();
+        var horario = await db.Horarios.AsNoTracking().FirstAsync(h => h.Id == horarioId);
+        Assert.Equal(new DateOnly(2027, 3, 10), horario.Fecha); // unchanged
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task Reprogramar_ExceedsCapacity_Returns409()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-05-10", disponible: true, cupos: 1);
+        await SeedReservaAsync(seed.PublicacionId, usuarioId: null,
+            inicio: "2027-05-10", fin: "2027-05-10", huespedes: 3);
+
+        var res = await AuthedClient(owner).PostAsync($"/api/Horario/{horarioId}/reprogramar",
+            Json(new { nuevaFecha = "2027-06-10" }));
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task Reprogramar_NonExperiencePublication_Returns400()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        await using (var db = NewDb())
+        {
+            var pub = await db.Publicaciones.FirstAsync(p => p.Id == seed.PublicacionId);
+            pub.Tipo = "hospedaje";
+            await db.SaveChangesAsync();
+        }
+
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-07-10", disponible: true);
+        var res = await AuthedClient(owner).PostAsync($"/api/Horario/{horarioId}/reprogramar",
+            Json(new { nuevaFecha = "2027-07-20" }));
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task Reprogramar_Anonymous401_NonOwner403()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-08-10", disponible: true);
+        var body = Json(new { nuevaFecha = "2027-08-20" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await Client().PostAsync($"/api/Horario/{horarioId}/reprogramar", body)).StatusCode);
+
+        var intruder = await RegisterUserAsync();
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await AuthedClient(intruder).PostAsync($"/api/Horario/{horarioId}/reprogramar", body)).StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task Reprogramar_MultipleSlotsOnSameDay_Returns409()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-09-10", disponible: true);
+        await SeedDatedHorarioAsync(seed.PublicacionId, "2027-09-10", disponible: true);
+
+        var res = await AuthedClient(owner).PostAsync($"/api/Horario/{horarioId}/reprogramar",
+            Json(new { nuevaFecha = "2027-09-20" }));
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task CancelacionLibre_LetsGuestDeclineMovedReservation_EvenOnExpiredWindow()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-10-10", disponible: true);
+
+        // The guest owns the reservation; the host moves it onto today, so the
+        // normal "date already passed/is today" cancel rule would block it. The
+        // rescheduled flag must lift that restriction.
+        var guest = await RegisterUserAsync();
+        var reservaId = await SeedReservaAsync(seed.PublicacionId, guest.UserId,
+            inicio: "2027-10-10", fin: "2027-10-10");
+
+        var hoy = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+        await using (var db = NewDb())
+        {
+            var reserva = await db.Reservas.FirstAsync(r => r.Id == reservaId);
+            reserva.FechaInicio = DateOnly.Parse(hoy);
+            reserva.FechaFin = DateOnly.Parse(hoy);
+            reserva.CancelacionLibre = true;
+            await db.SaveChangesAsync();
+        }
+
+        var res = await AuthedClient(guest).PutAsync($"/api/Reserva/{reservaId}/cancelar", Json(new { }));
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+
+        await using (var db = NewDb())
+        {
+            Assert.Equal("cancelada", await db.Reservas.Where(r => r.Id == reservaId)
+                .Select(r => r.Estado).FirstAsync());
+        }
+
+        // Regression: an untouched reservation on today's date still cannot cancel.
+        var normalId = await SeedReservaAsync(seed.PublicacionId, guest.UserId, inicio: hoy, fin: hoy);
+        var blocked = await AuthedClient(guest).PutAsync($"/api/Reserva/{normalId}/cancelar", Json(new { }));
+        Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
+    }
+
+    // ---- A-23: guards on dates that already carry active reservations ------------
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task DeleteHorario_WithActiveReservation_Returns409()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-11-10", disponible: true);
+        await SeedReservaAsync(seed.PublicacionId, usuarioId: null, inicio: "2027-11-10", fin: "2027-11-10");
+
+        var res = await AuthedClient(owner).DeleteAsync($"/api/Horario/{horarioId}");
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+
+        await using var db = NewDb();
+        Assert.True(await db.Horarios.AnyAsync(h => h.Id == horarioId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task PutHorario_ChangingDateWithActiveReservation_Returns409()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var horarioId = await SeedDatedHorarioAsync(seed.PublicacionId, "2027-11-10", disponible: true);
+        await SeedReservaAsync(seed.PublicacionId, usuarioId: null, inicio: "2027-11-10", fin: "2027-11-10");
+
+        // Moving a booked slot through the plain CRUD must be refused: the guest
+        // has to be notified, which only the reprogramar action does.
+        var res = await AuthedClient(owner).PutAsync($"/api/Horario/{horarioId}",
+            HorarioBody(seed.PublicacionId, "2027-12-10", disponible: true, cupos: null));
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+
+        // Blocking/slot edits for the same date stay allowed.
+        var ok = await AuthedClient(owner).PutAsync($"/api/Horario/{horarioId}",
+            HorarioBody(seed.PublicacionId, "2027-11-10", disponible: false, cupos: 2));
+        Assert.Equal(HttpStatusCode.NoContent, ok.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Disponibilidad")]
+    public async Task PublicationPut_RemovingDatedHorarioWithActiveReservation_Returns409()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        await SeedDatedHorarioAsync(seed.PublicacionId, "2027-11-10", disponible: true);
+        await SeedReservaAsync(seed.PublicacionId, usuarioId: null, inicio: "2027-11-10", fin: "2027-11-10");
+
+        var body = Json(new
+        {
+            id = seed.PublicacionId,
+            anfitrionId = seed.AnfitrionId,
+            categoriaId = seed.CategoriaId,
+            titulo = "Ruta del café",
+            descripcion = "Sin horarios",
+            tipo = "experiencia",
+            precioPorNoche = 50,
+            capacidadMaxima = 6,
+            horarios = Array.Empty<object>(),
+            experiencia = Array.Empty<object>(),
+            publicacionAmenidads = Array.Empty<object>(),
+        });
+
+        var res = await AuthedClient(owner).PutAsync($"/api/Publicacione/{seed.PublicacionId}", body);
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+
+        await using var db = NewDb();
+        Assert.True(await db.Horarios.AnyAsync(h =>
+            h.PublicacionId == seed.PublicacionId && h.Fecha == new DateOnly(2027, 11, 10)));
+    }
+
     // ---- helpers -----------------------------------------------------------------
 
     private sealed record Session(int UserId, string Email, string Auth, string Csrf);
@@ -398,6 +630,28 @@ public sealed class DisponibilidadIntegrationTests
         db.Horarios.Add(horario);
         await db.SaveChangesAsync();
         return horario.Id;
+    }
+
+    private async Task<int> SeedReservaAsync(int publicacionId, int? usuarioId, string inicio, string fin, int huespedes = 1)
+    {
+        var ini = DateOnly.Parse(inicio);
+        var finD = DateOnly.Parse(fin);
+        await using var db = NewDb();
+        var reserva = new Reserva
+        {
+            PublicacionId = publicacionId,
+            UsuarioId = usuarioId,
+            NombreHuesped = "Disp Guest",
+            EmailHuesped = NewEmail(),
+            FechaInicio = ini,
+            FechaFin = finD,
+            NumeroHuespedes = huespedes,
+            PrecioTotal = 50m * huespedes,
+            Estado = "pendiente",
+        };
+        db.Reservas.Add(reserva);
+        await db.SaveChangesAsync();
+        return reserva.Id;
     }
 
     private async Task<int> SeedImageAsync(int publicacionId)
