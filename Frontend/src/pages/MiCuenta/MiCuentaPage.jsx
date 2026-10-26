@@ -46,6 +46,7 @@ export default function MiCuentaPage() {
   // Fase 2: publicaciones guardadas reales (API) y su toggle de quitar.
   const [guardadas, setGuardadas] = useState([])
   const [cargandoGuardadas, setCargandoGuardadas] = useState(true)
+  const [guardadasAbiertas, setGuardadasAbiertas] = useState(false)
   // Calificación del usuario (recibida de anfitriones post-reserva)
   const [resumenUsuario, setResumenUsuario] = useState({ promedio: 0, total: 0 })
   const [cargandoRating, setCargandoRating] = useState(true)
@@ -220,29 +221,42 @@ export default function MiCuentaPage() {
                 ? t('saved.empty')
                 : t('saved.count', { count: guardadas.length })}
           </p>
-          <Link
-            to={localePath('catalog')}
-            className="mt-4 inline-block rounded-full bg-iguana-hondo px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
-          >
-            {t('saved.cta')}
-          </Link>
+          {guardadas.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setGuardadasAbiertas((abiertas) => !abiertas)}
+              aria-expanded={guardadasAbiertas}
+              aria-controls="cuenta-guardadas-lista"
+              className="mt-4 cursor-pointer rounded-full bg-iguana-hondo px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
+            >
+              {t('saved.cta')}
+            </button>
+          ) : (
+            <Link
+              to={localePath('catalog')}
+              className="mt-4 inline-block rounded-full bg-iguana-hondo px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
+            >
+              {t('saved.cta')}
+            </Link>
+          )}
         </section>
       </div>
 
-      {/* Guardadas reales: las mismas cards del catálogo, siempre en estado
-          "guardado"; el corazón las quita y refresca el contador de arriba. */}
-      {!cargandoGuardadas && guardadas.length > 0 && (
-        <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {guardadas.map((e) => (
-            <ExperienceCard
-              key={e.id}
-              experiencia={e}
-              guardado
-              onToggleGuardado={alternarGuardada}
-            />
-          ))}
-        </div>
-      )}
+      {/* Guardadas reales: las mismas cards del catálogo; el CTA las despliega y el corazón las quita. */}
+      <div id="cuenta-guardadas-lista" hidden={!guardadasAbiertas || guardadas.length === 0}>
+        {!cargandoGuardadas && guardadasAbiertas && guardadas.length > 0 && (
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {guardadas.map((e) => (
+              <ExperienceCard
+                key={e.id}
+                experiencia={e}
+                guardado
+                onToggleGuardado={alternarGuardada}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       <Toast mensaje={aviso} tipo="error" onCerrar={() => setAviso(null)} />
     </div>

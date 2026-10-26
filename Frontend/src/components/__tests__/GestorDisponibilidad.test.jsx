@@ -127,7 +127,7 @@ describe('Gestor de disponibilidad', () => {
       expect(api.post).toHaveBeenCalledWith('/Horario/101/reprogramar', { nuevaFecha: '2026-12-01' }),
     )
     expect(onActualizado).toHaveBeenCalled()
-    expect(onMensaje).toHaveBeenCalled()
+    expect(onMensaje).toHaveBeenCalledWith('Fecha reprogramada. Reservas movidas: 2.')
   })
 
   it('does not reschedule when the confirmation is dismissed', async () => {

@@ -237,8 +237,8 @@ export default function GestorDisponibilidad({ publicaciones = [], onActualizado
 
       {confirmRepro && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div role="dialog" aria-label={t('availability.reprogram')} className="w-full max-w-md rounded-[22px] bg-crema p-6">
-            <h3 className="text-lg font-bold text-verde-bosque">{t('availability.reprogram')}</h3>
+          <div role="dialog" aria-modal="true" aria-labelledby="reprogramar-titulo" className="w-full max-w-md rounded-[22px] bg-crema p-6">
+            <h3 id="reprogramar-titulo" className="text-lg font-bold text-verde-bosque">{t('availability.reprogram')}</h3>
             <p className="mt-2 text-sm text-neutral-700">
               {t('availability.reprogramConfirm', { date: formatDateDMY(confirmRepro.nuevaFecha, locale) })}
             </p>

@@ -385,6 +385,7 @@ describe('Anfitrión dueño de la publicación: guard de UX', () => {
 
     expect(screen.getByText('Esta es tu publicación, así que no podés reservarla.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reservar ahora' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Enviar un mensaje' })).toBeInTheDocument()
   })
 
   it('mantiene el botón para un usuario que no es el anfitrión', async () => {

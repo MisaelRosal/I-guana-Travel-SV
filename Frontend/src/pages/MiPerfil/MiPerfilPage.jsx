@@ -307,7 +307,7 @@ export default function MiPerfilPage() {
               </label>
               <textarea
                 id="mp-descripcion"
-                className={inputCls + ' h-28 resize-none'}
+                className={inputCls.replace('rounded-full', 'rounded-xl') + ' h-28 resize-none'}
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 placeholder={t('form.descPlaceholder')}

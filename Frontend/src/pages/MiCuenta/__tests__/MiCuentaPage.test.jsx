@@ -130,6 +130,12 @@ describe('Mi cuenta (ES)', () => {
     renderCuenta()
 
     expect(await screen.findByText('1 publicación guardada')).toBeInTheDocument()
+    const explorar = screen.getByRole('button', { name: 'Explorar experiencias' })
+    expect(explorar).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: /Casa frente al mar en El Tunco/ })).toBeNull()
+
+    fireEvent.click(explorar)
+    expect(explorar).toHaveAttribute('aria-expanded', 'true')
 
     const cardLink = screen.getByRole('link', { name: /Casa frente al mar en El Tunco/ })
     expect(cardLink).toHaveAttribute('href', '/experiencias/10')
@@ -179,6 +185,7 @@ describe('Mi cuenta (EN)', () => {
     renderCuenta()
 
     expect(await screen.findByText('1 saved publication')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Explore experiences' }))
     expect(screen.getByRole('link', { name: /Casa frente al mar en El Tunco/ }))
       .toHaveAttribute('href', '/experiences/10')
     expect(screen.getByRole('button', { name: 'Remove publication from saved' }))

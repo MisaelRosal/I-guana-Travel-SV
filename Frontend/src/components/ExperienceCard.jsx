@@ -38,7 +38,7 @@ export default function ExperienceCard({
     // Fase 2 (guardar publicación): el botón es HERMANO del link, nunca un
     // <button> dentro de un <a> (HTML válido y clic que no navega por accidente).
     // El <Link> sigue cubriendo la tarjeta entera; el corazón se superpone a la
-    // imagen en la esquina opuesta al badge de fecha/próxima, que queda arriba.
+    // línea del título, alineado a la derecha.
     <div className="group relative flex flex-col overflow-hidden rounded-[22px] border border-cafe-claro bg-white">
       {/* F5 (task 6.4): the card link follows the active locale's detail form. */}
       <Link
@@ -68,7 +68,7 @@ export default function ExperienceCard({
         </div>
 
         <div className="flex flex-1 flex-col p-4">
-          <h3 className="text-lg font-bold text-verde-bosque line-clamp-1">{experiencia.titulo}</h3>
+          <h3 className={`text-lg font-bold text-verde-bosque line-clamp-1 ${onToggleGuardado ? 'pr-12' : ''}`}>{experiencia.titulo}</h3>
           <div className="mt-1 flex min-h-[20px] items-center gap-1.5 text-sm">
             {conResenas ? (
               <>
@@ -104,7 +104,9 @@ export default function ExperienceCard({
           onClick={() => onToggleGuardado(experiencia.id)}
           aria-pressed={guardado}
           aria-label={guardado ? t('card.unsaveAria') : t('card.saveAria')}
-          className="absolute right-3 bottom-3 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-cafe-claro/60 bg-white/90 text-verde-bosque shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-bosque"
+          // top = imagen (13rem) + padding (1rem) - 6px para centrar el botón
+          // de 40px sobre la línea de título de 28px.
+          className="absolute right-4 top-[13.625rem] z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-cafe-claro/60 bg-white/90 text-verde-bosque shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-bosque"
         >
           <svg
             viewBox="0 0 24 24"
