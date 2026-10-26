@@ -1,0 +1,21 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY ["IguanaSV.Api.sln", "./"]
+COPY ["IguanaSV.Api/IguanaSV.Api.csproj", "IguanaSV.Api/"]
+RUN dotnet restore "IguanaSV.Api/IguanaSV.Api.csproj"
+
+COPY . .
+WORKDIR /src/IguanaSV.Api
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet tool install --global dotnet-ef --version 10.0.11
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+FROM build AS migrate
+ENTRYPOINT ["dotnet", "ef", "database", "update", "--context", "IguanasDbContext"]
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+EXPOSE 8080
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "IguanaSV.Api.dll"]

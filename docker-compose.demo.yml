@@ -1,0 +1,117 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DEMO_POSTGRES_USER:-demo}
+      POSTGRES_PASSWORD: ${DEMO_POSTGRES_PASSWORD:-demo-local-only}
+      POSTGRES_DB: ${DEMO_POSTGRES_DB:-iguana_demo}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres_demo_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    environment:
+      MINIO_ROOT_USER: ${DEMO_MINIO_ACCESS_KEY:-demo-access}
+      MINIO_ROOT_PASSWORD: ${DEMO_MINIO_SECRET_KEY:-demo-secret-local-only}
+    ports:
+      - "127.0.0.1:19000:9000"
+      - "127.0.0.1:19001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_demo_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.demo
+      target: migrate
+    environment:
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${DEMO_POSTGRES_DB:-iguana_demo};Username=${DEMO_POSTGRES_USER:-demo};Password=${DEMO_POSTGRES_PASSWORD:-demo-local-only}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${DEMO_POSTGRES_DB:-iguana_demo}
+      PGUSER: ${DEMO_POSTGRES_USER:-demo}
+      PGPASSWORD: ${DEMO_POSTGRES_PASSWORD:-demo-local-only}
+    command:
+      - sh
+      - -c
+      - psql -v ON_ERROR_STOP=1 -f /seed/seed_departamentos_municipios.sql -f /seed/demo_seed.sql
+    volumes:
+      - ./Backend/scripts/seed_departamentos_municipios.sql:/seed/seed_departamentos_municipios.sql:ro
+      - ./Backend/scripts/demo_seed.sql:/seed/demo_seed.sql:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.demo
+      target: runtime
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${DEMO_POSTGRES_DB:-iguana_demo};Username=${DEMO_POSTGRES_USER:-demo};Password=${DEMO_POSTGRES_PASSWORD:-demo-local-only}
+      Minio__Endpoint: minio:9000
+      Minio__AccessKey: ${DEMO_MINIO_ACCESS_KEY:-demo-access}
+      Minio__SecretKey: ${DEMO_MINIO_SECRET_KEY:-demo-secret-local-only}
+      Minio__BucketName: rutasv
+      Minio__PublicEndpoint: http://127.0.0.1:19000
+    ports:
+      - "127.0.0.1:15008:8080"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${DEMO_PGADMIN_EMAIL:-demo@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${DEMO_PGADMIN_PASSWORD:-demo-local-only}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "127.0.0.1:15050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:18080:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres_demo_data:
+  minio_demo_data:
