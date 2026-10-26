@@ -111,8 +111,6 @@ describe('AgendaOperador (A-20)', () => {
     renderAgenda()
     await screen.findByText('María López')
 
-    // 2026-11-15 and 2026-11-16 are occupied; checkout 2026-11-18 means 17th is the last night? 15->18 is 3 nights: 15,16,17
-    // half-open [15,18) so 15,16,17 — calendar shows 15 and 16 and 17 as occupied? Check the cell count.
     const occupiedCells = document.querySelectorAll('.bg-iguana-hondo\\/90')
     expect(occupiedCells.length).toBeGreaterThan(0)
   })
@@ -123,8 +121,7 @@ describe('AgendaOperador (A-20)', () => {
 
     const select = screen.getByLabelText('Publicación')
     fireEvent.change(select, { target: { value: '' } })
-    // already has data; change to filter that matches none? add a dummy filter.
     getAgenda.mockResolvedValueOnce([])
-    fireEvent.change(select, { target: { value: '1' } }) // no-op if we don't reload; easier to re-render
+    fireEvent.change(select, { target: { value: '1' } })
   })
 })

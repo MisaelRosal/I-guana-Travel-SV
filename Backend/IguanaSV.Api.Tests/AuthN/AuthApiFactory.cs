@@ -113,8 +113,7 @@ public sealed class AuthApiFixture : IAsyncLifetime
         Environment.SetEnvironmentVariable("Jwt__ExpiresInMinutes", "60");
         Environment.SetEnvironmentVariable("CORS__ALLOWED_ORIGINS", AuthApiFactory.AllowedOrigin);
         // These suites register and immediately use the returned session, so the
-        // email-verification hold is switched off here. The verification flow
-        // itself is covered by AuthnVerificationTests with an explicit client.
+        // email-verification hold is switched off here.
         Environment.SetEnvironmentVariable("Email__VerificacionHabilitada", "false");
 
         Factory = new AuthApiFactory();

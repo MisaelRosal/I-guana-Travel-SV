@@ -155,7 +155,6 @@ public class ResenaController : ControllerBase
             return Forbid();
         }
 
-        // Verify the caller is a host (rol = anfitrion)
         var caller = await _context.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sub.Value);
         if (caller == null || caller.Rol != "anfitrion")
         {
@@ -174,32 +173,27 @@ public class ResenaController : ControllerBase
             return NotFound();
         }
 
-        // Verify the caller owns the publication
         if (reserva.Publicacion.Anfitrion.UsuarioId != sub.Value)
         {
             return Forbid();
         }
 
-        // Only completed reservations can be reviewed by the host
         if (reserva.Estado != "completada")
         {
             return BadRequest(new { mensaje = "Solo podés calificar huéspedes de reservas completadas." });
         }
 
-        // Time window: 14 days after checkout (FechaFin)
         var diasDesdeCheckout = (DateTime.Today - reserva.FechaFin.ToDateTime(TimeOnly.MinValue)).Days;
         if (diasDesdeCheckout > 14)
         {
             return BadRequest(new { mensaje = "El plazo para calificar al huésped venció (14 días después del check-out)." });
         }
 
-        // Check if host already reviewed this guest for this reservation
         if (reserva.Resena != null && reserva.Resena.UsuarioDestinoId.HasValue)
         {
             return Conflict(new { mensaje = "Ya calificaste a este huésped para esta reserva." });
         }
 
-        // Verify the reservation has a guest user (UsuarioId)
         if (!reserva.UsuarioId.HasValue || reserva.Usuario == null)
         {
             return BadRequest(new { mensaje = "La reserva no tiene un huésped registrado." });
@@ -226,7 +220,6 @@ public class ResenaController : ControllerBase
             return Conflict(new { mensaje = "Ya calificaste a este huésped para esta reserva." });
         }
 
-        // Notify the guest that they received a rating from the host
         if (!string.IsNullOrWhiteSpace(reserva.Usuario.Email))
         {
             await _notificaciones.CalificacionRecibidaAsync(

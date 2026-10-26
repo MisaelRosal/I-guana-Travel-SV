@@ -129,7 +129,7 @@ if (!i18n.isInitialized) {
   // Cross-tab sync (AD-5). `storage` fires only in the other tabs and only on
   // a real change, so changeLanguage here cannot bounce back as a second
   // event — no loop. Scoped to our key: the existing sessionStorage auth
-  // listeners (Header.jsx:32, Footer.jsx:40) keep reacting to their own keys.
+  // listeners (Header.jsx, Footer.jsx) keep reacting to their own keys.
   window.addEventListener('storage', (e) => {
     if (e.key === LOCALE_STORAGE_KEY && SUPPORTED_LOCALES.includes(e.newValue)) {
       i18n.changeLanguage(e.newValue)

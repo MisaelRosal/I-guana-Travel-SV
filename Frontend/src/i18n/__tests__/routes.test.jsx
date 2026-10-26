@@ -44,7 +44,6 @@ vi.mock('../../pages/MiCuenta/MiCuentaPage.jsx', () => mockScreen('my-account', 
 vi.mock('../../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx', () => mockScreen('host-profile', true))
 vi.mock('../../pages/Chat/ChatPage.jsx', () => mockScreen('mensajes', false))
 
-// Helper to mock a session with a specific role
 function mockSession(role = 'usuario') {
   const usuario = {
     id: 1,
@@ -84,7 +83,6 @@ function mockSession(role = 'usuario') {
   })
 }
 
-// Helper to mock no session (signed out)
 function mockNoSession() {
   sessionStorage.removeItem('iguana_usuario')
   globalThis.fetch = vi.fn(async () => ({
@@ -157,7 +155,6 @@ const EN_ALIASES = [
 ]
 
 describe('Spanish routes render their screens under ES (approval: unchanged today)', () => {
-  // Public routes
   for (const [path, marker] of PUBLIC_ES_PATHS) {
     it(`${path} renders ${marker}`, async () => {
       await renderAt(path)
@@ -165,7 +162,6 @@ describe('Spanish routes render their screens under ES (approval: unchanged toda
     })
   }
 
-  // Protected routes - user role
   for (const [path, marker] of PROTECTED_USER_ES_PATHS) {
     it(`${path} renders ${marker}`, async () => {
       mockSession('usuario')
@@ -174,7 +170,6 @@ describe('Spanish routes render their screens under ES (approval: unchanged toda
     })
   }
 
-  // Protected routes - host role
   for (const [path, marker] of PROTECTED_HOST_ES_PATHS) {
     it(`${path} renders ${marker}`, async () => {
       mockSession('anfitrion')
@@ -183,7 +178,6 @@ describe('Spanish routes render their screens under ES (approval: unchanged toda
     })
   }
 
-  // Protected routes - admin role
   for (const [path, marker] of PROTECTED_ADMIN_ES_PATHS) {
     it(`${path} renders ${marker}`, async () => {
       mockSession('admin')
@@ -198,7 +192,6 @@ describe('Spanish routes keep resolving under EN (compatibility MUST)', () => {
     await i18n.changeLanguage('en')
   })
 
-  // Public routes
   for (const [path, marker] of PUBLIC_ES_PATHS) {
     it(`${path} still renders ${marker} with English active`, async () => {
       await renderAt(path)
@@ -206,7 +199,6 @@ describe('Spanish routes keep resolving under EN (compatibility MUST)', () => {
     })
   }
 
-  // Protected routes - user role
   for (const [path, marker] of PROTECTED_USER_ES_PATHS) {
     it(`${path} still renders ${marker} with English active`, async () => {
       mockSession('usuario')
@@ -215,7 +207,6 @@ describe('Spanish routes keep resolving under EN (compatibility MUST)', () => {
     })
   }
 
-  // Protected routes - host role
   for (const [path, marker] of PROTECTED_HOST_ES_PATHS) {
     it(`${path} still renders ${marker} with English active`, async () => {
       mockSession('anfitrion')
@@ -224,7 +215,6 @@ describe('Spanish routes keep resolving under EN (compatibility MUST)', () => {
     })
   }
 
-  // Protected routes - admin role
   for (const [path, marker] of PROTECTED_ADMIN_ES_PATHS) {
     it(`${path} still renders ${marker} with English active`, async () => {
       mockSession('admin')
@@ -239,10 +229,9 @@ describe('English aliases resolve to the same screens under EN', () => {
     await i18n.changeLanguage('en')
   })
 
-  // Public routes
+  // EN aliases (public + protected) route to the same screens as their ES paths
   for (const [path, marker] of EN_ALIASES) {
     it(`${path} renders ${marker}`, async () => {
-      // Check if path is protected by matching against known paths
       const isProtectedUser = ['/bookings', '/become-a-host', '/my-account'].includes(path)
       const isProtectedHost = ['/my-profile', '/panel'].includes(path)
       const isProtectedAdmin = ['/admin'].includes(path)
@@ -414,9 +403,7 @@ describe('in-app navigation emits locale-aware paths (Header + Footer chrome)', 
     await renderAt('/')
     expect(screen.getByText('screen:catalog')).toBeInTheDocument()
 
-    // User menu button should be present
     expect(screen.getByRole('button', { name: /UPUsuario Prueba/ })).toBeInTheDocument()
-    // Sign in link should NOT be present
     expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
   })
 })

@@ -705,7 +705,6 @@ public sealed class ChatIntegrationTests
 
     private sealed record HostFixture(int anfitrionId, Session Sesion)
     {
-        public int UsuarioId => Sesion.UserId;
         public int UserId => Sesion.UserId;
     }
 

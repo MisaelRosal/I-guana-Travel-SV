@@ -59,7 +59,7 @@ public sealed class GoogleIntegrationTests
     {
         var email = NewEmail();
         GoogleApiFactory.Respuesta =
-            _ => new GoogleUserInfo("sub-1", email, true, "Ana", "Pérez", "Ana Pérez", null);
+            _ => new GoogleUserInfo("sub-1", email, true, "Ana", "Pérez", "Ana Pérez");
 
         var res = await Client().PostAsync("/api/Auth/google", Json(new { credential = "tok" }));
 
@@ -92,7 +92,7 @@ public sealed class GoogleIntegrationTests
     {
         var email = NewEmail();
         var existente = await RegisterUserAsync(email);
-        GoogleApiFactory.Respuesta = _ => new GoogleUserInfo("sub-2", email, true, "X", "Y", "X Y", null);
+        GoogleApiFactory.Respuesta = _ => new GoogleUserInfo("sub-2", email, true, "X", "Y", "X Y");
 
         var res = await Client().PostAsync("/api/Auth/google", Json(new { credential = "tok" }));
 
@@ -117,7 +117,7 @@ public sealed class GoogleIntegrationTests
     public async Task CorreoNoVerificadoPorGoogle_Devuelve401()
     {
         GoogleApiFactory.Respuesta =
-            _ => new GoogleUserInfo("sub-3", NewEmail(), false, "A", "B", null, null);
+            _ => new GoogleUserInfo("sub-3", NewEmail(), false, "A", "B", null);
 
         var res = await Client().PostAsync("/api/Auth/google", Json(new { credential = "tok" }));
 

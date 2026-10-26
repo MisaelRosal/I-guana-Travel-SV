@@ -2,7 +2,7 @@ namespace IguanaSV.Api.Auth;
 
 /// <summary>
 /// Shared names for the cookie-based JWT session contract (design TD4).
-/// Program's <c>TokenRetriever</c>, <c>AuthController</c> and
+/// Program's <c>OnMessageReceived</c>, <c>AuthController</c> and
 /// <c>CsrfMiddleware</c> all reference these so the cookie/header names can
 /// never drift between the issuing and the validating sides.
 /// </summary>

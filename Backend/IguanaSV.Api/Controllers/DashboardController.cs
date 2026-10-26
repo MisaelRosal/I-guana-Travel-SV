@@ -33,7 +33,6 @@ public class DashboardController : ControllerBase
     }
 
     // Query: GET /api/Dashboard/ganancias?periodo=dia|semana|mes&publicacionId=1
-    // `periodo` is optional (defaults to "mes"); `publicacionId` optional.
     [HttpGet("ganancias")]
     [Authorize]
     public async Task<IActionResult> GetGanancias(

@@ -313,9 +313,6 @@ public class EmailNotificationService : IEmailNotificationService
             cancellationToken: cancellationToken);
     }
 
-    /// <summary>
-    /// Sent to the guest when a host rates them after a completed reservation.
-    /// </summary>
     public Task<bool> CalificacionRecibidaAsync(
         string destinatario, string nombreHuesped, string tituloPublicacion, short calificacion, CancellationToken cancellationToken = default)
     {

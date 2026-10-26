@@ -1,7 +1,6 @@
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace IguanaSV.Api.Tests.Schema;
 
@@ -15,10 +14,6 @@ namespace IguanaSV.Api.Tests.Schema;
 [Collection("SchemaMigrationCli")]
 public sealed class SchemaMigrationsIntegrationTests
 {
-    private readonly ITestOutputHelper _output;
-
-    public SchemaMigrationsIntegrationTests(ITestOutputHelper output) => _output = output;
-
     // ---- Task 2.3: backfill matches trimmed + case-insensitively, orphans stay NULL ----
 
     [SkippableFact]
@@ -161,7 +156,7 @@ public sealed class SchemaMigrationsIntegrationTests
             Assert.Equal(0, users);
         }
 
-        // Fixture rows: the reference-data-only seed (v0.6) carries no demo content,
+        // Fixture rows: the reference-data-only seed carries no demo content,
         // so the drift-Down reversibility check below provisions its own reservations.
         await using (var db = new NpgsqlConnection(conn))
         {

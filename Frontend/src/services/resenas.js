@@ -20,8 +20,7 @@ export async function getResumenAnfitrion(anfitrionId) {
 }
 
 // Public: global star average of a normal user (public user profile).
-// Endpoint pendiente en backend: GET /Resena/usuario/:id
-// Retorna: { promedio: number, total: number }
+// Backend: GET /Resena/usuario/:id -> { promedio: number, total: number }
 export async function getResumenUsuario(usuarioId) {
   return await api.get(`/Resena/usuario/${usuarioId}`)
     .catch(() => ({ promedio: 0, total: 0 }))

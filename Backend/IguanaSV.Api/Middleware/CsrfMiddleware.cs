@@ -31,8 +31,6 @@ public sealed class CsrfMiddleware
     {
         var request = context.Request;
 
-        // Skip safe methods, unauthenticated callers, and the login/register
-        // bootstrap endpoints (they set the CSRF cookie rather than consume it).
         if (SafeMethods.Contains(request.Method)
             || context.User.Identity?.IsAuthenticated != true
             || IsExemptPath(request.Path.Value))

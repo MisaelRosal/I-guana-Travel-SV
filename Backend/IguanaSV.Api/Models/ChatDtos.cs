@@ -4,12 +4,10 @@ using System.Text.Json.Serialization;
 
 namespace IguanaSV.Api.Models;
 
-/// <summary>
-/// Chat wire contracts. The global serializer stays camelCase; every chat DTO
-/// opts into snake_case field names via <see cref="JsonPropertyNameAttribute"/>
-/// (spec: traveler-host-messaging pins `viajero_usuario_id`, `publicacion_id`,
-/// the `before_creado_en`/`before_id` cursor keys and the inbox row fields).
-/// </summary>
+// Chat wire contracts. The global serializer stays camelCase; every chat DTO
+// opts into snake_case field names via JsonPropertyNameAttribute
+// (spec: traveler-host-messaging pins `viajero_usuario_id`, `publicacion_id`,
+// the `before_creado_en`/`before_id` cursor keys and the inbox row fields).
 
 /// <summary>Pair conversation returned by open-or-get and by the direct fetch.</summary>
 public class ConversacionDto

@@ -78,8 +78,7 @@ public sealed class GoogleTokenVerifier : IGoogleTokenVerifier
                 LeerBool(claims, "email_verified"),
                 Leer(claims, "given_name"),
                 Leer(claims, "family_name"),
-                Leer(claims, "name"),
-                Leer(claims, "picture"));
+                Leer(claims, "name"));
         }
         catch (Exception ex)
         {

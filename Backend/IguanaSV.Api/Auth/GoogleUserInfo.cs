@@ -11,5 +11,4 @@ public sealed record GoogleUserInfo(
     bool EmailVerified,
     string? GivenName,
     string? FamilyName,
-    string? Name,
-    string? Picture);
+    string? Name);

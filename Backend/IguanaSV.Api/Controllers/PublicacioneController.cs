@@ -324,7 +324,6 @@ public class PublicacioneController : ControllerBase
             });
         }
 
-        // Experiencia: mismo criterio, se reemplaza
         var experienciasActuales = await _context.Experiencias
             .Where(e => e.PublicacionId == id)
             .ToListAsync();
@@ -389,7 +388,7 @@ public class PublicacioneController : ControllerBase
             return NotFound($"La categoria con id {dto.CategoriaId} no existe.");
         }
 
-if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
+        if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
         {
             return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
         }

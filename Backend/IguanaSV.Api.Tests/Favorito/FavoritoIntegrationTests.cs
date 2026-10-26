@@ -1,6 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using IguanaSV.Api.Auth;
@@ -9,7 +7,6 @@ using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Tests.AuthN;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
 namespace IguanaSV.Api.Tests.Favorito;

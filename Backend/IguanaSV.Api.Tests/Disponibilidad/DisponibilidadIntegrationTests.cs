@@ -514,8 +514,6 @@ public sealed class DisponibilidadIntegrationTests
             ParseCookie(res, AuthConstants.CsrfCookieName).Value);
     }
 
-    private static string NewCsrf() => Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
-
     private static string NewEmail() => $"u{Guid.NewGuid():N}@disp.test".ToLowerInvariant();
 
     private static ParsedCookie ParseCookie(HttpResponseMessage res, string name)
