@@ -1,4 +1,5 @@
 ﻿using NotificacioneEntity = IguanaSV.Api.Entities.Notificacione;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +10,7 @@ namespace IguanaSV.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = AuthConstants.AdminRole)]
 public class NotificacioneController : ControllerBase
 {
     private readonly IguanasDbContext _context;

@@ -123,7 +123,8 @@
     "address": "Address",
     "status": "Status",
     "bookNow": "Book now",
-    "howToArrive": "How to get there"
+    "howToArrive": "How to get there",
+    "ownListing": "This is your listing, so you can't book it."
   },
   "host": {
     "title": "Your host",

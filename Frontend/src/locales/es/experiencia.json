@@ -123,7 +123,8 @@
     "address": "Dirección",
     "status": "Estado",
     "bookNow": "Reservar ahora",
-    "howToArrive": "Cómo llegar"
+    "howToArrive": "Cómo llegar",
+    "ownListing": "Esta es tu publicación, así que no podés reservarla."
   },
   "host": {
     "title": "Tu anfitrión",

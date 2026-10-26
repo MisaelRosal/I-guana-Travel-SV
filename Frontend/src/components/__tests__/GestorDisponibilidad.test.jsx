@@ -104,7 +104,6 @@ describe('Gestor de disponibilidad', () => {
   })
 
   it('changes the date through POST /Horario/{id}/reprogramar after confirmation', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const onActualizado = vi.fn()
     const onMensaje = vi.fn()
     renderGestor({ onActualizado, onMensaje })
@@ -119,18 +118,16 @@ describe('Gestor de disponibilidad', () => {
 
     const reprogramar = await screen.findByRole('button', { name: 'Reprogramar fecha' })
     fireEvent.click(reprogramar)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reprogramar fecha' })[1])
 
     await waitFor(() =>
       expect(api.post).toHaveBeenCalledWith('/Horario/101/reprogramar', { nuevaFecha: '2026-12-01' }),
     )
     expect(onActualizado).toHaveBeenCalled()
     expect(onMensaje).toHaveBeenCalled()
-
-    confirmSpy.mockRestore()
   })
 
   it('does not reschedule when the confirmation is dismissed', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderGestor()
 
     await screen.findByText('Disponible')
@@ -138,8 +135,8 @@ describe('Gestor de disponibilidad', () => {
     fireEvent.change(dateInputs[0], { target: { value: '2026-12-01' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Reprogramar fecha' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
 
     expect(api.post).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
   })
 })

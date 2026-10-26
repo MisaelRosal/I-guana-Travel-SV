@@ -627,6 +627,196 @@ public sealed class AuthzIntegrationTests
         Assert.Equal(HttpStatusCode.OK, adminRes.StatusCode);
     }
 
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task ReservaHorario_ListIsAdminOnly_AndDetailIsGuestHostOrAdminOnly()
+    {
+        var guest = await RegisterUserAsync();
+        var host = await RegisterUserAsync();
+        var outsider = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(host.UserId);
+        await SetReservaOwnerAsync(seed.ReservaId, guest.UserId);
+        var horarioId = await SeedHorarioAsync(seed.PublicacionId);
+        await SeedReservaHorarioAsync(seed.ReservaId, horarioId);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Client().GetAsync("/api/ReservaHorario")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await AuthedClient(guest).GetAsync("/api/ReservaHorario")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await AuthedClient(host).GetAsync("/api/ReservaHorario")).StatusCode);
+
+        var list = await AuthedClient(AdminSession()).GetAsync("/api/ReservaHorario");
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        Assert.Contains(seed.ReservaId.ToString(), await list.Content.ReadAsStringAsync());
+
+        var detailPath = $"/api/ReservaHorario/{seed.ReservaId}/{horarioId}";
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Client().GetAsync(detailPath)).StatusCode);
+
+        var outsiderRes = await AuthedClient(outsider).GetAsync(detailPath);
+        Assert.Equal(HttpStatusCode.NotFound, outsiderRes.StatusCode);
+        Assert.DoesNotContain("Guest Person", await outsiderRes.Content.ReadAsStringAsync());
+
+        foreach (var allowed in new[] { guest, host, AdminSession() })
+        {
+            var allowedRes = await AuthedClient(allowed).GetAsync(detailPath);
+            Assert.Equal(HttpStatusCode.OK, allowedRes.StatusCode);
+            Assert.Contains("Guest Person", await allowedRes.Content.ReadAsStringAsync());
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task ReservaHorario_MutationsRequireGuestHostOrAdmin()
+    {
+        var guest = await RegisterUserAsync();
+        var host = await RegisterUserAsync();
+        var outsider = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(host.UserId);
+        await SetReservaOwnerAsync(seed.ReservaId, guest.UserId);
+        var otherListing = await SeedPublicationOwnedByUserAsync(outsider.UserId);
+        var foreignHorarioId = await SeedHorarioAsync(otherListing.PublicacionId);
+        var horarios = new int[8];
+        for (var i = 0; i < horarios.Length; i++)
+        {
+            horarios[i] = await SeedHorarioAsync(seed.PublicacionId, i);
+        }
+
+        // PUT and DELETE operate on existing pairs; reserve a distinct pair for each allowed delete.
+        await SeedReservaHorarioAsync(seed.ReservaId, horarios[1]);
+        await SeedReservaHorarioAsync(seed.ReservaId, horarios[2]);
+        await SeedReservaHorarioAsync(seed.ReservaId, horarios[3]);
+        await SeedReservaHorarioAsync(seed.ReservaId, horarios[4]);
+
+        var anonymousPost = await Client().PostAsync("/api/ReservaHorario", Json(new
+        {
+            reservaId = seed.ReservaId,
+            horarioId = horarios[0],
+        }));
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousPost.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await Client().PutAsync($"/api/ReservaHorario/{seed.ReservaId}/{horarios[1]}",
+                Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] }))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await Client().DeleteAsync($"/api/ReservaHorario/{seed.ReservaId}/{horarios[1]}")).StatusCode);
+
+        var outsiderPost = await AuthedClient(outsider).PostAsync("/api/ReservaHorario", Json(new
+        {
+            reservaId = seed.ReservaId,
+            horarioId = horarios[0],
+        }));
+        Assert.Equal(HttpStatusCode.Forbidden, outsiderPost.StatusCode);
+        Assert.False(await ReservaHorarioExistsAsync(seed.ReservaId, horarios[0]));
+
+        var crossPublicationPost = await AuthedClient(guest).PostAsync("/api/ReservaHorario", Json(new
+        {
+            reservaId = seed.ReservaId,
+            horarioId = foreignHorarioId,
+        }));
+        Assert.Equal(HttpStatusCode.BadRequest, crossPublicationPost.StatusCode);
+        Assert.False(await ReservaHorarioExistsAsync(seed.ReservaId, foreignHorarioId));
+
+        foreach (var (session, horarioId) in new[]
+        {
+            (guest, horarios[0]),
+            (host, horarios[5]),
+            (AdminSession(), horarios[6]),
+        })
+        {
+            var created = await AuthedClient(session).PostAsync("/api/ReservaHorario", Json(new
+            {
+                reservaId = seed.ReservaId,
+                horarioId,
+            }));
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+
+        var pairPath = $"/api/ReservaHorario/{seed.ReservaId}/{horarios[1]}";
+        var putBody = Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] });
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await AuthedClient(outsider).PutAsync(pairPath, putBody)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await AuthedClient(guest).PutAsync(pairPath, Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] }))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await AuthedClient(host).PutAsync(pairPath, Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] }))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await AuthedClient(AdminSession()).PutAsync(pairPath, Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] }))).StatusCode);
+
+        var forbiddenDelete = await AuthedClient(outsider)
+            .DeleteAsync($"/api/ReservaHorario/{seed.ReservaId}/{horarios[4]}");
+        Assert.Equal(HttpStatusCode.Forbidden, forbiddenDelete.StatusCode);
+        Assert.True(await ReservaHorarioExistsAsync(seed.ReservaId, horarios[4]));
+
+        foreach (var (session, horarioId) in new[]
+        {
+            (guest, horarios[1]),
+            (host, horarios[2]),
+            (AdminSession(), horarios[3]),
+        })
+        {
+            var deleted = await AuthedClient(session)
+                .DeleteAsync($"/api/ReservaHorario/{seed.ReservaId}/{horarioId}");
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+            Assert.False(await ReservaHorarioExistsAsync(seed.ReservaId, horarioId));
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task GenericNotifications_AreAdminOnlyForReadsAndMutations()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+        var notificationId = await SeedNotificationAsync(seed.ReservaId, "private notification detail");
+        var outsider = await RegisterUserAsync();
+        var notificationBody = new
+        {
+            reservaId = seed.ReservaId,
+            tipo = "info",
+            mensaje = "admin notification",
+            destinatarioEmail = "admin@authz.test",
+        };
+
+        foreach (var response in new[]
+        {
+            await Client().GetAsync("/api/Notificacione"),
+            await Client().GetAsync($"/api/Notificacione/{notificationId}"),
+            await Client().PostAsync("/api/Notificacione", Json(notificationBody)),
+            await Client().PutAsync($"/api/Notificacione/{notificationId}", Json(notificationBody)),
+            await Client().DeleteAsync($"/api/Notificacione/{notificationId}"),
+        })
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        var client = AuthedClient(outsider);
+        var list = await client.GetAsync("/api/Notificacione");
+        Assert.Equal(HttpStatusCode.Forbidden, list.StatusCode);
+        Assert.DoesNotContain("private notification detail", await list.Content.ReadAsStringAsync());
+        var detail = await client.GetAsync($"/api/Notificacione/{notificationId}");
+        Assert.Equal(HttpStatusCode.Forbidden, detail.StatusCode);
+        Assert.DoesNotContain("private notification detail", await detail.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.PostAsync("/api/Notificacione", Json(notificationBody))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.PutAsync($"/api/Notificacione/{notificationId}", Json(notificationBody))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.DeleteAsync($"/api/Notificacione/{notificationId}")).StatusCode);
+
+        var admin = AuthedClient(AdminSession());
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/Notificacione")).StatusCode);
+        var adminDetail = await admin.GetAsync($"/api/Notificacione/{notificationId}");
+        Assert.Equal(HttpStatusCode.OK, adminDetail.StatusCode);
+        Assert.Contains("private notification detail", await adminDetail.Content.ReadAsStringAsync());
+
+        var created = await admin.PostAsync("/api/Notificacione", Json(notificationBody));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using var createdDoc = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var createdId = createdDoc.RootElement.GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await admin.PutAsync($"/api/Notificacione/{createdId}", Json(notificationBody))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/Notificacione/{createdId}")).StatusCode);
+    }
+
     // ---- helpers -----------------------------------------------------------------
 
     private sealed record Session(int UserId, string Email, string Auth, string Csrf);
@@ -817,6 +1007,60 @@ public sealed class AuthzIntegrationTests
         db.Reservas.Add(reserva);
         await db.SaveChangesAsync();
         return reserva.Id;
+    }
+
+    private async Task<int> SeedHorarioAsync(int publicacionId, int dayOffset = 0)
+    {
+        await using var db = NewDb();
+        var horario = new Horario
+        {
+            PublicacionId = publicacionId,
+            Fecha = DateOnly.FromDateTime(DateTime.Today).AddDays(90 + dayOffset),
+            HoraInicio = new TimeOnly(8, 0),
+            HoraFin = new TimeOnly(9, 0),
+            Disponible = true,
+            Cupos = 2,
+        };
+        db.Horarios.Add(horario);
+        await db.SaveChangesAsync();
+        return horario.Id;
+    }
+
+    private async Task SeedReservaHorarioAsync(int reservaId, int horarioId)
+    {
+        await using var db = NewDb();
+        db.ReservaHorarios.Add(new ReservaHorario { ReservaId = reservaId, HorarioId = horarioId });
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SetReservaOwnerAsync(int reservaId, int usuarioId)
+    {
+        await using var db = NewDb();
+        var reserva = await db.Reservas.FirstAsync(r => r.Id == reservaId);
+        reserva.UsuarioId = usuarioId;
+        await db.SaveChangesAsync();
+    }
+
+    private async Task<bool> ReservaHorarioExistsAsync(int reservaId, int horarioId)
+    {
+        await using var db = NewDb();
+        return await db.ReservaHorarios.AnyAsync(rh => rh.ReservaId == reservaId && rh.HorarioId == horarioId);
+    }
+
+    private async Task<int> SeedNotificationAsync(int reservaId, string message)
+    {
+        await using var db = NewDb();
+        var notification = new Notificacione
+        {
+            ReservaId = reservaId,
+            Tipo = "info",
+            Mensaje = message,
+            Leida = false,
+            DestinatarioEmail = "guest@authz.test",
+        };
+        db.Notificaciones.Add(notification);
+        await db.SaveChangesAsync();
+        return notification.Id;
     }
 
     /// <summary>Full chain: fresh user -> host row -> publication -> pending reserva.</summary>

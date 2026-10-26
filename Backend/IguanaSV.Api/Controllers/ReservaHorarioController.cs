@@ -1,4 +1,6 @@
 using ReservaHorarioEntity = IguanaSV.Api.Entities.ReservaHorario;
+using ReservaEntity = IguanaSV.Api.Entities.Reserva;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +21,7 @@ public class ReservaHorarioController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = AuthConstants.AdminRole)]
     public async Task<ActionResult<IEnumerable<ReservaHorarioEntity>>> GetReservaHorarios()
     {
         return await _context.ReservaHorarios
@@ -28,6 +31,7 @@ public class ReservaHorarioController : ControllerBase
     }
 
     [HttpGet("{reservaId}/{horarioId}")]
+    [Authorize]
     public async Task<ActionResult<ReservaHorarioEntity>> GetReservaHorario(int reservaId, int horarioId)
     {
         var reservaHorario = await _context.ReservaHorarios
@@ -40,6 +44,11 @@ public class ReservaHorarioController : ControllerBase
             return NotFound();
         }
 
+        if (!await CanAccessAsync(reservaHorario.Reserva!))
+        {
+            return NotFound();
+        }
+
         return reservaHorario;
     }
 
@@ -47,12 +56,18 @@ public class ReservaHorarioController : ControllerBase
     [HttpPut("{reservaId}/{horarioId}")]
     public async Task<IActionResult> PutReservaHorario(int reservaId, int horarioId, CreateReservaHorarioDto dto)
     {
-        var exists = await _context.ReservaHorarios
-            .AnyAsync(rh => rh.ReservaId == reservaId && rh.HorarioId == horarioId);
+        var reservaHorario = await _context.ReservaHorarios
+            .Include(rh => rh.Reserva)
+            .FirstOrDefaultAsync(rh => rh.ReservaId == reservaId && rh.HorarioId == horarioId);
 
-        if (!exists)
+        if (reservaHorario == null)
         {
             return NotFound();
+        }
+
+        if (!await CanAccessAsync(reservaHorario.Reserva!))
+        {
+            return Forbid();
         }
 
         if (reservaId != dto.ReservaId || horarioId != dto.HorarioId)
@@ -83,6 +98,16 @@ public class ReservaHorarioController : ControllerBase
         if (publicacion is null)
         {
             return NotFound($"La publicacion del horario con id {dto.HorarioId} no existe.");
+        }
+
+        if (!await CanAccessAsync(reserva))
+        {
+            return Forbid();
+        }
+
+        if (horario.PublicacionId != reserva.PublicacionId)
+        {
+            return BadRequest("El horario debe pertenecer a la publicación de la reserva.");
         }
 
         // Experience slot capacity (design TD3): a per-slot guest count cannot be
@@ -141,6 +166,7 @@ public class ReservaHorarioController : ControllerBase
     public async Task<IActionResult> DeleteReservaHorario(int reservaId, int horarioId)
     {
         var reservaHorario = await _context.ReservaHorarios
+            .Include(rh => rh.Reserva)
             .FirstOrDefaultAsync(rh => rh.ReservaId == reservaId && rh.HorarioId == horarioId);
 
         if (reservaHorario == null)
@@ -148,9 +174,28 @@ public class ReservaHorarioController : ControllerBase
             return NotFound();
         }
 
+        if (!await CanAccessAsync(reservaHorario.Reserva!))
+        {
+            return Forbid();
+        }
+
         _context.ReservaHorarios.Remove(reservaHorario);
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private async Task<bool> CanAccessAsync(ReservaEntity reserva)
+    {
+        if (User.IsInRole(AuthConstants.AdminRole))
+        {
+            return true;
+        }
+
+        var sub = User.GetSubjectId();
+        return sub.HasValue
+            && (reserva.UsuarioId == sub.Value
+                || await _context.Publicaciones.AnyAsync(p =>
+                    p.Id == reserva.PublicacionId && p.Anfitrion!.UsuarioId == sub.Value));
     }
 }
