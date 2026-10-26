@@ -82,4 +82,14 @@ public interface IEmailNotificationService
         string tituloPublicacion,
         short calificacion,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sent to the guest when a host rates them after a completed reservation.
+    /// </summary>
+    Task<bool> CalificacionRecibidaAsync(
+        string destinatario,
+        string nombreHuesped,
+        string tituloPublicacion,
+        short calificacion,
+        CancellationToken cancellationToken = default);
 }

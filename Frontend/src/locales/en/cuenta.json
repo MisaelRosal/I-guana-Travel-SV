@@ -1,0 +1,39 @@
+{
+  "title": "My account",
+  "loading": "Loading your account…",
+  "back": "← Back to home",
+  "avatarAlt": "User initials",
+  "roles": {
+    "usuario": "Guest",
+    "anfitrion": "Host",
+    "admin": "Administrator"
+  },
+  "verification": {
+    "verified": "Email verified",
+    "pending": "Email pending verification"
+  },
+  "view": {
+    "email": "Email",
+    "phone": "Phone",
+    "role": "Account type",
+    "memberSince": "Member since",
+    "notAvailable": "—"
+  },
+  "rating": {
+    "title": "Rating",
+    "empty": "No ratings yet",
+    "hint": "When your account receives ratings, they will appear here.",
+    "loading": "Loading rating…",
+    "count_one": "{{count}} rating",
+    "count_other": "{{count}} ratings"
+  },
+  "saved": {
+    "title": "Saved listings",
+    "empty": "You haven't saved any listings yet.",
+    "cta": "Explore experiences",
+    "loading": "Loading your saved listings…",
+    "loadError": "We couldn't load your saved listings. Please try again.",
+    "count_one": "1 saved publication",
+    "count_other": "{{count}} saved publications"
+  }
+}

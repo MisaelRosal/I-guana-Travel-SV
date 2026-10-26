@@ -36,7 +36,7 @@ public class PublicacioneController : ControllerBase
     public async Task<ActionResult<IEnumerable<PublicacioneEntity>>> GetPublicaciones(
         [FromQuery] string? contentLocale = null)
     {
-        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        if (!PublicacionContentLocale.TryNormalizeContentLocale(contentLocale, out var locale))
         {
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
@@ -56,7 +56,7 @@ public class PublicacioneController : ControllerBase
                 .ThenInclude(pa => pa.Amenidad)
             .ToListAsync();
 
-        ApplyContentLocale(publicaciones, locale);
+        PublicacionContentLocale.ApplyContentLocale(publicaciones, locale);
         return publicaciones;
     }
 
@@ -65,7 +65,7 @@ public class PublicacioneController : ControllerBase
         int id,
         [FromQuery] string? contentLocale = null)
     {
-        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        if (!PublicacionContentLocale.TryNormalizeContentLocale(contentLocale, out var locale))
         {
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
@@ -90,7 +90,7 @@ public class PublicacioneController : ControllerBase
             return NotFound();
         }
 
-        ApplyContentLocale(publicacione, locale);
+        PublicacionContentLocale.ApplyContentLocale(publicacione, locale);
         return publicacione;
     }
 
@@ -658,54 +658,6 @@ if (dto.Tipo != null && dto.Tipo != "hospedaje" && dto.Tipo != "experiencia")
                 publicacion.Id,
                 failureCategory);
             return new TranslationPersistenceResult(false, false);
-        }
-    }
-
-    private static bool TryNormalizeContentLocale(string? contentLocale, out string locale)
-    {
-        locale = string.IsNullOrWhiteSpace(contentLocale) ? "es" : contentLocale.Trim().ToLowerInvariant();
-        return locale is "es" or "en";
-    }
-
-    private static void ApplyContentLocale(IEnumerable<PublicacioneEntity> publicaciones, string locale)
-    {
-        if (locale != "en")
-        {
-            return;
-        }
-
-        foreach (var publicacion in publicaciones)
-        {
-            ApplyContentLocale(publicacion, locale);
-        }
-    }
-
-    private static void ApplyContentLocale(PublicacioneEntity publicacion, string locale)
-    {
-        if (locale != "en")
-        {
-            return;
-        }
-
-        if (!string.IsNullOrWhiteSpace(publicacion.TituloEn))
-        {
-            publicacion.Titulo = publicacion.TituloEn;
-        }
-        if (!string.IsNullOrWhiteSpace(publicacion.DescripcionEn))
-        {
-            publicacion.Descripcion = publicacion.DescripcionEn;
-        }
-
-        if (publicacion.Anfitrion is not null
-            && !string.IsNullOrWhiteSpace(publicacion.Anfitrion.DescripcionEn))
-        {
-            publicacion.Anfitrion.Descripcion = publicacion.Anfitrion.DescripcionEn;
-        }
-
-        foreach (var experiencia in publicacion.Experiencia)
-        {
-            if (!string.IsNullOrWhiteSpace(experiencia.NombreEn)) experiencia.Nombre = experiencia.NombreEn;
-            if (!string.IsNullOrWhiteSpace(experiencia.DescripcionEn)) experiencia.Descripcion = experiencia.DescripcionEn;
         }
     }
 

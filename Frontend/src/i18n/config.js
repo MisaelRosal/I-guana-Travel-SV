@@ -11,6 +11,7 @@ import esReservas from '../locales/es/reservas.json'
 import esPanel from '../locales/es/panel.json'
 import esAdmin from '../locales/es/admin.json'
 import esExperiencia from '../locales/es/experiencia.json'
+import esCuenta from '../locales/es/cuenta.json'
 import esChat from '../locales/es/chat.json'
 import enCommon from '../locales/en/common.json'
 import enHeader from '../locales/en/header.json'
@@ -23,6 +24,7 @@ import enReservas from '../locales/en/reservas.json'
 import enPanel from '../locales/en/panel.json'
 import enAdmin from '../locales/en/admin.json'
 import enExperiencia from '../locales/en/experiencia.json'
+import enCuenta from '../locales/en/cuenta.json'
 import enChat from '../locales/en/chat.json'
 
 // F0 (i18n-es-en): single shared i18n runtime (AD-2, AD-5).
@@ -77,6 +79,7 @@ const resources = {
     panel: esPanel,
     admin: esAdmin,
     experiencia: esExperiencia,
+    cuenta: esCuenta,
     chat: esChat,
   },
   en: {
@@ -91,6 +94,7 @@ const resources = {
     panel: enPanel,
     admin: enAdmin,
     experiencia: enExperiencia,
+    cuenta: enCuenta,
     chat: enChat,
   },
 }
@@ -101,7 +105,7 @@ if (!i18n.isInitialized) {
     lng: readStoredLocale(),
     fallbackLng: 'es',
     defaultNS: 'common',
-    ns: ['common', 'header', 'catalog', 'footer', 'auth', 'perfil', 'publicacion', 'reservas', 'panel', 'admin', 'experiencia', 'chat'],
+    ns: ['common', 'header', 'catalog', 'footer', 'auth', 'perfil', 'publicacion', 'reservas', 'panel', 'admin', 'experiencia', 'cuenta', 'chat'],
     // Resources are static JSON, so store setup is fully synchronous. The
     // restored startup language may still emit one deferred `languageChanged`
     // that reaches the persistence listener below; it rewrites the value just

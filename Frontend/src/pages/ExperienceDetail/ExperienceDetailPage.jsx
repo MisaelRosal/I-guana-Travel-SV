@@ -22,6 +22,7 @@ import { scrollBehavior } from '../../utils/motion.js'
 import FormularioReserva from '../../components/FormularioReserva'
 import ChatPanel from '../../components/ChatPanel'
 import { useModalAccesible } from '../../hooks/useModalAccesible.js'
+import useFavoritos from '../../hooks/useFavoritos.js'
 import Toast from '../../components/Toast.jsx'
 import { Estrellas } from '../../components/Estrellas.jsx'
 
@@ -156,7 +157,7 @@ function Galeria({ imagenes, titulo }) {
   )
 }
 
-function InfoBox({ experiencia, onReservar, resumenResenas, esMiPublicacion }) {
+function InfoBox({ experiencia, onReservar, resumenResenas, guardado, onToggleGuardado, esMiPublicacion }) {
   const { t } = useTranslation('experiencia')
   const locale = useFormatLocale()
   const esHospedaje = experiencia.tipo === 'hospedaje'
@@ -165,7 +166,7 @@ function InfoBox({ experiencia, onReservar, resumenResenas, esMiPublicacion }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-iguana-hondo">{experiencia.categoria}</p>
           <h2 className="mt-1 text-3xl font-bold leading-tight text-verde-bosque">{experiencia.titulo}</h2>
@@ -192,6 +193,35 @@ function InfoBox({ experiencia, onReservar, resumenResenas, esMiPublicacion }) {
             {experiencia.municipio}, {experiencia.departamento}
           </p>
         </div>
+
+        {/* Fase 2: guardar/quitar la publicación desde el detalle. Mismo toggle
+            optimista que las cards; sin sesión el hook manda al login. */}
+        {onToggleGuardado && (
+          <button
+            type="button"
+            onClick={() => onToggleGuardado(experiencia.id)}
+            aria-pressed={guardado}
+            className={`flex shrink-0 cursor-pointer items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-bosque ${
+              guardado
+                ? 'border-red-600 bg-red-600 text-white hover:bg-red-700'
+                : 'border-verde-bosque text-verde-bosque hover:bg-verde-bosque hover:text-white'
+            }`}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill={guardado ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+            {guardado ? t('favoritos.saved') : t('favoritos.save')}
+          </button>
+        )}
       </div>
 
       <div className="mt-5 flex items-baseline gap-1.5 border-b border-neutral-100 pb-5">
@@ -839,6 +869,14 @@ export default function ExperienceDetailPage() {
   const [pasoReserva, setPasoReserva] = useState(reservaPendiente ? 'formulario' : 'inicio')
   const [datosReserva, setDatosReserva] = useState(reservaPendiente)
   const [toast, setToast] = useState(null)
+  // Fase 2 (guardar publicación): mismo set de ids que pinta el catálogo. Si el
+  // servidor falla el hook revierte el optimismo y este efecto avisa con el
+  // toast de la página (uno solo en pantalla, no dos flotantes encima).
+  const { guardado, alternar, error: errorFavoritos } = useFavoritos()
+
+  useEffect(() => {
+    if (errorFavoritos > 0) setToast({ tipo: 'error', mensaje: t('favoritos.error') })
+  }, [errorFavoritos, t])
   const [resenas, setResenas] = useState(null)
   // UI-only hint: the server is the authority (PostReserva rejects a host
   // booking their own listing). Reading the cache just lets us hide the CTA.
@@ -941,6 +979,8 @@ export default function ExperienceDetailPage() {
                 experiencia={experiencia}
                 onReservar={() => { if (!esMiPublicacion) setPasoReserva('calendario') }}
                 resumenResenas={resenas}
+                guardado={guardado(experiencia.id)}
+                onToggleGuardado={alternar}
                 esMiPublicacion={esMiPublicacion}
               />
             </div>

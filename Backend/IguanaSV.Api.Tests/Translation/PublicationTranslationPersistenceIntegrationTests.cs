@@ -350,5 +350,7 @@ public sealed class PublicationTranslationPersistenceIntegrationTests
             CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> ResenaRecibidaAsync(string destinatario, string nombreAnfitrion, string tituloPublicacion,
             short calificacion, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> CalificacionRecibidaAsync(string destinatario, string nombreHuesped, string tituloPublicacion,
+            short calificacion, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 }

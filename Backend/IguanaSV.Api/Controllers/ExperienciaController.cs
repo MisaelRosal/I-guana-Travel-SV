@@ -31,7 +31,7 @@ public class ExperienciaController : ControllerBase
     public async Task<ActionResult<IEnumerable<ExperienciaEntity>>> GetExperiencias(
         [FromQuery] string? contentLocale = null)
     {
-        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        if (!PublicacionContentLocale.TryNormalizeContentLocale(contentLocale, out var locale))
         {
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
@@ -48,7 +48,7 @@ public class ExperienciaController : ControllerBase
         int id,
         [FromQuery] string? contentLocale = null)
     {
-        if (!TryNormalizeContentLocale(contentLocale, out var locale))
+        if (!PublicacionContentLocale.TryNormalizeContentLocale(contentLocale, out var locale))
         {
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
@@ -230,11 +230,4 @@ public class ExperienciaController : ControllerBase
         if (!string.IsNullOrWhiteSpace(experiencia.DescripcionEn)) experiencia.Descripcion = experiencia.DescripcionEn;
     }
 
-    private static bool TryNormalizeContentLocale(string? contentLocale, out string locale)
-    {
-        locale = string.IsNullOrWhiteSpace(contentLocale)
-            ? "es"
-            : contentLocale.Trim().ToLowerInvariant();
-        return locale is "es" or "en";
-    }
 }

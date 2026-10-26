@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { localePath } from '../../i18n/routes.jsx'
 import { api } from '../../services/api.js'
@@ -39,11 +39,12 @@ export default function RegisterPage() {
   const [reenviando, setReenviando] = useState(false)
 
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
   // Igual que el login: si venimos de una página concreta (p. ej. el detalle de
   // una experiencia), volvemos ahí al terminar el registro; sin origen, al
-  // catálogo como antes.
-  const location = useLocation()
-  const destino = location.state?.from || localePath('catalog')
+  // catálogo como antes. Soporta `location.state.from` y `?redirect=`.
+  const destino = location.state?.from || searchParams.get('redirect') || localePath('catalog')
 
   const validar = () => {
     const nuevos = {}
@@ -475,8 +476,7 @@ export default function RegisterPage() {
         <p className="mt-5 text-center text-sm text-cafe">
           {t('register.haveAccount')}{' '}
           <Link
-            to={localePath('login')}
-            state={location.state}
+            to={`${localePath('login')}?redirect=${encodeURIComponent(destino)}`}
             className="cursor-pointer font-semibold text-iguana-hondo transition-colors hover:text-verde-bosque"
           >
             {t('register.loginLink')}

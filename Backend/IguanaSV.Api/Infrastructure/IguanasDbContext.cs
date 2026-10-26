@@ -38,6 +38,8 @@ public class IguanasDbContext : DbContext
 
     public virtual DbSet<Publicacione> Publicaciones { get; set; }
 
+    public virtual DbSet<PublicacionFavorita> PublicacionesFavoritas { get; set; }
+
     public virtual DbSet<Reserva> Reservas { get; set; }
 
     public virtual DbSet<ReservaHorario> ReservaHorarios { get; set; }
@@ -554,6 +556,32 @@ public class IguanasDbContext : DbContext
             entity.HasOne(d => d.Municipio).WithMany()
                 .HasForeignKey(d => d.MunicipioId)
                 .HasConstraintName("publicaciones_municipio_id_fkey");
+        });
+
+        modelBuilder.Entity<PublicacionFavorita>(entity =>
+        {
+            entity.HasKey(e => new { e.UsuarioId, e.PublicacionId }).HasName("publicaciones_favoritas_pkey");
+
+            entity.ToTable("publicaciones_favoritas");
+
+            entity.HasIndex(e => e.PublicacionId, "idx_publicaciones_favoritas_publicacion");
+
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.PublicacionId).HasColumnName("publicacion_id");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+
+            entity.HasOne(d => d.Publicacion).WithMany()
+                .HasForeignKey(d => d.PublicacionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("publicaciones_favoritas_publicacion_id_fkey");
+
+            entity.HasOne(d => d.Usuario).WithMany()
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("publicaciones_favoritas_usuario_id_fkey");
         });
 
         modelBuilder.Entity<Reserva>(entity =>

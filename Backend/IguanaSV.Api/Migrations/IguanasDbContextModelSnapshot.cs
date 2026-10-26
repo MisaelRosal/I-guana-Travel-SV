@@ -684,6 +684,30 @@ namespace IguanaSV.Api.Migrations
                     b.ToTable("publicacion_amenidad", (string)null);
                 });
 
+            modelBuilder.Entity("IguanaSV.Api.Entities.PublicacionFavorita", b =>
+                {
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<int>("PublicacionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("publicacion_id");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("creado_en")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("UsuarioId", "PublicacionId")
+                        .HasName("publicaciones_favoritas_pkey");
+
+                    b.HasIndex(new[] { "PublicacionId" }, "idx_publicaciones_favoritas_publicacion");
+
+                    b.ToTable("publicaciones_favoritas", (string)null);
+                });
+
             modelBuilder.Entity("IguanaSV.Api.Entities.Publicacione", b =>
                 {
                     b.Property<int>("Id")
@@ -858,12 +882,17 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("respuesta_anfitrion_en");
 
+                    b.Property<int?>("UsuarioDestinoId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("UsuarioId")
                         .HasColumnType("integer")
                         .HasColumnName("usuario_id");
 
                     b.HasKey("Id")
                         .HasName("resenas_pkey");
+
+                    b.HasIndex("UsuarioDestinoId");
 
                     b.HasIndex(new[] { "PublicacionId" }, "idx_resenas_publicacion");
 
@@ -1303,6 +1332,27 @@ namespace IguanaSV.Api.Migrations
                     b.Navigation("Publicacion");
                 });
 
+            modelBuilder.Entity("IguanaSV.Api.Entities.PublicacionFavorita", b =>
+                {
+                    b.HasOne("IguanaSV.Api.Entities.Publicacione", "Publicacion")
+                        .WithMany()
+                        .HasForeignKey("PublicacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("publicaciones_favoritas_publicacion_id_fkey");
+
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("publicaciones_favoritas_usuario_id_fkey");
+
+                    b.Navigation("Publicacion");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("IguanaSV.Api.Entities.Publicacione", b =>
                 {
                     b.HasOne("IguanaSV.Api.Entities.Anfitrione", "Anfitrion")
@@ -1347,6 +1397,10 @@ namespace IguanaSV.Api.Migrations
                         .IsRequired()
                         .HasConstraintName("resenas_reserva_id_fkey");
 
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "UsuarioDestino")
+                        .WithMany()
+                        .HasForeignKey("UsuarioDestinoId");
+
                     b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
                         .WithMany("Resenas")
                         .HasForeignKey("UsuarioId")
@@ -1359,6 +1413,8 @@ namespace IguanaSV.Api.Migrations
                     b.Navigation("Reserva");
 
                     b.Navigation("Usuario");
+
+                    b.Navigation("UsuarioDestino");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.Reserva", b =>

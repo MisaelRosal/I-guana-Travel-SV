@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../i18n/config.js'
@@ -118,7 +118,10 @@ describe('Gestor de disponibilidad', () => {
 
     const reprogramar = await screen.findByRole('button', { name: 'Reprogramar fecha' })
     fireEvent.click(reprogramar)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Reprogramar fecha' })[1])
+
+    // The component opens its own confirmation modal; confirm inside it.
+    const dialog = await screen.findByRole('dialog', { name: 'Reprogramar fecha' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reprogramar fecha' }))
 
     await waitFor(() =>
       expect(api.post).toHaveBeenCalledWith('/Horario/101/reprogramar', { nuevaFecha: '2026-12-01' }),
@@ -135,7 +138,10 @@ describe('Gestor de disponibilidad', () => {
     fireEvent.change(dateInputs[0], { target: { value: '2026-12-01' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Reprogramar fecha' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    // Dismiss the confirmation modal instead of confirming.
+    const dialog = await screen.findByRole('dialog', { name: 'Reprogramar fecha' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
 
     expect(api.post).not.toHaveBeenCalled()
   })

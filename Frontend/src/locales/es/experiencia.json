@@ -6,7 +6,14 @@
     "stayRooms_other": "{{count}} hab",
     "stayGuests_one": "{{count}} huésped",
     "stayGuests_other": "{{count}} huéspedes",
-    "popular": "Popular"
+    "popular": "Popular",
+    "saveAria": "Guardar publicación",
+    "unsaveAria": "Quitar publicación de guardados"
+  },
+  "favoritos": {
+    "save": "Guardar",
+    "saved": "Guardado",
+    "error": "No se pudo actualizar la publicación guardada. Intentá de nuevo."
   },
   "form": {
     "dialogLabel": "Formulario de reserva",
