@@ -194,15 +194,18 @@ export default function CatalogPage() {
     let activo = true
     if (primeraCarga.current) setCargando(true)
 
-    getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax, locale: contentLocale })
+    const datos = getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax, locale: contentLocale })
       .then((datos) => { if (activo) { setExperiencias(datos); setError(false) } })
       .catch(() => { if (activo) setError(true) })
-      .finally(() => {
-        if (primeraCarga.current) {
-          primeraCarga.current = false
-          setCargando(false)
-        }
-      })
+
+    const minimo = new Promise((resolve) => setTimeout(resolve, 2000))
+
+    Promise.all([datos, minimo]).finally(() => {
+      if (activo && primeraCarga.current) {
+        primeraCarga.current = false
+        setCargando(false)
+      }
+    })
 
     return () => { activo = false }
   }, [busqueda, categoria, zona, tipo, precioMax, contentLocale, reintento])

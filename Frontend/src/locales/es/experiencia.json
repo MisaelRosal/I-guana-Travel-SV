@@ -182,6 +182,8 @@
     "verified": "Reserva verificada",
     "hostReply": "Respuesta del anfitrión",
     "count_one": "{{count}} reseña",
-    "count_other": "{{count}} reseñas"
+    "count_other": "{{count}} reseñas",
+    "hostCount_one": "{{count}} reseña de sus experiencias",
+    "hostCount_other": "{{count}} reseñas de sus experiencias"
   }
 }

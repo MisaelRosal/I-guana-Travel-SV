@@ -16,7 +16,7 @@ import {
 } from '../../i18n/format.js'
 import { getExperienciaById } from '../../services/experiencias'
 import { getDisponibilidad } from '../../services/reservas'
-import { getResenasPublicacion } from '../../services/resenas'
+import { getResenasPublicacion, getResumenAnfitrion } from '../../services/resenas'
 import { leerSesionCache } from '../../services/session.js'
 import { scrollBehavior } from '../../utils/motion.js'
 import FormularioReserva from '../../components/FormularioReserva'
@@ -379,6 +379,15 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado, onC
   const location = useLocation()
   if (!anfitrionId) return null
   const sesion = leerSesionCache()
+  const [resumen, setResumen] = useState(null)
+
+  useEffect(() => {
+    let activo = true
+    getResumenAnfitrion(anfitrionId)
+      .then((r) => { if (activo) setResumen(r) })
+      .catch(() => { if (activo) setResumen({ promedio: 0, total: 0 }) })
+    return () => { activo = false }
+  }, [anfitrionId])
   return (
     <section className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">{t('host.title')}</h3>
@@ -402,6 +411,21 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado, onC
               </span>
             )}
           </div>
+          {resumen && (
+            <div className="mt-1 flex items-center gap-1">
+              {resumen.total > 0 ? (
+                <>
+                  <Estrellas valor={resumen.promedio} className="h-4 w-4" />
+                  <span className="text-sm font-bold text-neutral-800">{Number(resumen.promedio).toFixed(1)}</span>
+                  <span className="text-xs text-cafe">
+                    · {t('reviews.hostCount', { count: resumen.total })}
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs italic text-cafe">{t('reviews.empty')}</span>
+              )}
+            </div>
+          )}
           <p className="mt-1 line-clamp-2 text-sm text-neutral-700">
             {descripcion || t('host.noDescription')}
           </p>

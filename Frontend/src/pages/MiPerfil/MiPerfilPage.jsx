@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
+import { formatPrice } from '../../i18n/format.js'
 import { getMiPerfil, actualizarMiPerfilAnfitrion, getMunicipios, obtenerSesion } from '../../services/anfitriones.js'
+import { getResumenAnfitrion } from '../../services/resenas.js'
+import { getGuardadas } from '../../services/favoritos.js'
 import { api } from '../../services/api.js'
+import { Estrellas } from '../../components/Estrellas.jsx'
+import ExperienceCard from '../../components/ExperienceCard.jsx'
 import Toast from '../../components/Toast.jsx'
 
 const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
@@ -25,7 +31,7 @@ function Avatar({ anfitrion }) {
 }
 
 export default function MiPerfilPage() {
-  const { t } = useTranslation('perfil')
+  const { t, i18n } = useTranslation('perfil')
   const navigate = useNavigate()
   const usuario = obtenerSesion()
   const [anfitrion, setAnfitrion] = useState(null)
@@ -42,6 +48,11 @@ export default function MiPerfilPage() {
   const [toast, setToast] = useState(null)
   const [error, setError] = useState('')
   const [campoError, setCampoError] = useState('')
+  const [resumen, setResumen] = useState(null)
+  const [guardadas, setGuardadas] = useState([])
+  const [cargandoGuardadas, setCargandoGuardadas] = useState(false)
+  const [errorGuardadas, setErrorGuardadas] = useState(null)
+  const [guardadasAbierto, setGuardadasAbierto] = useState(false)
 
   // Asocia el mensaje con el campo que lo causó y lleva el foco hasta él.
   const marcarError = (campo, mensaje) => {
@@ -84,6 +95,34 @@ export default function MiPerfilPage() {
     api.get('/Departamento').then(setDepartamentos).catch(() => {})
     return () => { activo = false }
   }, [usuario?.rol, usuario?.id, navigate])
+
+  // Calificación general del anfitrión (promedio de todas sus reseñas) y lista de guardados.
+  useEffect(() => {
+    let activo = true
+    if (!anfitrion?.id) return
+    getResumenAnfitrion(anfitrion.id)
+      .then((r) => { if (activo) setResumen(r) })
+      .catch(() => { if (activo) setResumen({ promedio: 0, total: 0 }) })
+    return () => { activo = false }
+  }, [anfitrion?.id])
+
+  // Lista de guardados / wishlist del usuario autenticado.
+  useEffect(() => {
+    if (!usuario) {
+      setGuardadas([])
+      setCargandoGuardadas(false)
+      setErrorGuardadas(null)
+      return
+    }
+    let activo = true
+    setCargandoGuardadas(true)
+    setErrorGuardadas(null)
+    const contentLocale = getContentLocale(i18n.language ?? 'es')
+    getGuardadas(contentLocale)
+      .then((g) => { if (activo) { setGuardadas(g); setCargandoGuardadas(false) } })
+      .catch((e) => { if (activo) { setGuardadas([]); setCargandoGuardadas(false); setErrorGuardadas(e?.mensaje || e?.message || 'Error al cargar guardados') } })
+    return () => { activo = false }
+  }, [usuario?.email])
 
   // Same departamento→municipio cascade as SerAnfitrionPage: filter the full
   // municipio list client-side by departamentoId.
@@ -184,6 +223,21 @@ export default function MiPerfilPage() {
             <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber/10 text-verde-bosque'}`}>
               {anfitrion.verificado ? t('badge.verified') : t('badge.pending')}
             </span>
+            {resumen && (
+              <div className="mt-2 flex items-center gap-1">
+                {resumen.total > 0 ? (
+                  <>
+                    <Estrellas valor={resumen.promedio} className="h-4 w-4" />
+                    <span className="text-sm font-bold text-neutral-800">{Number(resumen.promedio).toFixed(1)}</span>
+                    <span className="text-xs text-cafe">
+                      · {t('reviews.hostCount', { count: resumen.total })}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs italic text-cafe">{t('reviews.empty')}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -340,11 +394,64 @@ export default function MiPerfilPage() {
         )}
       </div>
 
-      <Toast
-        mensaje={toast?.mensaje || ''}
-        tipo={toast?.tipo || 'exito'}
-        onCerrar={() => setToast(null)}
-      />
-    </div>
+        {/* Sección de guardados / wishlist (desplegable) */}
+        <section className="mt-10">
+          <button
+            type="button"
+            onClick={() => setGuardadasAbierto((prev) => !prev)}
+            aria-expanded={guardadasAbierto}
+            className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-full border-2 border-verde-bosque bg-verde-bosque/5 px-4 py-3 text-sm font-bold text-verde-bosque transition-colors hover:bg-verde-bosque/10 focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+          >
+            <span className="flex items-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
+              </svg>
+              {guardadasAbierto ? t('host.hideSaved') : `${t('host.showSaved')} (${guardadas.length})`}
+            </span>
+            <svg
+              className={`h-4 w-4 shrink-0 transition-transform ${guardadasAbierto ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+
+          {guardadasAbierto && (
+            <div className="mt-4">
+              {cargandoGuardadas && (
+                <p className="text-cafe">{t('loading')}</p>
+              )}
+              {!cargandoGuardadas && errorGuardadas && (
+                <p className="text-red-600">{errorGuardadas}</p>
+              )}
+              {!cargandoGuardadas && !errorGuardadas && guardadas.length === 0 && (
+                <p className="text-cafe">{t('host.noSavedYet')}</p>
+              )}
+              {!cargandoGuardadas && !errorGuardadas && guardadas.length > 0 && (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {guardadas.map((exp) => (
+                    <ExperienceCard
+                      key={exp.id}
+                      experiencia={exp}
+                      proximaFecha={exp.proximaFecha}
+                      resena={exp.resumenResenas}
+                      guardado={true}
+                      onToggleGuardado={undefined}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        <Toast
+          mensaje={toast?.mensaje || ''}
+          tipo={toast?.tipo || 'exito'}
+          onCerrar={() => setToast(null)}
+        />
+      </div>
   )
 }

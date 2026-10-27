@@ -110,3 +110,14 @@ export async function crearResena({ reservaId, calificacion, comentario }) {
     comentario: comentario && comentario.trim() ? comentario.trim() : null,
   })
 }
+
+// Host rates a guest (POST /api/Resena/huesped). Server validates host owns
+// the reservation's publication, reservation is completed, within 14 days of
+// check-out, and no prior host→guest review exists.
+export async function crearResenaHuesped({ reservaId, calificacion, comentario }) {
+  return await api.post('/Resena/huesped', {
+    reservaId,
+    calificacion,
+    comentario: comentario && comentario.trim() ? comentario.trim() : null,
+  })
+}

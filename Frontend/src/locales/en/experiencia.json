@@ -182,6 +182,8 @@
     "verified": "Verified booking",
     "hostReply": "Host's response",
     "count_one": "{{count}} review",
-    "count_other": "{{count}} reviews"
+    "count_other": "{{count}} reviews",
+    "hostCount_one": "{{count}} review of their listings",
+    "hostCount_other": "{{count}} reviews of their listings"
   }
 }

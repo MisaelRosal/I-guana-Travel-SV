@@ -142,9 +142,10 @@ public class ResenaController : ControllerBase
         });
     }
 
-    // Host rates guest (host→guest review) after completed reservation.
+    // Host rates guest (host→guest review).
     // Only the host who owns the publication can submit; one review per reservation.
-    // Time window: host has 14 days after checkout (FechaFin) to rate the guest.
+    // Reservation must be confirmada or completada.
+    // Time window: host can rate from FechaInicio until 14 days after FechaInicio.
     [HttpPost("huesped")]
     [Authorize]
     public async Task<ActionResult<object>> PostResenaHuesped(CrearResenaHuespedDto dto)
@@ -178,15 +179,22 @@ public class ResenaController : ControllerBase
             return Forbid();
         }
 
-        if (reserva.Estado != "completada")
+        if (reserva.Estado != "confirmada" && reserva.Estado != "completada")
         {
-            return BadRequest(new { mensaje = "Solo podés calificar huéspedes de reservas completadas." });
+            return BadRequest(new { mensaje = "Solo podés calificar huéspedes de reservas confirmadas o completadas." });
         }
 
-        var diasDesdeCheckout = (DateTime.Today - reserva.FechaFin.ToDateTime(TimeOnly.MinValue)).Days;
-        if (diasDesdeCheckout > 14)
+        var hoy = DateTime.Today;
+        var fechaInicio = reserva.FechaInicio.ToDateTime(TimeOnly.MinValue);
+        if (hoy < fechaInicio)
         {
-            return BadRequest(new { mensaje = "El plazo para calificar al huésped venció (14 días después del check-out)." });
+            return BadRequest(new { mensaje = "Aún no podés calificar al huésped: la reserva aún no inició." });
+        }
+
+        var diasDesdeInicio = (hoy - fechaInicio).Days;
+        if (diasDesdeInicio > 14)
+        {
+            return BadRequest(new { mensaje = "El plazo para calificar al huésped venció (14 días después del inicio de la reserva)." });
         }
 
         if (reserva.Resena != null && reserva.Resena.UsuarioDestinoId.HasValue)

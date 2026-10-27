@@ -118,11 +118,18 @@
     "paySuccess": "Payment completed successfully.",
     "cancelSuccess": "Booking cancelled successfully."
   },
+  "tabs": {
+    "reservations": "Reservations",
+    "reservationStatus": "Status",
+    "actions": "Actions"
+  },
   "reviews": {
     "button": "Leave a review",
     "sent": "Review submitted · {{rating}}/5",
     "modalTitle": "Leave a review",
     "question": "How was your experience?",
+    "rateGuestTitle": "Rate guest",
+    "rateGuestQuestion": "How was the guest?",
     "commentLabel": "Comment",
     "commentOptional": "(optional)",
     "commentPlaceholder": "Tell us what you liked, how the service was, tips for other travelers…",
@@ -137,6 +144,25 @@
     "submitting": "Sending…",
     "submit": "Submit review",
     "error": "There was an error submitting your review",
-    "toastSuccess": "Thank you! Your review was submitted."
+    "toastSuccess": "Thank you! Your review was submitted.",
+    "rateGuest": "Rate guest",
+    "notEligible": "Not eligible"
+  },
+  "card": {
+    "dateLabel": "Date",
+    "peopleLabel": "People",
+    "totalLabel": "Total",
+    "categoryLabel": "Category: {{categoria}}",
+    "persons_one": "{{count}} person",
+    "persons_other": "{{count}} people",
+    "noteCancelled": "This booking has already been cancelled.",
+    "noteShortConfirmed": "Paid: less than a day left, editing and cancelling are no longer available.",
+    "noteGraceExpired": "The payment hour expired. This booking will be cancelled automatically.",
+    "noteBlockedSoon": "Your start date is a day away or earlier, so this booking can no longer be edited or deleted.",
+    "noteRescheduled": "The host changed this experience's date and your booking moved with it. You can cancel without restrictions if it no longer works for you.",
+    "noteRescheduledFrom": "The host moved this booking from {{date}} to the new date. You can cancel without restrictions if it no longer works for you.",
+    "pay": "Pay",
+    "edit": "Edit",
+    "delete": "Delete"
   }
 }

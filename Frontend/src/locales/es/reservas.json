@@ -119,11 +119,18 @@
     "paySuccess": "Pago realizado exitosamente.",
     "cancelSuccess": "Reserva cancelada exitosamente."
   },
+  "tabs": {
+    "reservations": "Reservas",
+    "reservationStatus": "Estado",
+    "actions": "Acciones"
+  },
   "reviews": {
     "button": "Dejar reseña",
     "sent": "Reseña enviada · {{rating}}/5",
     "modalTitle": "Dejar reseña",
     "question": "¿Cómo estuvo tu experiencia?",
+    "rateGuestTitle": "Calificar huésped",
+    "rateGuestQuestion": "¿Cómo estuvo el huésped?",
     "commentLabel": "Comentario",
     "commentOptional": "(opcional)",
     "commentPlaceholder": "Contá qué te gustó, cómo fue la atención, consejos para otros viajeros…",
@@ -138,6 +145,25 @@
     "submitting": "Enviando…",
     "submit": "Enviar reseña",
     "error": "Error al enviar la reseña",
-    "toastSuccess": "¡Gracias! Tu reseña fue enviada."
+    "toastSuccess": "¡Gracias! Tu reseña fue enviada.",
+    "rateGuest": "Calificar huésped",
+    "notEligible": "No elegible"
+  },
+  "card": {
+    "dateLabel": "Fecha",
+    "peopleLabel": "Personas",
+    "totalLabel": "Total",
+    "categoryLabel": "Categoría: {{categoria}}",
+    "persons_one": "{{count}} persona",
+    "persons_other": "{{count}} personas",
+    "noteCancelled": "Esta reserva ya fue cancelada.",
+    "noteShortConfirmed": "Pagaste: falta menos de un día, ya no se puede editar ni cancelar.",
+    "noteGraceExpired": "La hora para pagar venció. Esta reserva se cancelará automáticamente.",
+    "noteBlockedSoon": "Falta un día o menos para tu entrada. Por eso esta reserva ya no se puede editar ni eliminar.",
+    "noteRescheduled": "El anfitrión cambió la fecha de esta experiencia y tu reserva se movió con ella. Podés cancelarla sin restricciones si no te sirve.",
+    "noteRescheduledFrom": "El anfitrión movió esta reserva del {{date}} a la nueva fecha. Podés cancelarla sin restricciones si no te sirve.",
+    "pay": "Pagar",
+    "edit": "Editar",
+    "delete": "Eliminar"
   }
 }

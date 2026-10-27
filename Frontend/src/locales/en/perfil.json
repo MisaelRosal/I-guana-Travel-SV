@@ -52,6 +52,10 @@
     "phone": "Phone",
     "location": "Location",
     "publications": "Listings by {{name}}",
+    "publicationsSaved": "Your saved listings from {{name}}",
+    "showSaved": "View saved",
+    "hideSaved": "Hide saved",
+    "noSavedYet": "You don't have any saved listings yet.",
     "noImage": "No image"
   },
   "reviews": {

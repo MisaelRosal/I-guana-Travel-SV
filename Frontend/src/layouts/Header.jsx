@@ -78,7 +78,6 @@ export default function Header() {
     const actualizar = (event) => {
       if (event && event.key === LOCALE_STORAGE_KEY) return
       setUsuario(leerSesionCache())
-      setFotoPerfil('')
       setMenuAbierto(false)
     }
     window.addEventListener('auth-change', actualizar)
@@ -138,7 +137,7 @@ export default function Header() {
       setFotoPerfil('')
     }
     return () => { activo = false }
-  }, [usuario?.rol, usuario?.id, usuario?.fotoPerfil])
+  }, [usuario])
 
   const rol = usuario?.rol ?? ''
   // F5 (task 6.3): nav targets resolve through the locale route table, so EN

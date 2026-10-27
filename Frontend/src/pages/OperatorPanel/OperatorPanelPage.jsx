@@ -6,14 +6,17 @@ import { api } from '../../services/api.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
 import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.js'
 import { getMisResenas, responderResena } from '../../services/resenas.js'
+import { getAgenda, crearResenaHuesped } from '../../services/reservas.js'
 import { scrollBehavior } from '../../utils/motion.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
 import DashboardGanancias from '../../components/DashboardGanancias.jsx'
 import GestorDisponibilidad from '../../components/GestorDisponibilidad.jsx'
 import AgendaOperador from '../../components/AgendaOperador.jsx'
+import ModalResenaHuesped from '../../components/ModalResenaHuesped.jsx'
 
 export default function OperatorPanelPage() {
   const { t, i18n } = useTranslation('panel')
+  const { t: tr } = useTranslation('reservas')
   const locale = useFormatLocale()
   const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
   const usuario = obtenerSesion()
@@ -31,6 +34,9 @@ export default function OperatorPanelPage() {
   const [respondiendoId, setRespondiendoId] = useState(null)
   const [textoRespuesta, setTextoRespuesta] = useState('')
   const [guardandoId, setGuardandoId] = useState(null)
+  const [reservasAnfitrion, setReservasAnfitrion] = useState([])
+  const [cargandoReservas, setCargandoReservas] = useState(false)
+  const [reservaResenarHuesped, setReservaResenarHuesped] = useState(null)
 
   const esRolAdmin = esAdmin(usuario?.rol)
   const esAnfitrion = usuario?.rol === 'anfitrion'
@@ -88,6 +94,24 @@ export default function OperatorPanelPage() {
     cargarResenas()
   }, [cargarResenas])
 
+  // Reservas del anfitrión (para calificar huésped). Solo anfitrión/admin.
+  const cargarReservasAnfitrion = useCallback(async () => {
+    if (usuario?.rol !== 'anfitrion' && !esRolAdmin) return
+    setCargandoReservas(true)
+    try {
+      const data = await getAgenda()
+      setReservasAnfitrion(Array.isArray(data) ? data : [])
+    } catch {
+      setReservasAnfitrion([])
+    } finally {
+      setCargandoReservas(false)
+    }
+  }, [usuario?.rol, esRolAdmin])
+
+  useEffect(() => {
+    cargarReservasAnfitrion()
+  }, [cargarReservasAnfitrion])
+
   const iniciarRespuesta = (r) => {
     setRespondiendoId(r.id)
     setTextoRespuesta(r.respuestaAnfitrionFuente ?? r.respuestaAnfitrion ?? '')
@@ -127,6 +151,16 @@ export default function OperatorPanelPage() {
     setMensaje(t('toast.updated'))
     cargar()
     window.scrollTo({ top: 0, behavior: scrollBehavior() })
+  }
+
+  const handleExitoResenaHuesped = (resena) => {
+    setReservasAnfitrion((prev) =>
+      prev.map((r) =>
+        r.id === resena.reservaId ? { ...r, resena } : r
+      )
+    )
+    setReservaResenarHuesped(null)
+    setMensaje(t('reviews.toastSuccess'))
   }
 
   const alEliminar = async (p) => {
@@ -199,6 +233,7 @@ export default function OperatorPanelPage() {
           { id: 'agenda', etiqueta: t('agenda.tab') },
           { id: 'dashboard', etiqueta: t('dashboard.tab') },
           { id: 'resenas', etiqueta: t('reviews.tab', { count: listaResenas.length }) },
+          { id: 'reservas', etiqueta: t('tabs.reservations') },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -456,6 +491,82 @@ export default function OperatorPanelPage() {
         </div>
       )}
 
+      {pestana === 'reservas' && (
+        <div className="space-y-5">
+          <h2 className="text-2xl font-bold text-verde-bosque">{tr('Reservas')}</h2>
+          {cargandoReservas ? (
+            <p className="text-cafe">{tr('status.loading')}</p>
+          ) : reservasAnfitrion.length === 0 ? (
+            <div className="rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center">
+              <p className="text-lg font-semibold text-verde-bosque">{tr('status.emptyTitle')}</p>
+              <p className="mt-1 text-sm text-cafe">{tr('status.emptyBody')}</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-verde-bosque text-white">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">{tr('card.dateLabel')}</th>
+                    <th className="px-4 py-3 font-semibold">{tr('card.categoryLabel', { categoria: '—' })}</th>
+                    <th className="px-4 py-3 font-semibold">{tr('card.peopleLabel')}</th>
+                    <th className="px-4 py-3 font-semibold">{tr('card.totalLabel')}</th>
+                    <th className="px-4 py-3 font-semibold">{tr('tabs.reservationStatus')}</th>
+                    <th className="px-4 py-3 font-semibold">{tr('tabs.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-cafe-claro/30">
+                  {reservasAnfitrion.map((r) => {
+                    const completada = r.estado === 'completada'
+                    const yaCalifico = r.resena && r.resena.usuarioDestinoId != null
+                    return (
+                      <tr key={r.id} className="transition-colors hover:bg-crema">
+                        <td className="px-4 py-3">
+                          <span className="block font-semibold text-verde-bosque">{r.nombreHuesped}</span>
+                          <span className="text-xs text-cafe">
+                            {formatDateDMY(r.fechaInicio, locale)}
+                            {r.fechaFin && r.fechaFin !== r.fechaInicio ? ` → ${formatDateDMY(r.fechaFin, locale)}` : ''}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-neutral-700">{r.experienciaCategoria ?? '—'}</td>
+                        <td className="px-4 py-3 text-neutral-700">
+                          {tr('card.persons', { count: r.numeroHuespedes ?? 1 })}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-iguana-hondo">
+                          {formatPrice(r.precioTotal ?? 0, locale)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${completada ? 'bg-neutral-100 text-neutral-600' : 'bg-amber/10 text-verde-bosque'}`}>
+                            {completada ? tr('chip.completada') : r.estado}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {completada && !yaCalifico ? (
+                            <button
+                              type="button"
+                              onClick={() => setReservaResenarHuesped(r)}
+                              className="cursor-pointer rounded-full border border-iguana-hondo px-3 py-1.5 text-xs font-semibold text-iguana-hondo transition-colors hover:bg-iguana-hondo hover:text-white"
+                            >
+                              {tr('reviews.rateGuest')}
+                            </button>
+                          ) : yaCalifico ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber/10 px-3 py-1.5 text-xs font-semibold text-verde-bosque">
+                              <Estrellas valor={r.resena.calificacion} className="h-3.5 w-3.5" />
+                              {tr('reviews.sent', { rating: r.resena.calificacion })}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-neutral-500">{tr('reviews.notEligible')}</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <CrearPublicacionModal
         abierto={modalAbierto}
         onCerrar={() => { setModalAbierto(false); setPubEditando(null) }}
@@ -464,6 +575,14 @@ export default function OperatorPanelPage() {
         esEdicion={!!pubEditando}
         anfitrionFijo={usuario?.rol === 'anfitrion' ? anfitrionPropio : null}
       />
+
+      {reservaResenarHuesped && (
+        <ModalResenaHuesped
+          reserva={reservaResenarHuesped}
+          onCerrar={() => setReservaResenarHuesped(null)}
+          onExito={handleExitoResenaHuesped}
+        />
+      )}
     </div>
   )
 }

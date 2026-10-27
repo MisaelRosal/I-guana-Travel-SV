@@ -39,7 +39,7 @@ export default function ExperienceCard({
     // <button> dentro de un <a> (HTML válido y clic que no navega por accidente).
     // El <Link> sigue cubriendo la tarjeta entera; el corazón se superpone a la
     // línea del título, alineado a la derecha.
-    <div className="group relative flex flex-col overflow-hidden rounded-[22px] border border-cafe-claro bg-white">
+    <div className="group relative flex flex-col overflow-hidden rounded-[22px] border-2 border-cafe-claro bg-white transition-all duration-300 group-hover:-translate-y-2 group-hover:border-verde-bosque group-hover:shadow-lg">
       {/* F5 (task 6.4): the card link follows the active locale's detail form. */}
       <Link
         to={localePath('experienceDetail', { id: experiencia.id })}
