@@ -82,6 +82,8 @@
     "upcomingTitle": "Upcoming reservations",
     "upcomingEmpty": "You have no upcoming reservations for this filter.",
     "pastTitle": "Past reservations",
+    "confirm": "Confirm",
+    "confirmError": "Could not confirm the reservation. Try again.",
     "estado": {
       "pendiente": "Pending",
       "confirmada": "Confirmed",

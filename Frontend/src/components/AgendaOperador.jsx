@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../i18n/config.js'
 import { formatDateDMY, formatDayMonthShort, formatMonthYear, formatPrice, weekdayShortMonFirst } from '../i18n/format.js'
-import { getAgenda } from '../services/reservas.js'
+import { getAgenda, confirmarReserva } from '../services/reservas.js'
 
 // A-20 (agenda del operador): a read-only month calendar plus a forward-looking
 // list of every reservation behind the caller's own publications. The server
@@ -53,6 +53,9 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(false)
   const [publicacionId, setPublicacionId] = useState('')
+  const [confirmandoId, setConfirmandoId] = useState(null)
+  const [confirmErrorId, setConfirmErrorId] = useState(null)
+  const [confirmError, setConfirmError] = useState(null)
   const [mesCal, setMesCal] = useState(hoy.getMonth())
   const [anioCal, setAnioCal] = useState(hoy.getFullYear())
 
@@ -99,6 +102,21 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
     [filtradas, hoyISO],
   )
 
+  const confirmar = async (r) => {
+    setConfirmErrorId(null)
+    setConfirmError(null)
+    setConfirmandoId(r.id)
+    try {
+      await confirmarReserva(r.id)
+      await cargar()
+    } catch (err) {
+      setConfirmErrorId(r.id)
+      setConfirmError(err.mensaje || err.message || t('agenda.confirmError'))
+    } finally {
+      setConfirmandoId(null)
+    }
+  }
+
   const cambiarMes = (delta) => {
     let m = mesCal + delta
     let a = anioCal
@@ -128,7 +146,7 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
       ? formatDateDMY(r.fechaInicio, locale)
       : `${formatDateDMY(r.fechaInicio, locale)} – ${formatDateDMY(r.fechaFin, locale)}`
 
-  const renderFila = (r) => (
+  const renderFila = (r, esProxima = false) => (
     <li key={r.id} className="rounded-[22px] border border-cafe-claro/40 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
@@ -144,6 +162,21 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
         <span>{t('agenda.guests', { count: r.numeroHuespedes })}</span>
         <span className="font-semibold text-iguana-hondo">{formatPrice(r.precioTotal, locale)}</span>
       </div>
+      {esProxima && r.estado === 'pendiente' && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => confirmar(r)}
+            disabled={confirmandoId !== null}
+            className="cursor-pointer rounded-full bg-iguana-hondo px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-verde-bosque disabled:opacity-50"
+          >
+            {t('agenda.confirm')}
+          </button>
+          {confirmErrorId === r.id && (
+            <p className="text-xs font-semibold text-red-700" role="alert">{confirmError}</p>
+          )}
+        </div>
+      )}
     </li>
   )
 
@@ -258,7 +291,7 @@ export default function AgendaOperador({ publicaciones = [], esAdmin = false }) 
                     {t('agenda.upcomingEmpty')}
                   </p>
                 ) : (
-                  <ul className="space-y-3">{proximas.map(renderFila)}</ul>
+                  <ul className="space-y-3">{proximas.map((r) => renderFila(r, true))}</ul>
                 )}
               </section>
 

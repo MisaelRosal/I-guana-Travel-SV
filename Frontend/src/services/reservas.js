@@ -96,6 +96,12 @@ export async function pagarReserva(id, metodoPago) {
   return await api.put(`/Reserva/${id}/pagar`, { metodoPago })
 }
 
+// Confirms a pending reservation (pendiente -> confirmada); the server
+// validates the caller and the allowed state transition via { mensaje } errors.
+export async function confirmarReserva(id) {
+  return await api.put(`/Reserva/${id}/confirmar`, {})
+}
+
 export async function cancelarReserva(id) {
   return await api.put(`/Reserva/${id}/cancelar`, {})
 }
