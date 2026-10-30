@@ -233,7 +233,7 @@ export default function OperatorPanelPage() {
           { id: 'agenda', etiqueta: t('agenda.tab') },
           { id: 'dashboard', etiqueta: t('dashboard.tab') },
           { id: 'resenas', etiqueta: t('reviews.tab', { count: listaResenas.length }) },
-          { id: 'reservas', etiqueta: t('tabs.reservations') },
+          { id: 'reservas', etiqueta: 'Reservaciones' },
         ].map((tab) => (
           <button
             key={tab.id}

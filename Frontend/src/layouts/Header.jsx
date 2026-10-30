@@ -145,7 +145,9 @@ export default function Header() {
   const links = [
     { to: localePath('catalog'), label: t('nav.home') },
   ]
-  links.push({ to: localePath('reservations'), label: t('nav.reservations') })
+  if (!esAdmin(rol)) {
+    links.push({ to: localePath('reservations'), label: t('nav.reservations') })
+  }
   if (rol === 'anfitrion') {
     links.push({ to: localePath('panel'), label: t('nav.operatorPanel') })
   }
