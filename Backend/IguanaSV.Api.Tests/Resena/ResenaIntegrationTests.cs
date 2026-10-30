@@ -595,6 +595,43 @@ public sealed class ResenaIntegrationTests
         Assert.Contains(pubB, resumenIds);
     }
 
+    // ---- Requirement: admin moderation deletion --------------------------------
+
+    [SkippableFact]
+    [Trait("Category", "Resena")]
+    public async Task DeleteResena_Admin_EliminaPermanente_NoAdmin_403()
+    {
+        var guest = await RegisterUserAsync();
+        var host = await RegisterUserAsync();
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId));
+        var reservaId = await SeedReservaAsync(pubId, guest.UserId, Iso(0), Iso(1), "confirmada");
+
+        var post = await AuthedClient(guest).PostAsync("/api/Resena",
+            Json(new { reservaId, calificacion = 3, comentario = "Regular" }));
+        Assert.Equal(HttpStatusCode.OK, post.StatusCode);
+        var resenaId = ReadId(post);
+
+        // A non-admin (the review's author AND the publication's host) is forbidden.
+        var guestRes = await AuthedClient(guest).DeleteAsync($"/api/Resena/{resenaId}");
+        Assert.Equal(HttpStatusCode.Forbidden, guestRes.StatusCode);
+        var hostRes = await AuthedClient(host).DeleteAsync($"/api/Resena/{resenaId}");
+        Assert.Equal(HttpStatusCode.Forbidden, hostRes.StatusCode);
+        Assert.Equal(1, await CountResenasAsync(pubId));
+
+        // Admin deletes: 204 and the row is gone.
+        var adminRes = await AuthedClient(AdminSession()).DeleteAsync($"/api/Resena/{resenaId}");
+        Assert.Equal(HttpStatusCode.NoContent, adminRes.StatusCode);
+        Assert.Equal(0, await CountResenasAsync(pubId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Resena")]
+    public async Task DeleteResena_SinSesion_Returns401()
+    {
+        var res = await Client().DeleteAsync("/api/Resena/99999999");
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+    }
+
     // ---- Requirement: completion background worker ------------------------------
 
     [SkippableFact]

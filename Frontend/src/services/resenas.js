@@ -43,3 +43,8 @@ export async function getMisResenas(language) {
 export async function responderResena(id, respuesta) {
   return await api.put(`/Resena/${id}/respuesta`, { respuesta: respuesta ?? '' })
 }
+
+// Admin moderation: permanently delete a review.
+export async function eliminarResena(id) {
+  return await api.delete(`/Resena/${id}`)
+}

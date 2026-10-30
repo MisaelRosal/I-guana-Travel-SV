@@ -4,6 +4,8 @@ import { useFormatLocale } from '../../i18n/config.js'
 import { formatDateDMY, formatPrice } from '../../i18n/format.js'
 import { api } from '../../services/api.js'
 import { esAdmin } from '../../services/anfitriones.js'
+import { eliminarResena, getMisResenas } from '../../services/resenas.js'
+import { Estrellas } from '../../components/Estrellas.jsx'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
 import { cambiarEstadoReporte, getTodosReportes } from '../../services/reportes.js'
 
@@ -41,6 +43,10 @@ export default function AdminPanelPage() {
   const [reporteSeleccionado, setReporteSeleccionado] = useState(null)
   const [estadoReporte, setEstadoReporte] = useState('en_revision')
   const [notasReporte, setNotasReporte] = useState('')
+  const [resenas, setResenas] = useState(null)
+  const [cargandoResenas, setCargandoResenas] = useState(false)
+  const [errorResenas, setErrorResenas] = useState(false)
+  const [confirmandoResena, setConfirmandoResena] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -102,6 +108,37 @@ export default function AdminPanelPage() {
     } catch {
       setConfirmandoPub(null)
       setMensaje(t('toast.listingDeleteError'))
+    }
+  }
+
+  const cargarResenas = useCallback(async () => {
+    setCargandoResenas(true)
+    setErrorResenas(false)
+    try {
+      setResenas(await getMisResenas())
+    } catch {
+      setResenas(null)
+      setErrorResenas(true)
+    } finally {
+      setCargandoResenas(false)
+    }
+  }, [])
+
+  // Reviews load lazily when their tab is first shown, not on the initial load.
+  useEffect(() => {
+    if (pestana === 'resenas') cargarResenas()
+  }, [pestana, cargarResenas])
+
+  const alEliminarResena = async (r) => {
+    setConfirmandoResena(r.id)
+    try {
+      await eliminarResena(r.id)
+      setMensaje(t('reviews.deleted'))
+      setConfirmandoResena(null)
+      cargarResenas()
+    } catch {
+      setConfirmandoResena(null)
+      setMensaje(t('reviews.deleteError'))
     }
   }
 
@@ -358,11 +395,95 @@ export default function AdminPanelPage() {
       )}
 
       {pestana === 'resenas' && (
-        <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center">
-          <p className="text-lg font-semibold text-verde-bosque">{t('reviews.title')}</p>
-          <p className="mt-1 text-sm text-cafe">
-            {t('reviews.soon')}
-          </p>
+        <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
+          {errorResenas ? (
+            <p className="px-6 py-14 text-center text-cafe">{t('reviews.error')}</p>
+          ) : cargandoResenas ? (
+            <p className="px-6 py-14 text-center text-cafe">{t('reviews.loading')}</p>
+          ) : (resenas?.Resenas?.length ?? 0) === 0 ? (
+            <p className="px-6 py-14 text-center text-cafe">{t('reviews.empty')}</p>
+          ) : (
+            <div>
+              <div className="flex flex-wrap gap-2 border-b border-cafe-claro/30 bg-crema/40 px-4 py-3">
+                <span className="w-full text-xs font-semibold uppercase tracking-wide text-cafe">
+                  {t('reviews.summaryTitle')}
+                </span>
+                {(resenas?.Resumenes ?? []).map((s) => (
+                  <span
+                    key={s.publicacionId}
+                    className="inline-flex items-center gap-2 rounded-full bg-verde-hoja/15 px-3 py-1 text-xs font-semibold text-verde-bosque"
+                  >
+                    {s.titulo}
+                    <span className="text-iguana-hondo">{Number(s.promedio).toFixed(1)}/5</span>
+                    <span className="font-normal text-cafe">({s.total})</span>
+                  </span>
+                ))}
+              </div>
+              <ul className="divide-y divide-cafe-claro/30">
+                {(resenas?.Resenas ?? []).map((r) => (
+                  <li key={r.id} className="p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-crema text-sm font-bold text-cafe">
+                          {(r.hueped || '').charAt(0).toUpperCase()}
+                        </span>
+                        <div>
+                          <p className="text-sm font-bold text-verde-bosque">{r.hueped}</p>
+                          <p className="text-xs text-cafe">
+                            {r.publicacion?.titulo} · {formatDateDMY(r.fecha, locale)}
+                          </p>
+                        </div>
+                      </div>
+                      <Estrellas valor={r.calificacion} className="h-4 w-4" />
+                    </div>
+
+                    {r.comentario && (
+                      <p className="mt-3 text-sm leading-relaxed text-neutral-800">{r.comentario}</p>
+                    )}
+
+                    {r.respuestaAnfitrion && (
+                      <div className="mt-3 rounded-[22px] bg-crema p-3">
+                        <p className="text-xs font-bold text-iguana-hondo">{t('reviews.hostReply')}</p>
+                        <p className="mt-1 text-sm text-neutral-800">{r.respuestaAnfitrion}</p>
+                      </div>
+                    )}
+
+                    {confirmandoResena === r.id ? (
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="text-xs text-cafe">{t('reviews.deleteConfirm')}</span>
+                        <button
+                          type="button"
+                          onClick={() => alEliminarResena(r)}
+                          className="cursor-pointer rounded-full bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
+                        >
+                          {t('common:actions.deleteYes')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmandoResena(null)}
+                          className="cursor-pointer rounded-full bg-neutral-200 px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-300"
+                        >
+                          {t('common:actions.cancel')}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmandoResena(r.id)}
+                        disabled={!!confirmandoResena}
+                        className="relative mt-3 cursor-pointer rounded-full p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
+                        title={t('reviews.delete')}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
+                          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6" />
+                        </svg>
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

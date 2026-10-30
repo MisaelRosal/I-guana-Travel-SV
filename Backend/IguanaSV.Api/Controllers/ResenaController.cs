@@ -490,6 +490,36 @@ public class ResenaController : ControllerBase
         return Ok(new { resena.RespuestaAnfitrion, resena.FechaRespuesta });
     }
 
+    // Moderation delete: admin-only and permanent (email notification history
+    // sent to the guest/host is unaffected by removing the row).
+    [HttpDelete("{id}")]
+    [Authorize]
+    public async Task<IActionResult> EliminarResena(int id)
+    {
+        var resena = await _context.Resenas.FindAsync(id);
+        if (resena == null)
+        {
+            return NotFound();
+        }
+
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            return Forbid();
+        }
+
+        _context.Resenas.Remove(resena);
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict();
+        }
+
+        return NoContent();
+    }
+
     private async Task TranslateCommentIfMissingAsync(Resena resena, CancellationToken cancellationToken)
     {
         var source = resena.Comentario;

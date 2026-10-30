@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
+import { eliminarResena, getMisResenas } from '../../../services/resenas.js'
 import AdminPanelPage from '../AdminPanelPage.jsx'
 
 // F2b-1 (i18n-es-en): the admin panel reads its chrome from the `admin`
@@ -43,10 +44,25 @@ const fixtures = vi.hoisted(() => ({
       precioPorNoche: 30, estado: 'Borrador', anfitrion: null,
     },
   ],
+  resenas: {
+    Resumenes: [{ publicacionId: 3, titulo: 'Ruta del café en Apan', promedio: 4.3, total: 2 }],
+    Resenas: [
+      {
+        id: 9, calificacion: 4, comentario: 'Buena vista y mejor anfitrión.',
+        fecha: '2026-05-01T12:00:00', respuestaAnfitrion: null, fechaRespuesta: null,
+        hueped: 'Pepe G.', publicacion: { id: 3, titulo: 'Ruta del café en Apan' },
+      },
+    ],
+  },
 }))
 
 vi.mock('../../../services/anfitriones.js', () => ({
   esAdmin: vi.fn((rol) => rol === 'admin' || rol === 'administrador'),
+}))
+
+vi.mock('../../../services/resenas.js', () => ({
+  getMisResenas: vi.fn(async () => fixtures.resenas),
+  eliminarResena: vi.fn(async () => ({ ok: true })),
 }))
 
 vi.mock('../../../services/api.js', () => ({
@@ -140,8 +156,9 @@ describe('EN active: admin panel chrome comes from the admin namespace', () => {
     expect(screen.queryByText('Delete?')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reviews' }))
-    expect(screen.getByText('Review management')).toBeInTheDocument()
-    expect(screen.getByText('This section will be available soon.')).toBeInTheDocument()
+    expect(await screen.findByText('Average per listing')).toBeInTheDocument()
+    expect(screen.getByText('Pepe G.')).toBeInTheDocument()
+    expect(screen.getByText('Buena vista y mejor anfitrión.')).toBeInTheDocument()
   })
 
   it('renders the non-admin gate in EN', async () => {
@@ -185,8 +202,9 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(screen.getByText('Borrador')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reseñas' }))
-    expect(screen.getByText('Gestión de reseñas')).toBeInTheDocument()
-    expect(screen.getByText('Esta sección estará disponible próximamente.')).toBeInTheDocument()
+    expect(await screen.findByText('Promedio por publicación')).toBeInTheDocument()
+    expect(screen.getByText('Pepe G.')).toBeInTheDocument()
+    expect(screen.getByText('Buena vista y mejor anfitrión.')).toBeInTheDocument()
   })
 
   it('renders the original non-admin gate literals', async () => {
@@ -198,5 +216,39 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(
       screen.getByText('Esta sección es exclusiva para administradores del sistema.'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('Reseñas tab: admin moderation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('fetches the reviews when the tab is opened and renders them', async () => {
+    renderAdmin()
+    await screen.findByRole('heading', { level: 1 })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reseñas' }))
+
+    expect(getMisResenas).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('Pepe G.')).toBeInTheDocument()
+    expect(screen.getByText('Buena vista y mejor anfitrión.')).toBeInTheDocument()
+    expect(screen.getByText('Promedio por publicación')).toBeInTheDocument()
+  })
+
+  it('deletes through eliminarResena and reloads the list', async () => {
+    renderAdmin()
+    await screen.findByRole('heading', { level: 1 })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reseñas' }))
+    fireEvent.click(await screen.findByTitle('Eliminar reseña'))
+    expect(await screen.findByText('¿Eliminar esta reseña?')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Sí, eliminar'))
+
+    expect(eliminarResena).toHaveBeenCalledTimes(1)
+    expect(eliminarResena).toHaveBeenCalledWith(9)
+    expect(await screen.findByText('La reseña fue eliminada.')).toBeInTheDocument()
+    expect(getMisResenas).toHaveBeenCalledTimes(2)
   })
 })
