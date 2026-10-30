@@ -83,6 +83,7 @@ vi.mock('../../../services/reservas.js', () => ({
 
 vi.mock('../../../services/resenas.js', () => ({
   getResenasPublicacion: vi.fn(async () => ({ promedio: 0, total: 0, resenas: [] })),
+  getResumenAnfitrion: vi.fn(async () => ({ promedio: 0, total: 0 })),
 }))
 
 vi.mock('../../../components/ChatPanel.jsx', () => ({

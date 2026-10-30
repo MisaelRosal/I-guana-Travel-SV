@@ -377,17 +377,19 @@ function CardAnfitrion({ anfitrionId, nombre, foto, descripcion, verificado, onC
   const { t } = useTranslation('experiencia')
   const { t: tc } = useTranslation('chat')
   const location = useLocation()
-  if (!anfitrionId) return null
-  const sesion = leerSesionCache()
   const [resumen, setResumen] = useState(null)
 
   useEffect(() => {
+    if (!anfitrionId) return
     let activo = true
     getResumenAnfitrion(anfitrionId)
       .then((r) => { if (activo) setResumen(r) })
       .catch(() => { if (activo) setResumen({ promedio: 0, total: 0 }) })
     return () => { activo = false }
   }, [anfitrionId])
+
+  if (!anfitrionId) return null
+  const sesion = leerSesionCache()
   return (
     <section className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">{t('host.title')}</h3>
