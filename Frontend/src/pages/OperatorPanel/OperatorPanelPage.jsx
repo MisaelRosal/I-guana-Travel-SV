@@ -7,12 +7,14 @@ import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
 import { getMiPerfil, obtenerSesion, esAdmin } from '../../services/anfitriones.js'
 import { getMisResenas, responderResena } from '../../services/resenas.js'
 import { getAgenda, crearResenaHuesped } from '../../services/reservas.js'
+import { getMisReportes } from '../../services/reportes.js'
 import { scrollBehavior } from '../../utils/motion.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
 import DashboardGanancias from '../../components/DashboardGanancias.jsx'
 import GestorDisponibilidad from '../../components/GestorDisponibilidad.jsx'
 import AgendaOperador from '../../components/AgendaOperador.jsx'
 import ModalResenaHuesped from '../../components/ModalResenaHuesped.jsx'
+import ModalReporteHuesped from '../../components/ModalReporteHuesped.jsx'
 
 export default function OperatorPanelPage() {
   const { t, i18n } = useTranslation('panel')
@@ -37,6 +39,8 @@ export default function OperatorPanelPage() {
   const [reservasAnfitrion, setReservasAnfitrion] = useState([])
   const [cargandoReservas, setCargandoReservas] = useState(false)
   const [reservaResenarHuesped, setReservaResenarHuesped] = useState(null)
+  const [reservaReportarHuesped, setReservaReportarHuesped] = useState(null)
+  const [misReportes, setMisReportes] = useState([])
 
   const esRolAdmin = esAdmin(usuario?.rol)
   const esAnfitrion = usuario?.rol === 'anfitrion'
@@ -110,6 +114,7 @@ export default function OperatorPanelPage() {
 
   useEffect(() => {
     cargarReservasAnfitrion()
+    getMisReportes().then((r) => setMisReportes(Array.isArray(r) ? r : [])).catch(() => setMisReportes([]))
   }, [cargarReservasAnfitrion])
 
   const iniciarRespuesta = (r) => {
@@ -160,7 +165,7 @@ export default function OperatorPanelPage() {
       )
     )
     setReservaResenarHuesped(null)
-    setMensaje(t('reviews.toastSuccess'))
+    setMensaje(tr('reviews.toastSuccess'))
   }
 
   const alEliminar = async (p) => {
@@ -540,19 +545,34 @@ export default function OperatorPanelPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          {completada && !yaCalifico ? (
-                            <button
-                              type="button"
-                              onClick={() => setReservaResenarHuesped(r)}
-                              className="cursor-pointer rounded-full border border-iguana-hondo px-3 py-1.5 text-xs font-semibold text-iguana-hondo transition-colors hover:bg-iguana-hondo hover:text-white"
-                            >
-                              {tr('reviews.rateGuest')}
-                            </button>
-                          ) : yaCalifico ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber/10 px-3 py-1.5 text-xs font-semibold text-verde-bosque">
-                              <Estrellas valor={r.resena.calificacion} className="h-3.5 w-3.5" />
-                              {tr('reviews.sent', { rating: r.resena.calificacion })}
-                            </span>
+                          {completada ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {!yaCalifico ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setReservaResenarHuesped(r)}
+                                  className="cursor-pointer rounded-full border border-iguana-hondo px-3 py-1.5 text-xs font-semibold text-iguana-hondo transition-colors hover:bg-iguana-hondo hover:text-white"
+                                >
+                                  {tr('reviews.rateGuest')}
+                                </button>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber/10 px-3 py-1.5 text-xs font-semibold text-verde-bosque">
+                                  <Estrellas valor={r.resena.calificacion} className="h-3.5 w-3.5" />
+                                  {tr('reviews.sent', { rating: r.resena.calificacion })}
+                                </span>
+                              )}
+                              {misReportes.some((rep) => rep.reservaId === r.id) ? (
+                                <span className="rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">Reportado</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setReservaReportarHuesped(r)}
+                                  className="cursor-pointer rounded-full border border-red-400 px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+                                >
+                                  Reportar huésped
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-xs text-neutral-500">{tr('reviews.notEligible')}</span>
                           )}
@@ -581,6 +601,17 @@ export default function OperatorPanelPage() {
           reserva={reservaResenarHuesped}
           onCerrar={() => setReservaResenarHuesped(null)}
           onExito={handleExitoResenaHuesped}
+        />
+      )}
+      {reservaReportarHuesped && (
+        <ModalReporteHuesped
+          reserva={reservaReportarHuesped}
+          onCerrar={() => setReservaReportarHuesped(null)}
+          onExito={() => {
+            setReservaReportarHuesped(null)
+            setMensaje('Reporte enviado correctamente')
+            getMisReportes().then((rr) => setMisReportes(Array.isArray(rr) ? rr : [])).catch(() => {})
+          }}
         />
       )}
     </div>

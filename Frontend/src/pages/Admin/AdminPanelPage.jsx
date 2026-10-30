@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../../i18n/config.js'
-import { formatPrice } from '../../i18n/format.js'
+import { formatDateDMY, formatPrice } from '../../i18n/format.js'
 import { api } from '../../services/api.js'
 import { esAdmin } from '../../services/anfitriones.js'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
+import { cambiarEstadoReporte, getTodosReportes } from '../../services/reportes.js'
 
 // Tab ids stay internal UI state; labels resolve through the admin namespace.
 const pestanas = [
   { id: 'anfitriones', labelKey: 'tabs.hosts' },
   { id: 'publicaciones', labelKey: 'tabs.listings' },
   { id: 'resenas', labelKey: 'tabs.reviews' },
+  { id: 'reportes', labelKey: 'tabs.reports' },
 ]
 
 function obtenerSesion() {
@@ -34,6 +36,11 @@ export default function AdminPanelPage() {
   const [confirmandoPub, setConfirmandoPub] = useState(null)
   const [pubEditando, setPubEditando] = useState(null)
   const [modalAbierto, setModalAbierto] = useState(false)
+  const [reportes, setReportes] = useState([])
+  const [cargandoReportes, setCargandoReportes] = useState(false)
+  const [reporteSeleccionado, setReporteSeleccionado] = useState(null)
+  const [estadoReporte, setEstadoReporte] = useState('en_revision')
+  const [notasReporte, setNotasReporte] = useState('')
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -53,7 +60,14 @@ export default function AdminPanelPage() {
   }, [])
 
   useEffect(() => {
-    if (esAdmin(usuario?.rol)) cargar()
+    if (esAdmin(usuario?.rol)) {
+      cargar()
+      setCargandoReportes(true)
+      getTodosReportes()
+        .then((r) => setReportes(Array.isArray(r) ? r : []))
+        .catch(() => setReportes([]))
+        .finally(() => setCargandoReportes(false))
+    }
   }, [usuario?.rol, cargar])
 
   const alEliminarAnfitrion = async (a) => {
@@ -349,6 +363,99 @@ export default function AdminPanelPage() {
           <p className="mt-1 text-sm text-cafe">
             {t('reviews.soon')}
           </p>
+        </div>
+      )}
+
+      {pestana === 'reportes' && (
+        <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
+          {cargandoReportes ? (
+            <p className="px-6 py-14 text-center text-cafe">Cargando reportes...</p>
+          ) : reportes.length === 0 ? (
+            <p className="px-6 py-14 text-center text-cafe">No hay reportes</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-verde-bosque text-white">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Fecha</th>
+                    <th className="px-4 py-3 font-semibold">Huésped</th>
+                    <th className="px-4 py-3 font-semibold">Anfitrión</th>
+                    <th className="px-4 py-3 font-semibold">Publicación</th>
+                    <th className="px-4 py-3 font-semibold">Tipo</th>
+                    <th className="px-4 py-3 font-semibold">Estado</th>
+                    <th className="px-4 py-3 font-semibold">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-cafe-claro/30">
+                  {reportes.map((rep) => (
+                    <tr key={rep.id} className="hover:bg-crema">
+                      <td className="px-4 py-3 text-xs text-cafe">{rep.creadoEn ? formatDateDMY(rep.creadoEn, locale) : '—'}</td>
+                      <td className="px-4 py-3"><div className="font-semibold text-verde-bosque">{rep.huespedNombre}</div><div className="text-xs text-cafe">{rep.huespedEmail}</div></td>
+                      <td className="px-4 py-3 text-neutral-700">{rep.anfitrionNombre}</td>
+                      <td className="px-4 py-3 text-neutral-700">{rep.publicacionTitulo}</td>
+                      <td className="px-4 py-3 text-neutral-700">{rep.tipo}</td>
+                      <td className="px-4 py-3"><span className="rounded-full bg-neutral-100 px-2 py-1 text-xs font-semibold">{rep.estado}</span></td>
+                      <td className="px-4 py-3"><button type="button" onClick={() => { setReporteSeleccionado(rep); setEstadoReporte(rep.estado); setNotasReporte(rep.notasAdmin || '') }} className="rounded-full bg-verde-bosque px-3 py-1 text-xs font-semibold text-white">Ver / Gestionar</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {reporteSeleccionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[22px] bg-white p-6">
+            <div className="mb-4 flex items-start justify-between">
+              <h2 className="text-xl font-bold text-iguana-hondo">Reporte #{reporteSeleccionado.id}</h2>
+              <button type="button" onClick={() => setReporteSeleccionado(null)} className="text-2xl leading-none text-cafe">&times;</button>
+            </div>
+            <div className="mb-3 space-y-1 text-sm text-neutral-700">
+              <p><strong>Huésped:</strong> {reporteSeleccionado.huespedNombre} ({reporteSeleccionado.huespedEmail})</p>
+              <p><strong>Anfitrión:</strong> {reporteSeleccionado.anfitrionNombre}</p>
+              <p><strong>Publicación:</strong> {reporteSeleccionado.publicacionTitulo}</p>
+              <p><strong>Fechas reserva:</strong> {reporteSeleccionado.fechaInicio} - {reporteSeleccionado.fechaFin}</p>
+              <p><strong>Tipo:</strong> {reporteSeleccionado.tipo}</p>
+              <p><strong>Descripción:</strong> {reporteSeleccionado.descripcion}</p>
+            </div>
+            {reporteSeleccionado.evidencias?.length > 0 && (
+              <div className="mb-4">
+                <p className="mb-2 text-sm font-semibold text-verde-bosque">Evidencias</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {reporteSeleccionado.evidencias.map((ev) => (
+                    <a key={ev.id} href={ev.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl">
+                      <img src={ev.url} alt="evidencia" className="h-28 w-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="mb-3">
+              <label className="mb-1 block text-sm font-semibold text-verde-bosque">Estado</label>
+              <select value={estadoReporte} onChange={(e) => setEstadoReporte(e.target.value)} className="w-full rounded-[22px] border border-cafe-claro px-3 py-2 text-sm">
+                <option value="pendiente">pendiente</option>
+                <option value="en_revision">en_revision</option>
+                <option value="resuelto">resuelto</option>
+                <option value="rechazado">rechazado</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-semibold text-verde-bosque">Notas del admin</label>
+              <textarea rows={3} value={notasReporte} onChange={(e) => setNotasReporte(e.target.value)} className="w-full resize-none rounded-[22px] border border-cafe-claro px-3 py-2 text-sm" />
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={async () => {
+                await cambiarEstadoReporte(reporteSeleccionado.id, { estado: estadoReporte, notasAdmin: notasReporte })
+                setMensaje('Reporte actualizado')
+                setReporteSeleccionado(null)
+                const r = await getTodosReportes().catch(() => [])
+                setReportes(Array.isArray(r) ? r : [])
+              }} className="flex-1 rounded-full bg-iguana-hondo px-4 py-2.5 font-semibold text-white">Guardar</button>
+              <button type="button" onClick={() => setReporteSeleccionado(null)} className="flex-1 rounded-full border border-neutral-300 px-4 py-2.5 font-semibold text-verde-bosque">Cerrar</button>
+            </div>
+          </div>
         </div>
       )}
 

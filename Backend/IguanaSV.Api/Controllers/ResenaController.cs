@@ -50,6 +50,30 @@ public class ResenaController : ControllerBase
         return Ok(resumen);
     }
 
+    // Public: list of host->guest reviews received by the user (to show in their profile).
+    [HttpGet("usuario/{usuarioId}/recibidas")]
+    public async Task<IActionResult> GetResenasRecibidasUsuario(int usuarioId)
+    {
+        var resenas = await _context.Resenas
+            .AsNoTracking()
+            .Where(r => r.UsuarioDestinoId == usuarioId)
+            .Include(r => r.Publicacion)
+            .Include(r => r.Usuario)
+            .OrderByDescending(r => r.CreadoEn)
+            .Select(r => new
+            {
+                id = r.Id,
+                calificacion = r.Calificacion,
+                comentario = r.Comentario,
+                creadoEn = r.CreadoEn,
+                publicacionTitulo = r.Publicacion != null ? r.Publicacion.Titulo : null,
+                anfitrionNombre = r.Usuario != null ? r.Usuario.Nombre + " " + r.Usuario.Apellido : null,
+            })
+            .ToListAsync();
+
+        return Ok(resenas);
+    }
+
     // Create: the reservation row is the single source of eligibility. The
     // server re-validates every rule (owner, arrival day reached, confirmed or
     // completed, not yet reviewed) so a crafted body cannot bypass the UI.

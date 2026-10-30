@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
-import { formatMonthYear } from '../../i18n/format.js'
+import { formatDateDMY, formatMonthYear } from '../../i18n/format.js'
 import { localePath } from '../../i18n/routes.jsx'
 import { restaurarSesion } from '../../services/session.js'
 import { getGuardadas } from '../../services/favoritos.js'
-import { getResumenUsuario } from '../../services/resenas.js'
+import { getResumenUsuario, getResenasRecibidasUsuario } from '../../services/resenas.js'
 import useFavoritos from '../../hooks/useFavoritos.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
 import ExperienceCard from '../../components/ExperienceCard.jsx'
@@ -50,6 +50,8 @@ export default function MiCuentaPage() {
   // Calificación del usuario (recibida de anfitriones post-reserva)
   const [resumenUsuario, setResumenUsuario] = useState({ promedio: 0, total: 0 })
   const [cargandoRating, setCargandoRating] = useState(true)
+  const [resenasRecibidas, setResenasRecibidas] = useState([])
+  const [cargandoResenas, setCargandoResenas] = useState(true)
   const [aviso, setAviso] = useState(null)
   const { alternar, error: errorFavoritos } = useFavoritos()
 
@@ -72,11 +74,12 @@ export default function MiCuentaPage() {
     return () => { activo = false }
   }, [navigate])
 
-  // Cargar calificación del usuario cuando tenemos la sesión
+  // Cargar calificación del usuario y reseñas recibidas cuando tenemos la sesión
   useEffect(() => {
     let activo = true
     if (!usuario) {
       setCargandoRating(false)
+      setCargandoResenas(false)
       return () => { activo = false }
     }
     setCargandoRating(true)
@@ -84,6 +87,11 @@ export default function MiCuentaPage() {
       .then((r) => { if (activo) setResumenUsuario(r || { promedio: 0, total: 0 }) })
       .catch(() => { if (activo) setResumenUsuario({ promedio: 0, total: 0 }) })
       .finally(() => { if (activo) setCargandoRating(false) })
+    setCargandoResenas(true)
+    getResenasRecibidasUsuario(usuario.id)
+      .then((lista) => { if (activo) setResenasRecibidas(Array.isArray(lista) ? lista : []) })
+      .catch(() => { if (activo) setResenasRecibidas([]) })
+      .finally(() => { if (activo) setCargandoResenas(false) })
     return () => { activo = false }
   }, [usuario])
 
@@ -257,6 +265,39 @@ export default function MiCuentaPage() {
           </div>
         )}
       </div>
+
+      <section className="mt-6 rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-6">
+        <h2 className="text-lg font-bold text-verde-bosque">{t('reviewsFromHosts.title', { defaultValue: 'Reseñas recibidas de anfitriones' })}</h2>
+        <p className="mt-1 text-sm text-cafe">
+          {t('reviewsFromHosts.subtitle', { defaultValue: 'Calificaciones y comentarios que te han dejado los anfitriones.' })}
+        </p>
+        {cargandoResenas ? (
+          <p className="mt-4 text-sm text-cafe">{t('rating.loading')}</p>
+        ) : resenasRecibidas.length === 0 ? (
+          <p className="mt-4 text-sm text-cafe">{t('reviewsFromHosts.empty', { defaultValue: 'Aún no has recibido reseñas de anfitriones.' })}</p>
+        ) : (
+          <div className="mt-4 divide-y divide-cafe-claro/30">
+            {resenasRecibidas.map((r) => (
+              <div key={r.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Estrellas valor={r.calificacion} className="h-4 w-4" />
+                    <span className="text-sm font-bold text-neutral-800">{r.calificacion}/5</span>
+                  </div>
+                  {r.comentario && (
+                    <p className="mt-2 max-w-2xl text-sm text-neutral-700">{r.comentario}</p>
+                  )}
+                  <p className="mt-2 text-xs text-cafe">
+                    {r.anfitrionNombre ? t('reviewsFromHosts.by', { defaultValue: 'Por {{name}}', name: r.anfitrionNombre }) : null}
+                    {r.publicacionTitulo ? ` · ${r.publicacionTitulo}` : null}
+                    {r.creadoEn ? ` · ${formatDateDMY(r.creadoEn, locale)}` : null}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <Toast mensaje={aviso} tipo="error" onCerrar={() => setAviso(null)} />
     </div>

@@ -46,6 +46,10 @@ public class IguanasDbContext : DbContext
 
     public virtual DbSet<Resena> Resenas { get; set; }
 
+    public virtual DbSet<Reporte> Reportes { get; set; }
+
+    public virtual DbSet<ReporteEvidencia> ReporteEvidencias { get; set; }
+
     public virtual DbSet<Usuario> Usuarios { get; set; }
 
     public virtual DbSet<VerificacionEmail> VerificacionesEmail { get; set; }
@@ -737,6 +741,85 @@ public class IguanasDbContext : DbContext
                 .HasForeignKey(d => d.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("resenas_usuario_id_fkey");
+        });
+
+        modelBuilder.Entity<Reporte>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("reportes_pkey");
+
+            entity.ToTable("reportes");
+
+            entity.HasIndex(e => e.ReservaId, "idx_reportes_reserva").IsUnique();
+            entity.HasIndex(e => e.AnfitrionId, "idx_reportes_anfitrion");
+            entity.HasIndex(e => e.UsuarioHuespedId, "idx_reportes_huesped");
+            entity.HasIndex(e => e.Estado, "idx_reportes_estado");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ReservaId).HasColumnName("reserva_id");
+            entity.Property(e => e.PublicacionId).HasColumnName("publicacion_id");
+            entity.Property(e => e.AnfitrionId).HasColumnName("anfitrion_id");
+            entity.Property(e => e.UsuarioHuespedId).HasColumnName("usuario_huesped_id");
+            entity.Property(e => e.Tipo).HasMaxLength(50).HasColumnName("tipo");
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.Estado).HasMaxLength(20).HasDefaultValueSql("'pendiente'").HasColumnName("estado");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+            entity.Property(e => e.ResueltoPorAdminId).HasColumnName("resuelto_por_admin_id");
+            entity.Property(e => e.ResueltoEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("resuelto_en");
+            entity.Property(e => e.NotasAdmin).HasColumnName("notas_admin");
+
+            entity.HasOne(d => d.Reserva).WithMany()
+                .HasForeignKey(d => d.ReservaId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("reportes_reserva_id_fkey");
+
+            entity.HasOne(d => d.Publicacion).WithMany()
+                .HasForeignKey(d => d.PublicacionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("reportes_publicacion_id_fkey");
+
+            entity.HasOne(d => d.Anfitrion).WithMany()
+                .HasForeignKey(d => d.AnfitrionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("reportes_anfitrion_id_fkey");
+
+            entity.HasOne(d => d.UsuarioHuesped).WithMany()
+                .HasForeignKey(d => d.UsuarioHuespedId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("reportes_usuario_huesped_id_fkey");
+
+            entity.HasOne(d => d.ResueltoPorAdmin).WithMany()
+                .HasForeignKey(d => d.ResueltoPorAdminId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("reportes_resuelto_por_admin_id_fkey");
+        });
+
+        modelBuilder.Entity<ReporteEvidencia>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("reporte_evidencias_pkey");
+
+            entity.ToTable("reporte_evidencias");
+
+            entity.HasIndex(e => e.ReporteId, "idx_reporte_evidencias_reporte");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ReporteId).HasColumnName("reporte_id");
+            entity.Property(e => e.Url).HasColumnName("url");
+            entity.Property(e => e.NombreArchivo).HasMaxLength(255).HasColumnName("nombre_archivo");
+            entity.Property(e => e.ContentType).HasMaxLength(100).HasColumnName("content_type");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+
+            entity.HasOne(d => d.Reporte).WithMany(p => p.Evidencias)
+                .HasForeignKey(d => d.ReporteId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("reporte_evidencias_reporte_id_fkey");
         });
 
         modelBuilder.Entity<Usuario>(entity =>

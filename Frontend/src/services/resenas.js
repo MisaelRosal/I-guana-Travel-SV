@@ -26,6 +26,12 @@ export async function getResumenUsuario(usuarioId) {
     .catch(() => ({ promedio: 0, total: 0 }))
 }
 
+// Public: host->guest reviews received by the user
+export async function getResenasRecibidasUsuario(usuarioId) {
+  return await api.get(`/Resena/usuario/${usuarioId}/recibidas`)
+    .catch(() => [])
+}
+
 // Host panel: reviews received by the caller's publications (+ per-listing
 // averages). Admins see every review.
 export async function getMisResenas(language) {
