@@ -35,6 +35,7 @@ vi.mock('../../pages/Catalog/CatalogPage.jsx', () => mockScreen('catalog', false
 vi.mock('../../pages/ExperienceDetail/ExperienceDetailPage.jsx', () => mockScreen('experience-detail', true))
 vi.mock('../../pages/Auth/AuthPage.jsx', () => mockScreen('login', false))
 vi.mock('../../pages/Auth/RegisterPage.jsx', () => mockScreen('register', false))
+vi.mock('../../pages/Auth/PasswordResetPage.jsx', () => mockScreen('reset-password', false))
 vi.mock('../../pages/Reservations/ReservationsPage.jsx', () => mockScreen('reservations', false))
 vi.mock('../../pages/OperatorPanel/OperatorPanelPage.jsx', () => mockScreen('panel', false))
 vi.mock('../../pages/SerAnfitrion/SerAnfitrionPage.jsx', () => mockScreen('become-host', false))
@@ -121,6 +122,7 @@ const PUBLIC_ES_PATHS = [
   ['/experiencias/42', 'experience-detail:42'],
   ['/login', 'login'],
   ['/registro', 'register'],
+  ['/restablecer-password', 'reset-password'],
   ['/anfitriones/42', 'host-profile:42'],
   ['/mensajes', 'mensajes'],
 ]
@@ -146,6 +148,7 @@ const PROTECTED_ADMIN_ES_PATHS = [
 const EN_ALIASES = [
   ['/experiences/42', 'experience-detail:42'],
   ['/register', 'register'],
+  ['/reset-password', 'reset-password'],
   ['/bookings', 'reservations'],
   ['/become-a-host', 'become-host'],
   ['/my-account', 'my-account'],
@@ -287,13 +290,14 @@ describe("unmatched paths keep today's no-match behavior (no catch-all added)", 
   }
 })
 
-describe('ROUTE_PAIRS mirrors the AD-1 table (12 pairs, alias-only)', () => {
+describe('ROUTE_PAIRS mirrors the AD-1 table (13 pairs, alias-only)', () => {
   it('exposes exactly the key/es/en forms of the design', () => {
     expect(ROUTE_PAIRS.map(({ key, es, en }) => ({ key, es, en }))).toEqual([
       { key: 'catalog', es: '/', en: '/' },
       { key: 'experienceDetail', es: 'experiencias/:id', en: 'experiences/:id' },
       { key: 'login', es: 'login', en: 'login' },
       { key: 'register', es: 'registro', en: 'register' },
+      { key: 'resetPassword', es: 'restablecer-password', en: 'reset-password' },
       { key: 'reservations', es: 'reservas', en: 'bookings' },
       { key: 'panel', es: 'panel', en: 'panel' },
       { key: 'becomeHost', es: 'hacerse-anfitrion', en: 'become-a-host' },
@@ -311,6 +315,7 @@ describe('localePath(key, params) emits the active-locale URL', () => {
     expect(localePath('catalog')).toBe('/')
     expect(localePath('login')).toBe('/login')
     expect(localePath('register')).toBe('/registro')
+    expect(localePath('resetPassword')).toBe('/restablecer-password')
     expect(localePath('reservations')).toBe('/reservas')
     expect(localePath('panel')).toBe('/panel')
     expect(localePath('becomeHost')).toBe('/hacerse-anfitrion')
@@ -328,6 +333,7 @@ describe('localePath(key, params) emits the active-locale URL', () => {
     expect(localePath('panel')).toBe('/panel')
     expect(localePath('admin')).toBe('/admin')
     expect(localePath('register')).toBe('/register')
+    expect(localePath('resetPassword')).toBe('/reset-password')
     expect(localePath('reservations')).toBe('/bookings')
     expect(localePath('becomeHost')).toBe('/become-a-host')
     expect(localePath('miPerfil')).toBe('/my-profile')

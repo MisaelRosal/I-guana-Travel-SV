@@ -62,6 +62,38 @@ public class ReenviarVerificacionRequest
     public string Email { get; set; } = null!;
 }
 
+/// <summary>
+/// Body of POST /api/auth/solicitar-reset-password: starts the password-reset
+/// challenge by emailing a 6-digit code. The response is deliberately
+/// identical whether or not the address exists (no account enumeration).
+/// </summary>
+public class SolicitarResetPasswordRequest
+{
+    public string Email { get; set; } = null!;
+}
+
+/// <summary>
+/// Body of POST /api/auth/reenviar-reset-password: supersedes the outstanding
+/// reset code with a fresh one (rate-limited per user, like resend-verification).
+/// </summary>
+public class ReenviarResetPasswordRequest
+{
+    public string Email { get; set; } = null!;
+}
+
+/// <summary>
+/// Body of POST /api/auth/restablecer-password. The code proves control of the
+/// mailbox; only then is the new password accepted and hashed. Sessions issued
+/// before the reset are NOT invalidated (JWTs are stateless) — the caller is
+/// expected to sign in again with the new password.
+/// </summary>
+public class RestablecerPasswordRequest
+{
+    public string Email { get; set; } = null!;
+    public string Codigo { get; set; } = null!;
+    public string NuevaPassword { get; set; } = null!;
+}
+
 public class ActualizarPerfilAnfitrionRequest
 {
     public string? Descripcion { get; set; }

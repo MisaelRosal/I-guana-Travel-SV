@@ -136,6 +136,17 @@ export default function AuthPage() {
               </div>
             </div>
 
+            {/* Recuperación de contraseña: arranca el flujo de código por
+                correo (POST solicitar-reset-password) en su propia pantalla. */}
+            <div className="-mt-2 text-right">
+              <Link
+                to={localePath('resetPassword')}
+                className="cursor-pointer text-sm font-semibold text-iguana-hondo transition-colors hover:text-verde-bosque"
+              >
+                {t('login.forgotPassword')}
+              </Link>
+            </div>
+
             {error && (
               <p id="login-error" role="alert" className="rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                 {error}

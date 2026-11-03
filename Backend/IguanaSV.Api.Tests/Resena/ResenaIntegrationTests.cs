@@ -738,6 +738,12 @@ public sealed class ResenaIntegrationTests
         public Task<bool> VerificacionDeCorreoAsync(string destinatario, string nombre, string codigo,
             CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
 
+        public Task<bool> RestablecerPasswordAsync(string destinatario, string nombre, string codigo,
+            CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
+
+        public Task<bool> PasswordCambiadaAsync(string destinatario, string nombre,
+            CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
+
         public Task<bool> BienvenidaAsync(string destinatario, string nombre,
             CancellationToken cancellationToken = default) => Task.FromResult(ResponderCon);
 

@@ -882,6 +882,10 @@ public class IguanasDbContext : DbContext
                 .HasColumnName("expira_at");
             entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
             entity.Property(e => e.Usado).HasDefaultValue(false).HasColumnName("usado");
+            entity.Property(e => e.Proposito)
+                .HasMaxLength(30)
+                .HasDefaultValue("registro")
+                .HasColumnName("proposito");
 
             entity.HasOne(d => d.Usuario).WithMany()
                 .HasForeignKey(d => d.UsuarioId)

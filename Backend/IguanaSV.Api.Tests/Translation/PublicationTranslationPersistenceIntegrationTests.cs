@@ -328,6 +328,10 @@ public sealed class PublicationTranslationPersistenceIntegrationTests
             int? usuarioId = null, CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> VerificacionDeCorreoAsync(string destinatario, string nombre, string codigo,
             CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> RestablecerPasswordAsync(string destinatario, string nombre, string codigo,
+            CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> PasswordCambiadaAsync(string destinatario, string nombre,
+            CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> BienvenidaAsync(string destinatario, string nombre,
             CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> CuentaCreadaAsync(string destinatario, string nombre,

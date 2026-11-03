@@ -211,6 +211,139 @@ public class AuthController : ControllerBase
         return Ok(new { mensaje = $"Te enviamos un código nuevo a {usuario.Email}." });
     }
 
+    /// <summary>
+    /// Starts the password-reset challenge: emails a 6-digit code scoped to
+    /// <c>reset_password</c>. The response is byte-identical whether or not the
+    /// address exists, so this endpoint cannot be used to enumerate accounts.
+    /// Rate-limited per user through the same hourly code count as resend.
+    /// </summary>
+    [HttpPost("solicitar-reset-password")]
+    public async Task<IActionResult> SolicitarResetPassword(SolicitarResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { mensaje = "El correo es obligatorio." });
+        }
+
+        // Same message for "exists" and "does not exist": never reveal which
+        // addresses are registered (mirrors ReenviarVerificacion).
+        const string mensajeGenerico = "Si existe una cuenta con ese correo, te enviamos un código para restablecer tu contraseña.";
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+        if (usuario == null)
+        {
+            return Ok(new { mensaje = mensajeGenerico });
+        }
+
+        if (await SuperoLimiteReenviosAsync(usuario.Id))
+        {
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                new { mensaje = "Pediste demasiados códigos. Esperá un momento antes de intentar de nuevo." });
+        }
+
+        var codigo = await _codigos.GenerarAsync(usuario.Id, "reset_password");
+        await _notificaciones.RestablecerPasswordAsync(usuario.Email, usuario.Nombre, codigo);
+
+        return Ok(new { mensaje = mensajeGenerico });
+    }
+
+    /// <summary>
+    /// Supersedes the outstanding reset code with a fresh one. Same anti-
+    /// enumeration contract and hourly rate limit as the request endpoint.
+    /// </summary>
+    [HttpPost("reenviar-reset-password")]
+    public async Task<IActionResult> ReenviarResetPassword(ReenviarResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { mensaje = "El correo es obligatorio." });
+        }
+
+        const string mensajeGenerico = "Si existe una cuenta con ese correo, te enviamos un código nuevo para restablecer tu contraseña.";
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+        if (usuario == null)
+        {
+            return Ok(new { mensaje = mensajeGenerico });
+        }
+
+        if (await SuperoLimiteReenviosAsync(usuario.Id))
+        {
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                new { mensaje = "Pediste demasiados códigos. Esperá un momento antes de intentar de nuevo." });
+        }
+
+        var codigo = await _codigos.GenerarAsync(usuario.Id, "reset_password");
+        await _notificaciones.RestablecerPasswordAsync(usuario.Email, usuario.Nombre, codigo);
+
+        return Ok(new { mensaje = mensajeGenerico });
+    }
+
+    /// <summary>
+    /// Completes the reset: consumes the newest unused, unexpired
+    /// <c>reset_password</c> code and stores the BCrypt hash of the new
+    /// password. Never starts a session — the caller signs in again. A wrong
+    /// code reuses the generic message so a caller cannot probe which accounts
+    /// requested a reset.
+    /// </summary>
+    [HttpPost("restablecer-password")]
+    public async Task<ActionResult<UsuarioResponse>> RestablecerPassword(RestablecerPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Codigo) ||
+            string.IsNullOrWhiteSpace(request.NuevaPassword))
+        {
+            return BadRequest(new { mensaje = "El correo, el código y la contraseña son obligatorios." });
+        }
+
+        if (request.NuevaPassword.Length < 6)
+        {
+            return BadRequest(new { mensaje = "La contraseña debe tener al menos 6 caracteres." });
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+
+        // Same message for "no such account", "no challenge" and "wrong code":
+        // the endpoint must not confirm which addresses requested a reset.
+        const string mensajeInvalido = "El código ingresado no es válido o ya expiró.";
+        if (usuario == null)
+        {
+            return BadRequest(new { mensaje = mensajeInvalido });
+        }
+
+        var valido = await _codigos.VerificarAsync(usuario.Id, request.Codigo, "reset_password");
+        if (!valido)
+        {
+            return BadRequest(new { mensaje = mensajeInvalido });
+        }
+
+        usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NuevaPassword);
+        usuario.UpdatedAt = DateTime.Now;
+        await _context.SaveChangesAsync();
+
+        // Security notice: if this reset was not theirs, the owner learns now.
+        await _notificaciones.PasswordCambiadaAsync(usuario.Email, usuario.Nombre);
+
+        return Ok(new { mensaje = "Tu contraseña fue restablecida con éxito. Ya podés iniciar sesión." });
+    }
+
+    /// <summary>
+    /// True when this user already burned through the hourly code quota
+    /// (shared by verification resends and password-reset codes).
+    /// </summary>
+    private async Task<bool> SuperoLimiteReenviosAsync(int usuarioId)
+    {
+        var desde = DateTime.Now.AddHours(-1);
+        var reenvios = await _context.VerificacionesEmail
+            .CountAsync(v => v.UsuarioId == usuarioId && v.CreadoEn >= desde);
+        return reenvios >= Math.Max(1, _emailOptions.VerificacionMaxReenviosHora);
+    }
+
     [HttpPost("login")]
     public async Task<ActionResult<UsuarioResponse>> Login(LoginRequest request)
     {

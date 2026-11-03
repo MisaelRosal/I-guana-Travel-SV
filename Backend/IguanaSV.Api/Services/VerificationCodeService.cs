@@ -28,13 +28,15 @@ public class VerificationCodeService
     /// <summary>
     /// Invalidate any outstanding challenge and issue a fresh one. Returns the
     /// plaintext code (the only copy) so the caller can put it in the email.
+    /// Invalidation is scoped to the same <paramref name="proposito"/>, so
+    /// re-sending a reset code never burns a pending registration code.
     /// </summary>
-    public async Task<string> GenerarAsync(int usuarioId)
+    public async Task<string> GenerarAsync(int usuarioId, string proposito = "registro")
     {
         // Only the newest challenge is valid: re-sending always supersedes the
         // previous code, so a stale email can never activate an account later.
         var anteriores = await _context.VerificacionesEmail
-            .Where(v => v.UsuarioId == usuarioId && !v.Usado)
+            .Where(v => v.UsuarioId == usuarioId && v.Proposito == proposito && !v.Usado)
             .ToListAsync();
         foreach (var anterior in anteriores)
         {
@@ -49,6 +51,7 @@ public class VerificationCodeService
         _context.VerificacionesEmail.Add(new VerificacionEmail
         {
             UsuarioId = usuarioId,
+            Proposito = proposito,
             CodigoHash = $"{salt}:{Hash(salt, codigo)}",
             ExpiraAt = DateTime.Now.AddMinutes(
                 Math.Max(1, _options.VerificacionExpiraMinutos)),
@@ -61,16 +64,26 @@ public class VerificationCodeService
     }
 
     /// <summary>
-    /// Consume a code: succeeds only for the newest unused, unexpired challenge.
+    /// Consume a code: succeeds only for the newest unused, unexpired challenge
+    /// issued for the same <paramref name="proposito"/> (a registration code is
+    /// never accepted as a password-reset code, or vice versa).
     /// A wrong code does NOT invalidate the challenge (so a typo does not force
     /// a resend), but it is rate-limited at the endpoint that calls this.
     /// </summary>
-    public async Task<bool> VerificarAsync(int usuarioId, string codigo)
+    public async Task<bool> VerificarAsync(int usuarioId, string codigo, string proposito = "registro")
     {
         codigo = (codigo ?? string.Empty).Trim();
 
+        // Materialize the app clock BEFORE composing the query: Npgsql translates
+        // an inline DateTime.Now into the DATABASE's now() (session UTC), while
+        // ExpiraAt is written with the app's local clock — mixing the two makes
+        // every fresh challenge look already expired whenever the app and the
+        // Postgres container run in different time zones. A local variable
+        // travels as a .NET parameter, so read and write use the same clock.
+        var ahora = DateTime.Now;
+
         var desafio = await _context.VerificacionesEmail
-            .Where(v => v.UsuarioId == usuarioId && !v.Usado && v.ExpiraAt > DateTime.Now)
+            .Where(v => v.UsuarioId == usuarioId && v.Proposito == proposito && !v.Usado && v.ExpiraAt > ahora)
             .OrderByDescending(v => v.Id)
             .FirstOrDefaultAsync();
 

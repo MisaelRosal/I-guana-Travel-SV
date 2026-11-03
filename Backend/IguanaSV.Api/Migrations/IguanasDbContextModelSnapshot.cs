@@ -1273,6 +1273,14 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("expira_at");
 
+                    b.Property<string>("Proposito")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("registro")
+                        .HasColumnName("proposito");
+
                     b.Property<bool>("Usado")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

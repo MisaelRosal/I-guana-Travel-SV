@@ -103,6 +103,43 @@ public class EmailNotificationService : IEmailNotificationService
             cancellationToken: cancellationToken);
     }
 
+    public Task<bool> RestablecerPasswordAsync(
+        string destinatario, string nombre, string codigo, CancellationToken cancellationToken = default)
+    {
+        var cuerpo = $"""
+            <p>Hola {Esc(nombre)},</p>
+            <p>Recibimos un pedido para restablecer tu contraseña. Tu código es:</p>
+            <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:20px 0;font-family:monospace;">{codigo}</p>
+            <p>Ingresa este código junto con tu nueva contraseña para completar el cambio.</p>
+            <p>Caduca en {_options.VerificacionExpiraMinutos} minutos.</p>
+            <p>Si no pediste este cambio, ignora este correo: tu contraseña no cambió.</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Restablecer contraseña - I Guana Travel SV",
+            "reset_password",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    public Task<bool> PasswordCambiadaAsync(
+        string destinatario, string nombre, CancellationToken cancellationToken = default)
+    {
+        var cuerpo = $"""
+            <p>Hola {Esc(nombre)},</p>
+            <p>Tu contraseña en I Guana Travel SV fue cambiada correctamente.</p>
+            <p>Si no fuiste vos, contactanos de inmediato y revisá la seguridad de tu cuenta.</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Contraseña cambiada - I Guana Travel SV",
+            "password_cambiada",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
     public Task<bool> BienvenidaAsync(
         string destinatario, string nombre, CancellationToken cancellationToken = default)
     {

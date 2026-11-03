@@ -22,6 +22,14 @@ public partial class VerificacionEmail
     /// </summary>
     public string CodigoHash { get; set; } = null!;
 
+    /// <summary>
+    /// Why this challenge was issued: <c>registro</c> (email verification at
+    /// sign-up) or <c>reset_password</c>. Codes are purpose-scoped so an
+    /// outstanding registration code can never be replayed to take over the
+    /// account's password, and vice versa.
+    /// </summary>
+    public string Proposito { get; set; } = "registro";
+
     public DateTime ExpiraAt { get; set; }
 
     public bool Usado { get; set; }

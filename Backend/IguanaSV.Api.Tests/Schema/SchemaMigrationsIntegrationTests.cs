@@ -128,8 +128,9 @@ public sealed class SchemaMigrationsIntegrationTests
             // overlay, public user-content English overlays, the availability
             // manager AddHorarioCupos, the saved-publications table
             // AddPublicacionesFavoritas, the new AddUsuarioDestinoToResena, host reschedule AddReservaReprogramacion,
-            // chat AddChatConversaciones, and guest reports AddReportesHuesped = eighteen at head.
-            Assert.Equal(18, applied);
+            // chat AddChatConversaciones, guest reports AddReportesHuesped, and
+            // AddPropositoVerificacion = nineteen at head.
+            Assert.Equal(19, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""

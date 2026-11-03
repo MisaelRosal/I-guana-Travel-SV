@@ -23,6 +23,18 @@ public interface IEmailNotificationService
 
     Task<bool> VerificacionDeCorreoAsync(string destinatario, string nombre, string codigo, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Sent when a password reset is requested: carries the 6-digit code that
+    /// authorizes setting a new password (deep-links to /restablecer-password).
+    /// </summary>
+    Task<bool> RestablecerPasswordAsync(string destinatario, string nombre, string codigo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Security notice sent AFTER the password was actually changed, so an
+    /// account owner who did not request the reset can react in time.
+    /// </summary>
+    Task<bool> PasswordCambiadaAsync(string destinatario, string nombre, CancellationToken cancellationToken = default);
+
     Task<bool> BienvenidaAsync(string destinatario, string nombre, CancellationToken cancellationToken = default);
 
     /// <summary>

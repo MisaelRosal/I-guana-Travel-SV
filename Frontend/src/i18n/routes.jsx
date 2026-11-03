@@ -3,6 +3,7 @@ import CatalogPage from '../pages/Catalog/CatalogPage.jsx'
 import ExperienceDetailPage from '../pages/ExperienceDetail/ExperienceDetailPage.jsx'
 import AuthPage from '../pages/Auth/AuthPage.jsx'
 import RegisterPage from '../pages/Auth/RegisterPage.jsx'
+import PasswordResetPage from '../pages/Auth/PasswordResetPage.jsx'
 import ReservationsPage from '../pages/Reservations/ReservationsPage.jsx'
 import OperatorPanelPage from '../pages/OperatorPanel/OperatorPanelPage.jsx'
 import SerAnfitrionPage from '../pages/SerAnfitrion/SerAnfitrionPage.jsx'
@@ -26,6 +27,7 @@ export const ROUTE_PAIRS = [
   { key: 'experienceDetail', es: 'experiencias/:id', en: 'experiences/:id', element: <ExperienceDetailPage /> },
   { key: 'login', es: 'login', en: 'login', element: <AuthPage /> },
   { key: 'register', es: 'registro', en: 'register', element: <RegisterPage /> },
+  { key: 'resetPassword', es: 'restablecer-password', en: 'reset-password', element: <PasswordResetPage /> },
   { key: 'reservations', es: 'reservas', en: 'bookings', element: <ProtectedRoute><ReservationsPage /></ProtectedRoute> },
   { key: 'panel', es: 'panel', en: 'panel', element: <ProtectedRoute rolesPermitidos={['anfitrion', 'admin']}><OperatorPanelPage /></ProtectedRoute> },
   { key: 'becomeHost', es: 'hacerse-anfitrion', en: 'become-a-host', element: <ProtectedRoute><SerAnfitrionPage /></ProtectedRoute> },
