@@ -15,11 +15,16 @@ public class HorarioController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly INotificacionSitioService _notificacionesSitio;
 
-    public HorarioController(IguanasDbContext context, IEmailNotificationService notificaciones)
+    public HorarioController(
+        IguanasDbContext context,
+        IEmailNotificationService notificaciones,
+        INotificacionSitioService notificacionesSitio)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _notificacionesSitio = notificacionesSitio;
     }
 
     [HttpGet]
@@ -256,6 +261,14 @@ public class HorarioController : ControllerBase
         var fallidos = 0;
         foreach (var reserva in reservas)
         {
+            // In-site copy for the guest account (independent of the email below).
+            await _notificacionesSitio.NotificarAsync(
+                reserva.UsuarioId,
+                reserva.EmailHuesped,
+                "reserva_reprogramada",
+                $"Tu reserva en {publicacion.Titulo ?? "tu experiencia"} fue reprogramada para el {fechaNueva:dd/MM/yyyy}",
+                reserva.Id);
+
             if (string.IsNullOrWhiteSpace(reserva.EmailHuesped))
             {
                 fallidos++;

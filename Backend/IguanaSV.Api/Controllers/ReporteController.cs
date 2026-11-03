@@ -14,12 +14,18 @@ public class ReporteController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IMinioStorageService _storage;
+    private readonly INotificacionSitioService _notificacionesSitio;
     private readonly ILogger<ReporteController> _logger;
 
-    public ReporteController(IguanasDbContext context, IMinioStorageService storage, ILogger<ReporteController> logger)
+    public ReporteController(
+        IguanasDbContext context,
+        IMinioStorageService storage,
+        INotificacionSitioService notificacionesSitio,
+        ILogger<ReporteController> logger)
     {
         _context = context;
         _storage = storage;
+        _notificacionesSitio = notificacionesSitio;
         _logger = logger;
     }
 
@@ -76,6 +82,32 @@ public class ReporteController : ControllerBase
         };
         _context.Reportes.Add(reporte);
         await _context.SaveChangesAsync();
+
+        // In-site copy for every admin: a pending guest report needs review.
+        var admins = await _context.Usuarios
+            .AsNoTracking()
+            .Where(u => u.Rol == AuthConstants.AdminRole)
+            .Select(u => new { u.Id, u.Email })
+            .ToListAsync();
+        foreach (var admin in admins)
+        {
+            await _notificacionesSitio.NotificarAsync(
+                admin.Id,
+                admin.Email,
+                "reporte_creado",
+                "Nuevo reporte de huésped para revisión",
+                reserva.Id);
+        }
+
+        // In-site copy for the reported guest: a report was filed about their stay.
+        // No guest email is sent here, so the message points to their account.
+        await _notificacionesSitio.NotificarAsync(
+            reserva.UsuarioId,
+            reserva.EmailHuesped,
+            "reporte_recibido",
+            "Un anfitrión presentó un reporte sobre tu reserva. Revisa tu cuenta para más detalles.",
+            reserva.Id);
+
         return Ok(new { id = reporte.Id, estado = reporte.Estado });
     }
 

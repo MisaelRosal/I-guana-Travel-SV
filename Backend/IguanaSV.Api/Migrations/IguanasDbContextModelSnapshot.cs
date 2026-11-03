@@ -634,7 +634,7 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("mensaje");
 
-                    b.Property<int>("ReservaId")
+                    b.Property<int?>("ReservaId")
                         .HasColumnType("integer")
                         .HasColumnName("reserva_id");
 
@@ -650,12 +650,18 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
                     b.HasKey("Id")
                         .HasName("notificaciones_pkey");
 
                     b.HasIndex(new[] { "DestinatarioEmail" }, "idx_notificaciones_destinatario");
 
                     b.HasIndex(new[] { "ReservaId" }, "idx_notificaciones_reserva");
+
+                    b.HasIndex(new[] { "UsuarioId" }, "idx_notificaciones_usuario");
 
                     b.ToTable("notificaciones", (string)null);
                 });
@@ -1436,10 +1442,17 @@ namespace IguanaSV.Api.Migrations
                         .WithMany("Notificaciones")
                         .HasForeignKey("ReservaId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
                         .HasConstraintName("notificaciones_reserva_id_fkey");
 
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("notificaciones_usuario_id_fkey");
+
                     b.Navigation("Reserva");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.PublicacionAmenidad", b =>

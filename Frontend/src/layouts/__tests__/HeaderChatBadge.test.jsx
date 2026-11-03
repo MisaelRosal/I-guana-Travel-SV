@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   getMias: vi.fn(),
   getMensajes: vi.fn(),
   marcarLeido: vi.fn(),
+  getMisNotificaciones: vi.fn(),
+  marcarNotificacionLeida: vi.fn(),
+  marcarTodasLeidas: vi.fn(),
   session: { id: 10, nombre: 'Ana', apellido: 'Viajera', rol: 'usuario' },
 }))
 
@@ -18,6 +21,11 @@ vi.mock('../../services/chat.js', () => ({
   getMias: mocks.getMias,
   getMensajes: mocks.getMensajes,
   marcarLeido: mocks.marcarLeido,
+}))
+vi.mock('../../services/notificaciones.js', () => ({
+  getMisNotificaciones: mocks.getMisNotificaciones,
+  marcarNotificacionLeida: mocks.marcarNotificacionLeida,
+  marcarTodasLeidas: mocks.marcarTodasLeidas,
 }))
 vi.mock('../../services/anfitriones.js', () => ({
   esAdmin: (rol) => rol === 'admin',
@@ -56,6 +64,9 @@ beforeEach(() => {
   }])
   mocks.getMensajes.mockResolvedValue({ mensajes: [], cursor: null })
   mocks.marcarLeido.mockResolvedValue({})
+  mocks.getMisNotificaciones.mockResolvedValue({ notificaciones: [], sinLeer: 0 })
+  mocks.marcarNotificacionLeida.mockResolvedValue(null)
+  mocks.marcarTodasLeidas.mockResolvedValue({ cantidad: 0 })
 })
 
 afterEach(async () => {
@@ -139,5 +150,24 @@ describe('Header unread chat badge', () => {
 
     expect(screen.queryByRole('button', { name: /Abrir mensajes/ })).not.toBeInTheDocument()
     expect(mocks.getNoLeidos).not.toHaveBeenCalled()
+  })
+
+  it('shows the notifications bell when signed in', async () => {
+    renderHeader()
+    await act(async () => {})
+
+    // Desktop + mobile campana are both mounted; CSS visibility is not modeled
+    // in jsdom, so assert at least one exists and the inbox poll ran.
+    expect(screen.getAllByRole('button', { name: 'Notificaciones' }).length).toBeGreaterThan(0)
+    expect(mocks.getMisNotificaciones).toHaveBeenCalled()
+  })
+
+  it('hides the notifications bell and stops polling when signed out', async () => {
+    mocks.session = null
+    renderHeader()
+    await act(async () => {})
+
+    expect(screen.queryByRole('button', { name: 'Notificaciones' })).not.toBeInTheDocument()
+    expect(mocks.getMisNotificaciones).not.toHaveBeenCalled()
   })
 })

@@ -26,6 +26,7 @@ const SPECS = {
   },
   dayMonthShort: { options: { day: 'numeric', month: 'short' } },
   dayMonthYear: { options: { day: 'numeric', month: 'short', year: 'numeric' } },
+  dateTimeShort: { options: { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' } },
   dateDMY: { options: { day: '2-digit', month: '2-digit', year: 'numeric' } },
   monthYear: { options: { month: 'long', year: 'numeric' } },
   monthLong: { options: { month: 'long' } },
@@ -79,6 +80,11 @@ export function formatDayMonthShort(value, locale) {
 // Card next-date badge: es-SV -> `5 ene 2026`, en-US -> `Jan 5, 2026`.
 export function formatDayMonthYear(value, locale) {
   return getFormatter(locale, 'dayMonthYear').format(toDate(value))
+}
+
+// Notification row timestamp: es-SV -> `3 nov, 04:30 p. m.`, en-US -> `Nov 3, 04:30 PM`.
+export function formatDateTimeShort(value, locale) {
+  return getFormatter(locale, 'dateTimeShort').format(toDate(value))
 }
 
 // Date text: es-SV -> `05/01/2026` (== the old formatearFechaCorta), en-US -> `01/05/2026`.

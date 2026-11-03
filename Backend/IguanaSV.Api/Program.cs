@@ -63,6 +63,8 @@ builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email
 builder.Services.AddTransient<IEmailService, GmailEmailService>();
 // Scoped: the audit log and the code table are written through the request DbContext.
 builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
+// In-site notifications (notificaciones table), written by the event producers.
+builder.Services.AddScoped<INotificacionSitioService, NotificacionSitioService>();
 builder.Services.AddScoped<VerificationCodeService>();
 
 // Background worker that auto-cancels short reservations whose one-hour grace
@@ -74,6 +76,10 @@ builder.Services.AddHostedService<GraceExpirationService>();
 // reservation reviewable (marked via reservas.resenas_notificadas_en).
 builder.Services.AddHostedService<ReservaCompletionService>();
 builder.Services.AddHostedService<ResenaAvailabilityService>();
+
+// Background worker that writes the <24h check-in in-site reminder for both
+// sides of every confirmed reservation starting tomorrow.
+builder.Services.AddHostedService<CheckinRecordatorioService>();
 
 // --- AuthN (design TD4): short-lived JWT delivered in an HttpOnly cookie ---
 // The real signing key is injected via user-secrets (dev) or the Jwt__Key

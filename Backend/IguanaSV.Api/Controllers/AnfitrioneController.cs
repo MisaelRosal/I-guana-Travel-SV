@@ -17,17 +17,20 @@ public class AnfitrioneController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly INotificacionSitioService _notificacionesSitio;
     private readonly IContentTranslationService _translationService;
     private readonly ILogger<AnfitrioneController> _logger;
 
     public AnfitrioneController(
         IguanasDbContext context,
         IEmailNotificationService notificaciones,
+        INotificacionSitioService notificacionesSitio,
         IContentTranslationService? translationService = null,
         ILogger<AnfitrioneController>? logger = null)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _notificacionesSitio = notificacionesSitio;
         _translationService = translationService ?? NoOpContentTranslationService.Instance;
         _logger = logger ?? NullLogger<AnfitrioneController>.Instance;
     }
@@ -168,12 +171,26 @@ public class AnfitrioneController : ControllerBase
 
         // Notify the account owner (not the anfitriones.email contact column):
         // the login credential's mailbox is the one they actually read.
-        if (verificado && anfitrione.UsuarioId is int duenioId)
+        if (anfitrione.UsuarioId is int duenioId)
         {
             var duenio = await _context.Usuarios.FindAsync(duenioId);
             if (duenio != null)
             {
-                await _notificaciones.AnfitrionVerificadoAsync(duenio.Email, duenio.Nombre);
+                if (verificado)
+                {
+                    await _notificaciones.AnfitrionVerificadoAsync(duenio.Email, duenio.Nombre);
+                }
+
+                // In-site copy either way: verification and its removal are both
+                // account-state changes the owner must see.
+                await _notificacionesSitio.NotificarAsync(
+                    duenio.Id,
+                    duenio.Email,
+                    "anfitrion_verificado",
+                    verificado
+                        ? "Tu cuenta de anfitrión fue verificada"
+                        : "Tu cuenta de anfitrión dejó de estar verificada",
+                    null);
             }
         }
 

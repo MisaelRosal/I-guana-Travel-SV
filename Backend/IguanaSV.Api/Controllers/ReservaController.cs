@@ -16,11 +16,16 @@ public class ReservaController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly INotificacionSitioService _notificacionesSitio;
 
-    public ReservaController(IguanasDbContext context, IEmailNotificationService notificaciones)
+    public ReservaController(
+        IguanasDbContext context,
+        IEmailNotificationService notificaciones,
+        INotificacionSitioService notificacionesSitio)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _notificacionesSitio = notificacionesSitio;
     }
 
     // Owner-scoped list (W4): a plain user sees only their own reservations;
@@ -397,6 +402,15 @@ public class ReservaController : ControllerBase
                 reserva.PrecioTotal);
         }
 
+        // In-site copy for the host (never fails the reservation; the service
+        // logs and swallows).
+        await _notificacionesSitio.NotificarAsync(
+            publicacion.Anfitrion?.UsuarioId,
+            publicacion.Anfitrion?.Email,
+            "reserva_creada",
+            $"Nueva reserva pendiente de confirmación para {publicacion.Titulo ?? "tu publicación"}",
+            reserva.Id);
+
         return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);
     }
 
@@ -432,6 +446,13 @@ public class ReservaController : ControllerBase
         {
             return Conflict();
         }
+
+        await _notificacionesSitio.NotificarAsync(
+            reserva.UsuarioId,
+            reserva.EmailHuesped,
+            "reserva_confirmada",
+            $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue confirmada",
+            reserva.Id);
 
         return Ok(new { mensaje = "Reserva confirmada exitosamente.", reserva });
     }
@@ -478,6 +499,15 @@ public class ReservaController : ControllerBase
         {
             return Conflict();
         }
+
+        // The simulated payment auto-confirms the reservation, so the guest gets
+        // the same in-site confirmation as the manual path above.
+        await _notificacionesSitio.NotificarAsync(
+            reserva.UsuarioId,
+            reserva.EmailHuesped,
+            "reserva_confirmada",
+            $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue confirmada",
+            reserva.Id);
 
         return Ok(new
         {
@@ -553,6 +583,34 @@ public class ReservaController : ControllerBase
         catch (DbUpdateConcurrencyException)
         {
             return Conflict();
+        }
+
+        // Notify the OTHER side: a guest cancellation reaches the host, a
+        // host/admin cancellation reaches the guest.
+        var subCancelador = User.GetSubjectId();
+        var canceloElHuesped = subCancelador.HasValue && reserva.UsuarioId == subCancelador.Value;
+        if (canceloElHuesped)
+        {
+            var anfitrionDestino = await _context.Publicaciones
+                .AsNoTracking()
+                .Where(p => p.Id == reserva.PublicacionId)
+                .Select(p => new { UsuarioId = p.Anfitrion!.UsuarioId, Email = p.Anfitrion!.Email })
+                .FirstOrDefaultAsync();
+            await _notificacionesSitio.NotificarAsync(
+                anfitrionDestino?.UsuarioId,
+                anfitrionDestino?.Email,
+                "reserva_cancelada",
+                $"Tu huésped canceló la reserva de {await TituloReservaAsync(reserva.PublicacionId)}",
+                reserva.Id);
+        }
+        else
+        {
+            await _notificacionesSitio.NotificarAsync(
+                reserva.UsuarioId,
+                reserva.EmailHuesped,
+                "reserva_cancelada",
+                $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue cancelada",
+                reserva.Id);
         }
 
         return Ok(new { mensaje = "Reserva cancelada exitosamente.", reserva });
@@ -688,6 +746,18 @@ public class ReservaController : ControllerBase
             .Select(e => e.PrecioAdicional)
             .FirstOrDefaultAsync();
     }
+
+    /// <summary>
+    /// Publication title for the in-site notification messages; the reservations
+    /// are loaded without navigations, so it is fetched by projection. Falls back
+    /// to a generic label when the row is missing.
+    /// </summary>
+    private async Task<string> TituloReservaAsync(int publicacionId) =>
+        await _context.Publicaciones
+            .AsNoTracking()
+            .Where(p => p.Id == publicacionId)
+            .Select(p => p.Titulo)
+            .FirstOrDefaultAsync() ?? "tu reserva";
 
     /// <summary>
     /// True while a short reservation's one-hour grace window has not yet
