@@ -52,6 +52,15 @@
     "phone": "Phone",
     "location": "Location",
     "publications": "Listings by {{name}}",
+    "publicationsSaved": "Your saved listings from {{name}}",
+    "showSaved": "View saved",
+    "hideSaved": "Hide saved",
+    "noSavedYet": "You don't have any saved listings yet.",
     "noImage": "No image"
+  },
+  "reviews": {
+    "empty": "No reviews yet",
+    "hostCount_one": "{{count}} review of their listings",
+    "hostCount_other": "{{count}} reviews of their listings"
   }
 }

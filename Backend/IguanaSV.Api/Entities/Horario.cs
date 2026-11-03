@@ -19,6 +19,8 @@ public partial class Horario
 
     public bool? Disponible { get; set; }
 
+    public int? Cupos { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }

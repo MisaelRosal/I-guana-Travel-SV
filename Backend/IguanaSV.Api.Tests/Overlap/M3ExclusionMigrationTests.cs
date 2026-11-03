@@ -16,6 +16,7 @@ namespace IguanaSV.Api.Tests.Overlap;
 /// "Migration rollback" spec scenario. Skips when Docker or the dotnet-ef tool is
 /// unavailable.
 /// </summary>
+[Collection("SchemaMigrationCli")]
 public sealed class M3ExclusionMigrationTests
 {
     // EF migration id of M2, the target that M3's Down must return to.
@@ -70,7 +71,7 @@ public sealed class M3ExclusionMigrationTests
             var history = await ScalarAsync<long>(db, """
                 SELECT count(*) FROM "__EFMigrationsHistory";
                 """);
-            Assert.Equal(9, history);
+            Assert.Equal(19, history); // shipped migrations + reviews + translations + availability manager (AddHorarioCupos) + saved publications (AddPublicacionesFavoritas) + AddUsuarioDestinoToResena + host reschedule + chat migrations + guest reports (AddReportesHuesped) + AddPropositoVerificacion
         }
 
         // Roll back M3 (one step, to M2). The constraint and hygiene index must

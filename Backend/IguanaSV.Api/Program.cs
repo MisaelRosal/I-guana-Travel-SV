@@ -28,6 +28,30 @@ builder.Services.AddDbContext<IguanasDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddSingleton<IMinioStorageService, MinioStorageService>();
 
+// LibreTranslate is optional for direct backend runs. Source publication writes
+// remain available while the translator is disabled or unavailable.
+builder.Services.Configure<LibreTranslateOptions>(
+    builder.Configuration.GetSection(LibreTranslateOptions.SectionName));
+builder.Services.AddHttpClient(LibreTranslateTranslationService.HttpClientName, (services, client) =>
+{
+    var options = services.GetRequiredService<IOptions<LibreTranslateOptions>>().Value;
+    var timeoutSeconds = Math.Clamp(options.TimeoutSeconds, 1, 60);
+    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+    var baseUri = Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var configuredUri)
+        ? configuredUri
+        : new Uri("http://localhost:5501/");
+    var uriBuilder = new UriBuilder(baseUri);
+    uriBuilder.Path = uriBuilder.Path.TrimEnd('/') + "/";
+    client.BaseAddress = uriBuilder.Uri;
+});
+builder.Services.AddSingleton<TranslationConcurrencyLimiter>();
+builder.Services.AddSingleton<LibreTranslateTranslationService>();
+builder.Services.AddSingleton<IPublicationTranslationService>(services =>
+    services.GetRequiredService<LibreTranslateTranslationService>());
+builder.Services.AddSingleton<IContentTranslationService>(services =>
+    services.GetRequiredService<LibreTranslateTranslationService>());
+
 // --- Email saliente + verificación de correo (design: notificaciones) ---
 // Registration is held until the emailed code is entered while
 // Email:VerificacionHabilitada is true. The transport (IEmailService) is the
@@ -45,6 +69,12 @@ builder.Services.AddScoped<VerificationCodeService>();
 // window lapsed without payment.
 builder.Services.AddHostedService<GraceExpirationService>();
 
+// Background workers for the review feature: flips finished reservations to
+// 'completada', then emails each guest once their arrival day makes the
+// reservation reviewable (marked via reservas.resenas_notificadas_en).
+builder.Services.AddHostedService<ReservaCompletionService>();
+builder.Services.AddHostedService<ResenaAvailabilityService>();
+
 // --- AuthN (design TD4): short-lived JWT delivered in an HttpOnly cookie ---
 // The real signing key is injected via user-secrets (dev) or the Jwt__Key
 // environment variable (deploy); it is NEVER committed to the repository.
@@ -57,6 +87,10 @@ var jwtOptions = new JwtOptions
 };
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton<JwtTokenService>();
+
+// Google Sign-In: verifies the ID token from the embedded button against
+// Google's public keys and the SAME OAuth client id used for outbound Gmail.
+builder.Services.AddSingleton<IGoogleTokenVerifier, GoogleTokenVerifier>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

@@ -11,6 +11,8 @@ import esReservas from '../locales/es/reservas.json'
 import esPanel from '../locales/es/panel.json'
 import esAdmin from '../locales/es/admin.json'
 import esExperiencia from '../locales/es/experiencia.json'
+import esCuenta from '../locales/es/cuenta.json'
+import esChat from '../locales/es/chat.json'
 import enCommon from '../locales/en/common.json'
 import enHeader from '../locales/en/header.json'
 import enCatalog from '../locales/en/catalog.json'
@@ -22,6 +24,8 @@ import enReservas from '../locales/en/reservas.json'
 import enPanel from '../locales/en/panel.json'
 import enAdmin from '../locales/en/admin.json'
 import enExperiencia from '../locales/en/experiencia.json'
+import enCuenta from '../locales/en/cuenta.json'
+import enChat from '../locales/en/chat.json'
 
 // F0 (i18n-es-en): single shared i18n runtime (AD-2, AD-5).
 // Initialized once at module scope — module evaluation happens a single time
@@ -34,6 +38,10 @@ export const LOCALE_STORAGE_KEY = 'iguana_locale'
 
 // Active UI language -> BCP 47 formatting tag for Intl consumers (AD-4/F4).
 export const FORMAT_LOCALES = { es: 'es-SV', en: 'en-US' }
+
+export function getContentLocale(language = i18n.resolvedLanguage || i18n.language) {
+  return String(language || '').toLowerCase().startsWith('en') ? 'en' : 'es'
+}
 
 // F4 (AD-4): the Intl locale tag for the currently active UI language.
 // Reads through `useTranslation` so components calling it re-render (and
@@ -71,6 +79,8 @@ const resources = {
     panel: esPanel,
     admin: esAdmin,
     experiencia: esExperiencia,
+    cuenta: esCuenta,
+    chat: esChat,
   },
   en: {
     common: enCommon,
@@ -84,6 +94,8 @@ const resources = {
     panel: enPanel,
     admin: enAdmin,
     experiencia: enExperiencia,
+    cuenta: enCuenta,
+    chat: enChat,
   },
 }
 
@@ -93,7 +105,7 @@ if (!i18n.isInitialized) {
     lng: readStoredLocale(),
     fallbackLng: 'es',
     defaultNS: 'common',
-    ns: ['common', 'header', 'catalog', 'footer', 'auth', 'perfil', 'publicacion', 'reservas', 'panel', 'admin', 'experiencia'],
+    ns: ['common', 'header', 'catalog', 'footer', 'auth', 'perfil', 'publicacion', 'reservas', 'panel', 'admin', 'experiencia', 'cuenta', 'chat'],
     // Resources are static JSON, so store setup is fully synchronous. The
     // restored startup language may still emit one deferred `languageChanged`
     // that reaches the persistence listener below; it rewrites the value just
@@ -117,7 +129,7 @@ if (!i18n.isInitialized) {
   // Cross-tab sync (AD-5). `storage` fires only in the other tabs and only on
   // a real change, so changeLanguage here cannot bounce back as a second
   // event — no loop. Scoped to our key: the existing sessionStorage auth
-  // listeners (Header.jsx:32, Footer.jsx:40) keep reacting to their own keys.
+  // listeners (Header.jsx, Footer.jsx) keep reacting to their own keys.
   window.addEventListener('storage', (e) => {
     if (e.key === LOCALE_STORAGE_KEY && SUPPORTED_LOCALES.includes(e.newValue)) {
       i18n.changeLanguage(e.newValue)

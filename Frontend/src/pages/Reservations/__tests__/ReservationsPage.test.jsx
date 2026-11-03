@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
 import ReservationsPage from '../ReservationsPage.jsx'
+import { getMisReservas } from '../../../services/reservas.js'
 
 // F2b-1 (i18n-es-en): the reservations page reads its chrome from the
 // `reservas` namespace (task 4.1 RED — strict-tdd forbids touching
@@ -220,7 +221,7 @@ describe('EN active: reservations chrome comes from the reservas namespace', () 
     await screen.findAllByText('Pending')
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
-    const dialog = await screen.findByRole('dialog', { name: 'Confirm deletion' })
+    const dialog = await screen.findByRole('dialog', { name: 'Delete booking?' })
     expect(within(dialog).getByText('Delete booking?')).toBeInTheDocument()
     // Trans keeps the styled <b> spans while the full sentence resolves from one
     // resource template; the title stays the stored Spanish value (passthrough).
@@ -296,5 +297,136 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(within(dialog).getByRole('button', { name: 'Guardar cambios' })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Menos personas' })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Más personas' })).toBeInTheDocument()
+  })
+})
+
+describe('Reserva reprogramada por el anfitrión (cancelación libre)', () => {
+  const reprogramada = {
+    id: 99, publicacionId: 7, experienciaTitulo: 'Ruta del café en Apan',
+    experienciaCategoria: 'Café', experienciaImagen: '', tipo: 'experiencia',
+    precioPorNoche: 25, capacidadMaxima: 4, fechasDisponibles: [],
+    // New date is today, so the normal cancel rule would block it; the free
+    // cancellation flag is what must keep the button usable.
+    fechaInicio: todayISO(), fechaFin: todayISO(), personas: 2,
+    precioTotal: 50, estado: 'confirmada', fechaExpiracionGracia: null,
+    cancelacionLibre: true, reprogramadaDesde: '2026-05-01',
+    nombreHuesped: 'Ana Pérez', emailHuesped: 'ana@correo.com', telefonoHuesped: '',
+  }
+
+  it('muestra el aviso y permite cancelar sin restricciones aunque la fecha sea hoy', async () => {
+    await i18n.changeLanguage('es')
+    getMisReservas.mockResolvedValueOnce([reprogramada])
+    renderReservations()
+
+    expect(await screen.findByText(
+      'El anfitrión movió esta reserva del 01/05/2026 a la nueva fecha. Podés cancelarla sin restricciones si no te sirve.',
+    )).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Cancelar reserva' })
+    expect(within(dialog).getByText(
+      'Esta reserva fue reprogramada por el anfitrión: podés cancelarla sin restricciones.',
+    )).toBeInTheDocument()
+    // The blocking "already started" message must not appear.
+    expect(within(dialog).queryByText(
+      'No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy.',
+    )).toBeNull()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar reserva' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Reserva cancelada exitosamente.')
+  })
+})
+
+function todayISO() {
+  const ahora = new Date()
+  return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
+}
+
+describe('loading failure surfaces a clear error state (not the empty state)', () => {
+  it('shows the error state with a retry control when the bookings request fails', async () => {
+    getMisReservas.mockRejectedValueOnce(new Error('boom'))
+    renderReservations()
+
+    expect(await screen.findByText('No se pudieron cargar tus reservas.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
+    // A backend failure must never be reported as "no bookings".
+    expect(screen.queryByText('Todavía no tienes reservas')).toBeNull()
+  })
+})
+
+describe('Accesibilidad de modales: foco y tecla Escape', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('es')
+  })
+
+  it('moves focus into the dialog, closes on Escape and returns focus to the trigger', async () => {
+    renderReservations()
+    await screen.findAllByText('Pendiente')
+
+    const disparador = screen.getByRole('button', { name: 'Pagar' })
+    disparador.focus()
+    fireEvent.click(disparador)
+
+    const dialog = await screen.findByRole('dialog', { name: 'Simular pago' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    // Focus moved into the dialog when it opened.
+    expect(dialog.contains(document.activeElement)).toBe(true)
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // Focus goes back to the element that opened the modal.
+    expect(document.activeElement).toBe(disparador)
+  })
+
+  it('traps Tab and Shift+Tab focus inside the dialog', async () => {
+    renderReservations()
+    await screen.findAllByText('Pendiente')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pagar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Simular pago' })
+
+    const botones = within(dialog).getAllByRole('button')
+    const primero = botones[0]
+    const ultimo = botones[botones.length - 1]
+
+    ultimo.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(document.activeElement).toBe(primero)
+
+    primero.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(ultimo)
+  })
+})
+
+describe('Accesibilidad del pago: estado de selección y error asociado', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('es')
+  })
+
+  it('expone el método seleccionado y enfoca el primer campo inválido del pago', async () => {
+    renderReservations()
+    await screen.findAllByText('Pendiente')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pagar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Simular pago' })
+
+    const credito = within(dialog).getByRole('button', { name: 'Tarjeta de crédito' })
+    expect(credito).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar pago' }))
+    expect(await screen.findByText('Seleccioná un método de pago')).toBeInTheDocument()
+    expect(within(dialog).getByRole('group', { name: 'Método de pago' })).toHaveAttribute('aria-invalid', 'true')
+    expect(document.activeElement).toBe(credito)
+
+    fireEvent.click(credito)
+    expect(credito).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar pago' }))
+    const numero = within(dialog).getByPlaceholderText('**** **** **** ****')
+    expect(numero).toHaveAttribute('aria-invalid', 'true')
+    expect(numero).toHaveAttribute('aria-describedby', 'pay-error')
+    expect(document.activeElement).toBe(numero)
   })
 })

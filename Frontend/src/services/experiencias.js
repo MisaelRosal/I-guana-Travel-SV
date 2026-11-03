@@ -1,4 +1,10 @@
 import { api } from './api.js'
+import { getContentLocale } from '../i18n/config.js'
+
+function publicacionUrl(path, language) {
+  const params = new URLSearchParams({ contentLocale: getContentLocale(language) })
+  return `${path}?${params.toString()}`
+}
 
 const imagenesDepartamentos = {
   'San Salvador': 'https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?w=1200',
@@ -17,7 +23,7 @@ const imagenesDepartamentos = {
   'Usulután': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200',
 }
 
-function mapearPublicacion(p) {
+export function mapearPublicacion(p) {
   const experiencias = p.experiencia ?? []
   const categoriaNombre = p.categoria?.nombre ?? ''
   const esHospedaje = (p.tipo || (experiencias.length === 0 ? 'hospedaje' : 'experiencia')) === 'hospedaje'
@@ -27,6 +33,9 @@ function mapearPublicacion(p) {
     : null
   return {
     id: p.id,
+    // Chat card context binds this explicit publication id — the detail page's
+    // route :id is the same value today, but consumers must never assume it.
+    publicacionId: p.id,
     titulo: p.titulo,
     tipo: esHospedaje ? 'hospedaje' : 'experiencia',
     categoria: categoriaNombre,
@@ -34,6 +43,7 @@ function mapearPublicacion(p) {
     precio: p.precioPorNoche,
     anfitrion: p.anfitrion?.nombre ?? '',
     anfitrionId: p.anfitrion?.id ?? null,
+    anfitrionUsuarioId: p.anfitrion?.usuarioId ?? null,
     anfitrionFoto: p.anfitrion?.fotoPerfil ?? '',
     anfitrionDescripcion: p.anfitrion?.descripcion ?? '',
     anfitrionVerificado: p.anfitrion?.verificado ?? false,
@@ -67,16 +77,18 @@ function mapearPublicacion(p) {
         fecha: h.fecha ?? null,
         horaInicio: h.horaInicio,
         horaFin: h.horaFin,
+        disponible: h.disponible ?? true,
       })),
     fechasDisponibles: (p.horarios ?? [])
       .filter(Boolean)
-      .filter((h) => h.fecha)
+      .filter((h) => h.fecha && h.disponible !== false)
       .map((h) => String(h.fecha).slice(0, 10)),
     proximaFecha: (() => {
       const hoy = new Date()
       const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
       return (p.horarios ?? [])
         .filter(Boolean)
+        .filter((h) => h.disponible !== false)
         .map((h) => (h.fecha ? String(h.fecha).slice(0, 10) : null))
         .filter((f) => f && f >= hoyStr)
         .sort()
@@ -88,8 +100,8 @@ function mapearPublicacion(p) {
   }
 }
 
-export async function getExperiencias({ search = '', categoria = '', zona = '', tipo = '', precioMax = '' } = {}) {
-  const publicaciones = await api.get('/Publicacione')
+export async function getExperiencias({ search = '', categoria = '', zona = '', tipo = '', precioMax = '', locale } = {}) {
+  const publicaciones = await api.get(publicacionUrl('/Publicacione', locale))
   let resultados = publicaciones.map(mapearPublicacion)
 
   if (search) {
@@ -107,13 +119,13 @@ export async function getExperiencias({ search = '', categoria = '', zona = '', 
   return resultados
 }
 
-export async function getExperienciaById(id) {
-  const publicacion = await api.get(`/Publicacione/${id}`)
+export async function getExperienciaById(id, locale) {
+  const publicacion = await api.get(publicacionUrl(`/Publicacione/${id}`, locale))
   return publicacion ? mapearPublicacion(publicacion) : null
 }
 
-export async function getExperienciasPopulares(limite = 5) {
-  const publicaciones = await api.get('/Publicacione')
+export async function getExperienciasPopulares(limite = 5, locale) {
+  const publicaciones = await api.get(publicacionUrl('/Publicacione', locale))
   return publicaciones.map(mapearPublicacion).filter((e) => e.popular).slice(0, limite)
 }
 
@@ -132,8 +144,8 @@ export async function getCategorias() {
   return categorias.map((c) => c.nombre)
 }
 
-export async function getProximasExperiencias(limite = 3) {
-  const publicaciones = await api.get('/Publicacione')
+export async function getProximasExperiencias(limite = 3, locale) {
+  const publicaciones = await api.get(publicacionUrl('/Publicacione', locale))
   const hoy = new Date()
   const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(
     hoy.getDate(),

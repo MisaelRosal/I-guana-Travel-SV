@@ -6,7 +6,14 @@
     "stayRooms_other": "{{count}} hab",
     "stayGuests_one": "{{count}} huésped",
     "stayGuests_other": "{{count}} huéspedes",
-    "popular": "Popular"
+    "popular": "Popular",
+    "saveAria": "Guardar publicación",
+    "unsaveAria": "Quitar publicación de guardados"
+  },
+  "favoritos": {
+    "save": "Guardar",
+    "saved": "Guardado",
+    "error": "No se pudo actualizar la publicación guardada. Intentá de nuevo."
   },
   "form": {
     "dialogLabel": "Formulario de reserva",
@@ -39,6 +46,7 @@
     "stay": "Hospedaje",
     "experience": "Experiencia",
     "basicLegend": "Información básica",
+    "translationHint": "El título y la descripción se escriben en español. La versión en inglés se genera automáticamente para el público.",
     "title": "Título",
     "titlePhStay": "Ej: Casa frente al mar en El Tunco",
     "titlePhExp": "Ej: Clases de surf en El Tunco",
@@ -65,13 +73,17 @@
     "amenitiesLegend": "Amenidades",
     "imagesLegend": "Imágenes",
     "primaryBadge": "Principal",
+    "removeImage": "Quitar imagen",
     "datesLegend": "Fechas disponibles",
     "datesHint": "Elige en el calendario los días en que se puede reservar esta experiencia.",
+    "datesHintEdit": "Las fechas existentes no se pueden quitar desde la edición. Reprograma las fechas con reservas desde el gestor de disponibilidad.",
     "startTime": "Hora de inicio",
     "endTime": "Hora de fin",
     "selectedDates": "Fechas elegidas ({{n}})",
     "noDatesYet": "Todavía no elegiste ninguna fecha",
     "removeDate": "Quitar fecha",
+    "cannotRemoveDate": "Esta fecha existente no se puede quitar aquí.",
+    "cannotRemoveDateHint": "Para cambiar una fecha existente, usa el gestor de disponibilidad.",
     "saving": "Guardando...",
     "creating": "Creando...",
     "save": "Guardar cambios",
@@ -92,6 +104,7 @@
     "notFound": "No se encontró la experiencia.",
     "descriptionTitle": "Descripción",
     "noDescription": "Sin descripción disponible.",
+    "experiencesTitle": "Detalles de la experiencia",
     "amenitiesTitle": "Amenidades",
     "toastBooked": "Reserva creada exitosamente. Ve a \"Mis reservas\" para pagar."
   },
@@ -120,7 +133,8 @@
     "address": "Dirección",
     "status": "Estado",
     "bookNow": "Reservar ahora",
-    "howToArrive": "Cómo llegar"
+    "howToArrive": "Cómo llegar",
+    "ownListing": "Esta es tu publicación, así que no podés reservarla."
   },
   "host": {
     "title": "Tu anfitrión",
@@ -160,5 +174,16 @@
     "pickArrival": "Seleccioná la fecha de llegada",
     "daySelected": "{{day}} de {{month}} de {{year}}",
     "pickDay": "Seleccioná un día"
+  },
+  "reviews": {
+    "title": "Reseñas",
+    "empty": "Aún no tiene reseñas",
+    "emptyHint": "Sé el primero en contar tu experiencia.",
+    "verified": "Reserva verificada",
+    "hostReply": "Respuesta del anfitrión",
+    "count_one": "{{count}} reseña",
+    "count_other": "{{count}} reseñas",
+    "hostCount_one": "{{count}} reseña de sus experiencias",
+    "hostCount_other": "{{count}} reseñas de sus experiencias"
   }
 }

@@ -2,15 +2,15 @@ namespace IguanaSV.Api.Services;
 
 /// <summary>
 /// Options for outbound email. Bound from the <c>Email</c> configuration
-/// section; in docker those arrive as the <c>Email__From</c> (and, in the
-/// future, provider-specific <c>Email__...</c>) environment variables sourced
+/// section; in docker those arrive as the <c>Email__From</c> (and the
+/// provider-specific <c>Email__...</c>) environment variables sourced
 /// from the gitignored .env.
 /// </summary>
 public class EmailOptions
 {
     /// <summary>
     /// RFC 5322 From header, e.g. <c>IguanaSV &lt;notificaciones@tudominio.com&gt;</c>.
-    /// The sending account must be authorized to use this address/doman.
+    /// The sending account must be authorized to use this address/domain.
     /// </summary>
     public string From { get; set; } = "IguanaSV <no-reply@iguanatravelapp.de5.net>";
 
@@ -47,4 +47,11 @@ public class EmailOptions
     /// points at the API's own /oauth2callback route; production must be HTTPS.
     /// </summary>
     public string GoogleRedirectUri { get; set; } = "http://localhost:5000/oauth2callback";
+
+    /// <summary>
+    /// Public base URL of the SPA, used to build the action links embedded in
+    /// emails (e.g. "Dejar mi reseña" -> {SitioUrl}/reservas). Bound from
+    /// <c>Email__SitioUrl</c> / the FRONTEND_BASE_URL compose variable.
+    /// </summary>
+    public string SitioUrl { get; set; } = "http://localhost";
 }

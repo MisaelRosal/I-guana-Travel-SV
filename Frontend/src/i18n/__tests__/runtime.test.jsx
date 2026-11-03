@@ -13,7 +13,7 @@ import i18n from '../config.js'
 //   * `iguana_locale` is written exactly once per `languageChanged`;
 //   * a `storage` event for `iguana_locale` syncs this instance (cross-tab)
 //     while foreign keys are ignored and the existing sessionStorage auth
-//     listeners (Header.jsx:32 / Footer.jsx:40) keep working.
+//     listeners (Header.jsx / Footer.jsx) keep working.
 
 const KEY = 'iguana_locale'
 const USER = { id: 1, nombre: 'Ana', apellido: 'Test', email: 'ana@test.sv', rol: 'viajero' }
@@ -77,7 +77,7 @@ describe('ES/EN toggle pill in the Header (desktop)', () => {
     // F1 landed the catalog pilot content: page chrome now localizes through
     // resources too, so under EN the hero renders the English catalog resource.
     const heading = await screen.findByRole('heading', { level: 1 })
-    expect(heading).toHaveTextContent('Discover the experiences of')
+    expect(heading).toHaveTextContent('Discover the experiences of El Salvador')
   })
 
   it('localizes the header nav and footer chrome from resources under EN (F1 pilot)', async () => {
@@ -170,7 +170,7 @@ describe('cross-tab synchronization via storage events', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: 'en' }))
     await waitFor(() => expect(i18n.language).toBe('en'))
 
-    // Header.jsx:32 / Footer.jsx:40 listen to the same `storage` event to
+    // Header.jsx / Footer.jsx listen to the same `storage` event to
     // re-read the auth cache: the user name must survive the locale switch.
     expect(screen.getByText('Ana Test')).toBeInTheDocument()
     // The pill and the auth control coexist in the new locale.

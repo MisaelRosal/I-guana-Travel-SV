@@ -125,3 +125,28 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(screen.getAllByText('La foto de perfil es obligatoria.')).toHaveLength(2)
   })
 })
+
+describe('Accesibilidad del formulario de anfitrión: etiqueta de foto y foco', () => {
+  it('mueve el foco al control de foto visible, no al input oculto', async () => {
+    renderSerAnfitrion()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Crear perfil de anfitrión' }))
+
+    const foto = screen.getByLabelText('Foto de perfil *')
+    expect(foto).toHaveAttribute('id', 'anf-foto')
+    expect(foto).toHaveAttribute('aria-invalid', 'true')
+    expect(foto).toHaveAttribute('aria-describedby', 'anf-form-error')
+    // A `hidden` input cannot receive focus; the visible photo button is focused.
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Elegir foto de perfil' }),
+    )
+  })
+
+  it('el botón redondo de foto expone un nombre accesible, no el signo "+"', async () => {
+    renderSerAnfitrion()
+
+    const boton = await screen.findByRole('button', { name: 'Elegir foto de perfil' })
+    expect(boton).toHaveAccessibleName('Elegir foto de perfil')
+    expect(boton).not.toHaveAccessibleName('+')
+  })
+})

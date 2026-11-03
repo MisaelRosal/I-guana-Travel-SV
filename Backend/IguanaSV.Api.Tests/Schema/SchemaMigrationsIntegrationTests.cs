@@ -1,7 +1,6 @@
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace IguanaSV.Api.Tests.Schema;
 
@@ -12,12 +11,9 @@ namespace IguanaSV.Api.Tests.Schema;
 /// The developer/CI host database is never a target.
 /// Tests skip gracefully when no Docker daemon or no dotnet-ef tool is available.
 /// </summary>
+[Collection("SchemaMigrationCli")]
 public sealed class SchemaMigrationsIntegrationTests
 {
-    private readonly ITestOutputHelper _output;
-
-    public SchemaMigrationsIntegrationTests(ITestOutputHelper output) => _output = output;
-
     // ---- Task 2.3: backfill matches trimmed + case-insensitively, orphans stay NULL ----
 
     [SkippableFact]
@@ -128,8 +124,13 @@ public sealed class SchemaMigrationsIntegrationTests
             // Six migrations through W2 (M2 AddReservaUsuarioOwnership), plus the
             // W5 M3 ReplaceRacyIndexesWithExclusions, plus the grace-window
             // AddReservaFechaExpiracionGracia, plus the email-verification
-            // AddVerificacionEmailYNotificaciones = nine applied at head.
-            Assert.Equal(9, applied);
+            // AddVerificacionEmailYNotificaciones, AddResenas, publication English
+            // overlay, public user-content English overlays, the availability
+            // manager AddHorarioCupos, the saved-publications table
+            // AddPublicacionesFavoritas, the new AddUsuarioDestinoToResena, host reschedule AddReservaReprogramacion,
+            // chat AddChatConversaciones, guest reports AddReportesHuesped, and
+            // AddPropositoVerificacion = nineteen at head.
+            Assert.Equal(19, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""
@@ -156,7 +157,7 @@ public sealed class SchemaMigrationsIntegrationTests
             Assert.Equal(0, users);
         }
 
-        // Fixture rows: the reference-data-only seed (v0.6) carries no demo content,
+        // Fixture rows: the reference-data-only seed carries no demo content,
         // so the drift-Down reversibility check below provisions its own reservations.
         await using (var db = new NpgsqlConnection(conn))
         {
@@ -218,6 +219,9 @@ public sealed class SchemaMigrationsIntegrationTests
         }
     }
 }
+
+[CollectionDefinition("SchemaMigrationCli", DisableParallelization = true)]
+public sealed class SchemaMigrationCliCollection;
 
 /// <summary>Small ADO helpers so the tests stay readable.</summary>
 internal static class NpgsqlTestExtensions

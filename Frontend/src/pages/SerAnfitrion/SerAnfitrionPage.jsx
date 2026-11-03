@@ -6,7 +6,7 @@ import { getMunicipios, registrarAnfitrion, obtenerSesion, guardarSesion } from 
 import { api, readCsrfToken } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
 
-const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
+const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
 const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 export default function SerAnfitrionPage() {
@@ -32,8 +32,21 @@ export default function SerAnfitrionPage() {
   const [subiendo, setSubiendo] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
+  const [campoError, setCampoError] = useState('')
   const [toast, setToast] = useState(null)
   const fileRef = useRef(null)
+  // El input de foto es `hidden`: un elemento no renderizado no puede recibir
+  // foco, así que el botón redondo visible es el destino real del foco.
+  const fotoBtnRef = useRef(null)
+
+  // Asocia el mensaje con el campo que lo causó y lleva el foco hasta él.
+  const marcarError = (campo, mensaje) => {
+    setError(mensaje)
+    setCampoError(campo)
+    setToast({ tipo: 'error', mensaje })
+    const objetivo = campo === 'anf-foto' ? fotoBtnRef.current : document.getElementById(campo)
+    objetivo?.focus()
+  }
 
   useEffect(() => {
     if (!usuario) return
@@ -76,23 +89,21 @@ export default function SerAnfitrionPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setCampoError('')
     if (!usuario) {
       navigate(localePath('login'))
       return
     }
     if (!foto && !fotoUrl) {
-      setError(t('errors.photoRequired'))
-      setToast({ tipo: 'error', mensaje: t('errors.photoRequired') })
+      marcarError('anf-foto', t('errors.photoRequired'))
       return
     }
     if (!descripcion.trim()) {
-      setError(t('errors.descRequired'))
-      setToast({ tipo: 'error', mensaje: t('errors.descRequired') })
+      marcarError('anf-descripcion', t('errors.descRequired'))
       return
     }
     if (!municipioId) {
-      setError(t('errors.municipioRequired'))
-      setToast({ tipo: 'error', mensaje: t('errors.municipioRequired') })
+      marcarError('anf-municipio', t('errors.municipioRequired'))
       return
     }
     setSubiendo(true)
@@ -123,7 +134,7 @@ export default function SerAnfitrionPage() {
 
   if (!usuario) {
     return (
-      <main className="flex justify-center px-4 py-20">
+      <div className="flex justify-center px-4 py-20">
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('heading')}</h1>
           <p className="mt-3 text-cafe">
@@ -131,19 +142,19 @@ export default function SerAnfitrionPage() {
           </p>
           <Link
             to={localePath('login')}
-            className="cursor-pointer mt-6 inline-block rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
+            className="cursor-pointer mt-6 inline-block rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
           >
             {t('loginRequired.cta')}
           </Link>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="flex justify-center px-4 py-12">
+    <div className="flex justify-center px-4 py-12">
       <div className="w-full max-w-2xl">
-        <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+        <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('heading')}</h1>
           <p className="mt-1 text-sm text-cafe">
             {t('subtitle')}
@@ -156,7 +167,9 @@ export default function SerAnfitrionPage() {
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
+                    ref={fotoBtnRef}
                     onClick={() => fileRef.current?.click()}
+                    aria-label={t('choosePhotoAria')}
                     className="cursor-pointer flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-neutral-300 bg-crema text-3xl text-cafe hover:border-verde-hoja"
                   >
                     {foto || fotoUrl ? (
@@ -169,7 +182,7 @@ export default function SerAnfitrionPage() {
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="cursor-pointer font-semibold text-terracota hover:text-verde-bosque"
+                      className="cursor-pointer font-semibold text-iguana-hondo hover:text-verde-bosque"
                     >
                       {t('choosePhoto')}
                     </button>
@@ -177,10 +190,13 @@ export default function SerAnfitrionPage() {
                   </div>
                   <input
                     ref={fileRef}
+                    id="anf-foto"
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={elegirFoto}
+                    aria-invalid={campoError === 'anf-foto' ? true : undefined}
+                    aria-describedby={campoError === 'anf-foto' ? 'anf-form-error' : undefined}
                   />
                 </div>
               </div>
@@ -202,6 +218,8 @@ export default function SerAnfitrionPage() {
                   onChange={(e) => setDescripcion(e.target.value)}
                   placeholder={t('descPlaceholder')}
                   required
+                  aria-invalid={campoError === 'anf-descripcion' ? true : undefined}
+                  aria-describedby={campoError === 'anf-descripcion' ? 'anf-form-error' : undefined}
                 />
               </div>
               <div>
@@ -215,7 +233,7 @@ export default function SerAnfitrionPage() {
               </div>
               <div>
                 <label className={labelCls} htmlFor="anf-municipio">{t('muniLabel')}</label>
-                <select id="anf-municipio" className={inputCls} value={municipioId} onChange={(e) => setMunicipioId(e.target.value)} required disabled={!departamentoId}>
+                <select id="anf-municipio" className={inputCls} value={municipioId} onChange={(e) => setMunicipioId(e.target.value)} required disabled={!departamentoId} aria-invalid={campoError === 'anf-municipio' ? true : undefined} aria-describedby={campoError === 'anf-municipio' ? 'anf-form-error' : undefined}>
                   <option value="">{t('muniOption')}</option>
                   {municipios.map((m) => (
                     <option key={m.id} value={m.id}>{m.nombre}</option>
@@ -225,7 +243,7 @@ export default function SerAnfitrionPage() {
             </div>
 
             {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+              <p id="anf-form-error" role="alert" className="rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                 {error}
               </p>
             )}
@@ -233,7 +251,7 @@ export default function SerAnfitrionPage() {
             <button
               type="submit"
               disabled={enviando || subiendo}
-              className="cursor-pointer w-full rounded-lg bg-terracota px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+              className="cursor-pointer w-full rounded-full bg-iguana-hondo px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
               {subiendo ? t('submittingPhoto') : enviando ? t('submitting') : t('submit')}
             </button>
@@ -246,6 +264,6 @@ export default function SerAnfitrionPage() {
         tipo={toast?.tipo || 'exito'}
         onCerrar={() => setToast(null)}
       />
-    </main>
+    </div>
   )
 }

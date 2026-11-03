@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
+import { getAnfitrionPorId } from '../../../services/anfitriones.js'
 import PerfilAnfitrionPage from '../PerfilAnfitrionPage.jsx'
 
 // F5 (task 6.5 + 4.5 gate closure) — the public host profile was the one page
@@ -47,14 +48,25 @@ const fixtures = vi.hoisted(() => ({
 }))
 
 vi.mock('../../../services/anfitriones.js', () => ({
-  getAnfitrionPorId: vi.fn(async () => {
+  getAnfitrionPorId: vi.fn(async (_id, locale) => {
     if (fixtures.falla) throw new Error('boom')
-    return fixtures.sinPerfil ? null : fixtures.anfitrion
+    return fixtures.sinPerfil
+      ? null
+      : {
+          ...fixtures.anfitrion,
+          descripcion: locale === 'en' ? 'Coffee guide in Apan.' : fixtures.anfitrion.descripcion,
+        }
   }),
 }))
 
 vi.mock('../../../services/experiencias.js', () => ({
   getExperiencias: vi.fn(async () => fixtures.publicaciones),
+}))
+
+vi.mock('../../../components/ChatPanel.jsx', () => ({
+  default: ({ abierto, anfitrionId, publicacionId }) => abierto
+    ? <div data-testid="chat-panel" data-host-id={anfitrionId} data-publication-id={publicacionId ?? ''} />
+    : null,
 }))
 
 function renderHostProfile() {
@@ -70,7 +82,9 @@ function renderHostProfile() {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks()
   localStorage.clear()
+  sessionStorage.clear()
   fixtures.falla = false
   fixtures.sinPerfil = false
 })
@@ -95,12 +109,12 @@ describe('EN active: host-profile chrome comes from the perfil namespace', () =>
     expect(screen.getByText('Loading profile…')).toBeInTheDocument()
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Ana')
+    expect(getAnfitrionPorId).toHaveBeenCalledWith('7', 'en')
     expect(screen.getByRole('link', { name: '← Back to home' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('img', { name: 'Profile photo' })).toBeInTheDocument()
     expect(screen.getByText('Verified')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'About' })).toBeInTheDocument()
-    // DB description passthrough under the English heading.
-    expect(screen.getByText('Guía de café en Apan.')).toBeInTheDocument()
+    expect(screen.getByText('Coffee guide in Apan.')).toBeInTheDocument()
     expect(screen.getByText('Email')).toBeInTheDocument()
     expect(screen.getByText('ana@correo.com')).toBeInTheDocument()
     expect(screen.getByText('Phone')).toBeInTheDocument()
@@ -140,6 +154,16 @@ describe('EN active: host-profile chrome comes from the perfil namespace', () =>
     // {{error}} interpolation carries the API message verbatim.
     expect(await screen.findByText('Error: boom')).toBeInTheDocument()
   })
+
+  it('opens the host chat without publication context', async () => {
+    sessionStorage.setItem('iguana_usuario', JSON.stringify({ id: 10, rol: 'usuario' }))
+    renderHostProfile()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Contact me' }))
+
+    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-host-id', '7')
+    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-publication-id', '')
+  })
 })
 
 describe('ES active: extraction keeps the canonical Spanish UI byte-comparable', () => {
@@ -149,6 +173,7 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(screen.getByText('Cargando perfil…')).toBeInTheDocument()
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Ana')
+    expect(getAnfitrionPorId).toHaveBeenCalledWith('7', 'es')
     expect(screen.getByRole('link', { name: '← Volver al inicio' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('img', { name: 'Foto de perfil' })).toBeInTheDocument()
     expect(screen.getByText('Verificado')).toBeInTheDocument()

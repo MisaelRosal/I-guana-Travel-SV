@@ -1,4 +1,5 @@
 using IguanaSV.Api.Services;
+using IguanaSV.Api.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -99,7 +100,7 @@ public class ImagenesController : ControllerBase
     }
 
     [HttpDelete("{fileName}")]
-    [Authorize]
+    [Authorize(Roles = AuthConstants.AdminRole)]
     public async Task<IActionResult> Delete(string fileName)
     {
         // Sanitize against path traversal before touching the object store.

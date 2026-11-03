@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
+import { getMiPerfil } from '../../../services/anfitriones.js'
 import OperatorPanelPage from '../OperatorPanelPage.jsx'
 
 // F2b-1 (i18n-es-en): the operator panel reads its chrome from the `panel`
@@ -49,7 +50,7 @@ const fixtures = vi.hoisted(() => ({
 vi.mock('../../../services/anfitriones.js', () => ({
   obtenerSesion: vi.fn(() => fixtures.usuario),
   esAdmin: vi.fn((rol) => rol === 'admin' || rol === 'administrador'),
-  getMiPerfil: vi.fn(async () => ({ id: 9, nombre: 'Ana Pérez' })),
+  getMiPerfil: vi.fn(async () => ({ id: 9, nombre: 'Ana Pérez', verificado: true })),
 }))
 
 vi.mock('../../../services/api.js', () => ({
@@ -63,6 +64,16 @@ vi.mock('../../../services/api.js', () => ({
 // LocationPicker); out of this slice's extracted scope — stub it away.
 vi.mock('../../../components/CrearPublicacionModal.jsx', () => ({
   default: () => null,
+}))
+
+// The dashboard's /Dashboard/ganancias call is out of this slice's scope: feed
+// it a valid empty payload so the A-19 quick actions render deterministically.
+vi.mock('../../../services/dashboard.js', () => ({
+  getGanancias: vi.fn(async () => ({
+    periodo: 'mes', desde: '2026-10-01', hasta: '2026-10-12', moneda: 'USD',
+    total: 0, totalReservas: 0, promedio: 0, totalGeneral: 0,
+    series: [], porPublicacion: [],
+  })),
 }))
 
 function renderPanel() {
@@ -161,6 +172,22 @@ describe('EN active: operator panel chrome comes from the panel namespace', () =
     ).toBeInTheDocument()
     expect(screen.queryByText(/panel:/)).toBeNull()
   })
+
+  // A-19: the dashboard's quick actions switch tabs without a page reload.
+  it('jumps from the dashboard quick actions back to the listings and reviews tabs', async () => {
+    renderPanel()
+    await screen.findByText('Listing')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    expect(await screen.findByText('Quick actions')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /View my listings/ }))
+    expect(await screen.findByText('Listing')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Manage reviews/ }))
+    expect(await screen.findByText('No reviews yet')).toBeInTheDocument()
+  })
 })
 
 describe('ES active: extraction keeps the canonical Spanish UI byte-comparable', () => {
@@ -183,5 +210,16 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(screen.getAllByTitle('Editar publicación')).toHaveLength(2)
     expect(screen.getAllByTitle('Eliminar publicación')).toHaveLength(2)
     expect(screen.queryByText(/panel:/)).toBeNull()
+  })
+
+  it('blocks listing creation until an admin verifies the host account', async () => {
+    getMiPerfil.mockResolvedValueOnce({ id: 9, nombre: 'Ana Pérez', verificado: false })
+    renderPanel()
+
+    expect(await screen.findByText('Verificación pendiente')).toBeInTheDocument()
+    expect(
+      screen.getByText('Un administrador debe verificar tu cuenta de anfitrión antes de que puedas crear publicaciones.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Crear publicación/ })).toBeDisabled()
   })
 })

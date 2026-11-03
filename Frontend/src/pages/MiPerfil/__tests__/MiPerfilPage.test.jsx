@@ -186,3 +186,19 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
     expect(screen.getByRole('link', { name: 'Conviértete en anfitrión' })).toHaveAttribute('href', '/hacerse-anfitrion')
   })
 })
+
+describe('Accesibilidad del formulario de perfil: error asociado y foco', () => {
+  it('marca el correo inválido, lo describe y le da el foco al guardar', async () => {
+    renderMiPerfil()
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar mi perfil' }))
+
+    const correo = screen.getByLabelText('Correo de contacto *')
+    fireEvent.change(correo, { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    expect(correo).toHaveAttribute('aria-invalid', 'true')
+    expect(correo).toHaveAttribute('aria-describedby', 'mp-form-error')
+    expect(document.getElementById('mp-form-error')).toHaveTextContent('Ingresa un correo de contacto.')
+    expect(document.activeElement).toBe(correo)
+  })
+})

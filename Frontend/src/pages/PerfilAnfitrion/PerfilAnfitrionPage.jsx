@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useFormatLocale } from '../../i18n/config.js'
+import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
 import { formatPrice } from '../../i18n/format.js'
 import { getAnfitrionPorId } from '../../services/anfitriones.js'
 import { getExperiencias } from '../../services/experiencias.js'
+import { getResumenAnfitrion } from '../../services/resenas.js'
+import { leerSesionCache } from '../../services/session.js'
+import { Estrellas } from '../../components/Estrellas.jsx'
+import ChatPanel from '../../components/ChatPanel.jsx'
 
 // F5 (task 6.5 + 4.5 gate closure): this public page was the one screen no
 // F1/F2 wave owned, so its frontend-owned Spanish literals are extracted here
@@ -14,10 +18,10 @@ import { getExperiencias } from '../../services/experiencias.js'
 // `perfil.host.*`. DB values (name, city, description, listings) stay
 // verbatim passthrough.
 function Avatar({ anfitrion, grande }) {
-  const { t } = useTranslation('perfil')
+  const { t, i18n } = useTranslation('perfil')
   const cls = grande
-    ? 'flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-5xl font-bold text-cafe shadow-md'
-    : 'flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-crema text-lg font-bold text-cafe shadow-sm'
+    ? 'flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-5xl font-bold text-cafe'
+    : 'flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-crema text-lg font-bold text-cafe'
   return (
     <div className={cls}>
       {anfitrion.fotoPerfil ? (
@@ -30,24 +34,33 @@ function Avatar({ anfitrion, grande }) {
 }
 
 export default function PerfilAnfitrionPage() {
-  const { t } = useTranslation('perfil')
+  const { t, i18n } = useTranslation('perfil')
+  const { t: tc } = useTranslation('chat')
   const { id } = useParams()
+  const location = useLocation()
   const locale = useFormatLocale()
+  const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
   const [anfitrion, setAnfitrion] = useState(null)
   const [publicaciones, setPublicaciones] = useState([])
+  const [resumen, setResumen] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  const [chatAbierto, setChatAbierto] = useState(false)
+  const sesion = leerSesionCache()
 
   useEffect(() => {
     let activo = true
-    getAnfitrionPorId(id)
+    getAnfitrionPorId(id, contentLocale)
       .then((a) => {
         if (activo) setAnfitrion(a)
       })
       .catch((e) => {
         if (activo) setError(e.message)
       })
-    getExperiencias()
+    getResumenAnfitrion(id)
+      .then((r) => { if (activo) setResumen(r) })
+      .catch(() => { if (activo) setResumen({ promedio: 0, total: 0 }) })
+    getExperiencias({ locale: contentLocale })
       .then((exp) => {
         if (activo) setPublicaciones(exp.filter((x) => Number(x.anfitrionId) === Number(id)))
       })
@@ -56,21 +69,21 @@ export default function PerfilAnfitrionPage() {
         if (activo) setCargando(false)
       })
     return () => { activo = false }
-  }, [id])
+  }, [id, contentLocale])
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
+    <div className="mx-auto max-w-5xl px-4 py-10">
+      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-verde-hoja">
         {t('back')}
       </Link>
 
       {cargando && <p className="text-cafe">{t('loading')}</p>}
-      {error && <p className="text-terracota">{t('host.error', { error })}</p>}
+      {error && <p className="text-red-700">{t('host.error', { error })}</p>}
       {!cargando && !error && !anfitrion && <p className="text-cafe">{t('host.notFound')}</p>}
 
       {anfitrion && (
         <>
-          <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+          <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
               <Avatar anfitrion={anfitrion} grande />
               <div className="flex-1">
@@ -83,14 +96,48 @@ export default function PerfilAnfitrionPage() {
                   {anfitrion.municipio?.nombre ?? '—'}
                   {anfitrion.municipio?.departamento ? `, ${anfitrion.municipio.departamento.nombre}` : ''}
                 </p>
-                <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber-100 text-amber-700'}`}>
+                <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber/10 text-verde-bosque'}`}>
                   {anfitrion.verificado ? t('badge.verified') : t('badge.pending')}
                 </span>
+                {resumen && (
+                  <div className="mt-3 flex items-center justify-center gap-2 sm:justify-start">
+                    {resumen.total > 0 ? (
+                      <>
+                        <Estrellas valor={resumen.promedio} className="h-4 w-4" />
+                        <span className="text-sm font-bold text-neutral-800">{Number(resumen.promedio).toFixed(1)}</span>
+                        <span className="text-sm text-cafe">
+                          · {t('reviews.hostCount', { count: resumen.total })}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm italic text-cafe">{t('reviews.empty')}</span>
+                    )}
+                  </div>
+                )}
+                <div className="mt-4 flex justify-center sm:justify-start">
+                  {sesion ? (
+                    <button
+                      type="button"
+                      onClick={() => setChatAbierto(true)}
+                      className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+                    >
+                      {tc('entry.contactHost')}
+                    </button>
+                  ) : (
+                    <Link
+                      to={localePath('login')}
+                      state={{ from: location.pathname + location.search }}
+                      className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-verde-bosque"
+                    >
+                      {tc('entry.contactHost')}
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="mt-6 border-t border-neutral-100 pt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-terracota">{t('host.aboutMe')}</h2>
+              <h2 className="text-sm font-bold text-iguana-hondo">{t('host.aboutMe')}</h2>
               <p className="mt-2 text-lg leading-relaxed text-neutral-800">
                 {anfitrion.descripcion || t('host.noDescription')}
               </p>
@@ -98,15 +145,15 @@ export default function PerfilAnfitrionPage() {
 
             <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-4 border-t border-neutral-100 pt-6 sm:grid-cols-3">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('host.email')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('host.email')}</dt>
                 <dd className="mt-0.5 text-neutral-800">{anfitrion.email}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('host.phone')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('host.phone')}</dt>
                 <dd className="mt-0.5 text-neutral-800">{anfitrion.telefono || '—'}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('host.location')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('host.location')}</dt>
                 <dd className="mt-0.5 text-neutral-800">
                   {anfitrion.municipio?.nombre ?? '—'}
                   {anfitrion.municipio?.departamento ? `, ${anfitrion.municipio.departamento.nombre}` : ''}
@@ -123,7 +170,7 @@ export default function PerfilAnfitrionPage() {
                   <Link
                     key={exp.id}
                     to={localePath('experienceDetail', { id: exp.id })}
-                    className="group overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+                    className="group overflow-hidden rounded-[22px] border border-neutral-200 bg-white"
                   >
                     <div className="aspect-[16/10] overflow-hidden bg-neutral-100">
                       {exp.imagenes[0] ? (
@@ -133,10 +180,10 @@ export default function PerfilAnfitrionPage() {
                       )}
                     </div>
                     <div className="p-4">
-                      <p className="text-sm font-semibold uppercase tracking-wide text-terracota">{exp.tipo}</p>
+                      <p className="text-sm font-semibold text-iguana-hondo">{exp.tipo}</p>
                       <h3 className="mt-0.5 text-lg font-bold text-verde-bosque">{exp.titulo}</h3>
                       <p className="mt-1 text-sm text-cafe">{exp.municipio}, {exp.departamento}</p>
-                      <p className="mt-2 font-bold text-terracota">
+                      <p className="mt-2 font-bold text-iguana-hondo">
                         {formatPrice(exp.precio, locale)}
                         <span className="text-sm font-medium text-cafe"> {exp.tipo === 'hospedaje' ? `/${t('experiencia:card.perNight')}` : `/${t('experiencia:card.perPerson')}`}</span>
                       </p>
@@ -146,8 +193,14 @@ export default function PerfilAnfitrionPage() {
               </div>
             </section>
           )}
+
+          <ChatPanel
+            abierto={chatAbierto}
+            anfitrionId={anfitrion.id ?? id}
+            onCerrar={() => setChatAbierto(false)}
+          />
         </>
       )}
-    </main>
+    </div>
   )
 }

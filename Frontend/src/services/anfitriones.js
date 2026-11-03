@@ -1,4 +1,5 @@
 import { api } from './api.js'
+import { getContentLocale } from '../i18n/config.js'
 
 export async function getMunicipios() {
   return api.get('/Municipio')
@@ -8,8 +9,9 @@ export async function getAnfitriones() {
   return api.get('/Anfitrione')
 }
 
-export async function getAnfitrionPorId(id) {
-  return api.get(`/Anfitrione/${id}`)
+export async function getAnfitrionPorId(id, language) {
+  const params = new URLSearchParams({ contentLocale: getContentLocale(language) })
+  return api.get(`/Anfitrione/${id}?${params.toString()}`)
 }
 
 export async function actualizarPerfilAnfitrion(id, datos) {

@@ -53,7 +53,9 @@ public sealed class ReservaOwnershipIntegrationTests
         // Publication priced at 100/night; a 3-night range must persist 300 even
         // though the client lowballs the body with precioTotal = 0.01.
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
+        // The publication's host is deliberately unlinked from this account so the
+        // caller is a legitimate guest: booking one's own listing is now blocked.
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         var (inicio, fin) = FutureRange(10, 3); // [today+10, today+13) => 3 nights
@@ -79,7 +81,8 @@ public sealed class ReservaOwnershipIntegrationTests
     public async Task Post_BindsDto_SetsOwnerFromToken_PinsPendiente_IgnoresBodyIdAndEstado()
     {
         var user = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(user.UserId), tipo: "hospedaje",
+        // Unlinked host: the caller books as a guest, not as the listing owner.
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 80m, capacidad: 4);
 
         var (inicio, fin) = FutureRange(20, 2); // 2 nights => 160
@@ -112,7 +115,8 @@ public sealed class ReservaOwnershipIntegrationTests
         // per guest; the spec leaves the experience formula open, so the wave
         // directive fixes it to guests × (precio_por_noche + precio_adicional).
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "experiencia",
+        // Unlinked host: the caller books as a guest, not as the listing owner.
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "experiencia",
             precioPorNoche: 50m, capacidad: 10);
 
         var (inicio, _) = FutureRange(5, 0); // same-day experience
@@ -139,7 +143,8 @@ public sealed class ReservaOwnershipIntegrationTests
         // With an experiencias.precio_adicional row the unit price charged once
         // per guest becomes precioPorNoche + PrecioAdicional: (50 + 10) * 3 = 180.
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "experiencia",
+        // Unlinked host: the caller books as a guest, not as the listing owner.
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "experiencia",
             precioPorNoche: 50m, capacidad: 10, precioAdicional: 10m);
 
         var (inicio, _) = FutureRange(6, 0);
@@ -165,7 +170,8 @@ public sealed class ReservaOwnershipIntegrationTests
     public async Task Post_InvalidGuestEmail_Returns400AndDoesNotPersist()
     {
         var host = await RegisterUserAsync();
-        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
+        // Unlinked host: the caller books as a guest, not as the listing owner.
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "hospedaje",
             precioPorNoche: 100m, capacidad: 4);
 
         var (inicio, fin) = FutureRange(15, 2);
@@ -182,6 +188,56 @@ public sealed class ReservaOwnershipIntegrationTests
         // The validator only runs because the action now binds CreateReservaDto.
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
         Assert.Equal(0, await CountReservasForPublicationAsync(pubId));
+    }
+
+    // ---- Requirement: a host cannot book their own listing -----------------------
+
+    [SkippableFact]
+    [Trait("Category", "Reserva")]
+    public async Task Post_OwnPublication_Returns400AndDoesNotPersist()
+    {
+        var host = await RegisterUserAsync();
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(host.UserId), tipo: "hospedaje",
+            precioPorNoche: 100m, capacidad: 4);
+
+        var (inicio, fin) = FutureRange(25, 2);
+        var res = await AuthedClient(host).PostAsync("/api/Reserva", Json(new
+        {
+            publicacionId = pubId,
+            nombreHuesped = "Self Booking",
+            emailHuesped = host.Email,
+            fechaInicio = inicio,
+            fechaFin = fin,
+            numeroHuespedes = 1,
+        }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        Assert.Contains("propia", await res.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, await CountReservasForPublicationAsync(pubId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Reserva")]
+    public async Task Post_OtherHostsPublication_Succeeds()
+    {
+        var owner = await RegisterUserAsync();
+        var guest = await RegisterUserAsync();
+        var pubId = await SeedPublicationAsync(await SeedHostIdAsync(owner.UserId), tipo: "hospedaje",
+            precioPorNoche: 100m, capacidad: 4);
+
+        var (inicio, fin) = FutureRange(28, 2);
+        var res = await AuthedClient(guest).PostAsync("/api/Reserva", Json(new
+        {
+            publicacionId = pubId,
+            nombreHuesped = "Guest Booking",
+            emailHuesped = guest.Email,
+            fechaInicio = inicio,
+            fechaFin = fin,
+            numeroHuespedes = 1,
+        }));
+
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+        Assert.Equal(guest.UserId, await ReadUsuarioIdAsync(ReadId(res)));
     }
 
     // ---- Requirement: Owner-scoped reads (PII leak closure) ----------------------
@@ -425,8 +481,11 @@ public sealed class ReservaOwnershipIntegrationTests
         return new IguanasDbContext(options);
     }
 
-    /// <summary>Create a host row owned by <paramref name="usuarioId"/> (with a fresh municipio).</summary>
-    private async Task<int> SeedHostIdAsync(int usuarioId)
+    /// <summary>
+    /// Create a host row (with a fresh municipio) owned by <paramref name="usuarioId"/>,
+    /// or an UNLINKED host when it is null (used so the caller can book as a guest).
+    /// </summary>
+    private async Task<int> SeedHostIdAsync(int? usuarioId)
     {
         await using var db = NewDb();
         var tag = Guid.NewGuid().ToString("N");

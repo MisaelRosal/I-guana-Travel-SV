@@ -48,7 +48,15 @@
   },
   "reviews": {
     "title": "Gestión de reseñas",
-    "soon": "Esta sección estará disponible próximamente."
+    "loading": "Cargando reseñas…",
+    "empty": "Aún no hay reseñas.",
+    "error": "No se pudieron cargar las reseñas.",
+    "summaryTitle": "Promedio por publicación",
+    "delete": "Eliminar reseña",
+    "deleteConfirm": "¿Eliminar esta reseña?",
+    "deleted": "La reseña fue eliminada.",
+    "deleteError": "No se pudo eliminar la reseña.",
+    "hostReply": "Respuesta del anfitrión"
   },
   "toast": {
     "hostDeleted": "El perfil de «{{name}}» fue eliminado.",

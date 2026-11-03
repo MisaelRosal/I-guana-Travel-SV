@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../i18n/config.js'
 import { formatDayMonthShort, formatMonthYear, weekdayShortMonFirst } from '../i18n/format.js'
 import { api, readCsrfToken } from '../services/api.js'
+import { useModalAccesible } from '../hooks/useModalAccesible.js'
 import LocationPicker from './LocationPicker.jsx'
 
-const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
-const labelCls = 'block text-sm font-semibold text-cafe-oscuro mb-1'
+const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
+const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion, anfitrionFijo }) {
   const { t } = useTranslation('experiencia')
@@ -39,7 +40,10 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const [longitud, setLongitud] = useState('')
   const [amenidadIds, setAmenidadIds] = useState([])
   const [archivos, setArchivos] = useState([])
+  const [imagenesExistentes, setImagenesExistentes] = useState([])
+  const [imagenesAEliminar, setImagenesAEliminar] = useState([])
   const [fechasSeleccionadas, setFechasSeleccionadas] = useState([])
+  const [fechasOriginalesExp, setFechasOriginalesExp] = useState([])
   const [horaInicioExp, setHoraInicioExp] = useState('08:00')
   const [horaFinExp, setHoraFinExp] = useState('17:00')
   const [mesCal, setMesCal] = useState(() => new Date().getMonth())
@@ -82,9 +86,17 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setLongitud(pubExistente.longitud != null ? String(pubExistente.longitud) : '')
       setAmenidadIds((pubExistente.publicacionAmenidads || []).map((pa) => pa.amenidadId))
       setArchivos([])
+      setImagenesExistentes(
+        (pubExistente.imagenesPublicacions || [])
+          .slice()
+          .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
+      )
+      setImagenesAEliminar([])
       const horariosPub = pubExistente.horarios || []
       const conFecha = horariosPub.filter((h) => h.fecha)
-      setFechasSeleccionadas(conFecha.map((h) => h.fecha))
+      const fechasOrig = conFecha.map((h) => String(h.fecha).slice(0, 10))
+      setFechasSeleccionadas(fechasOrig)
+      setFechasOriginalesExp(fechasOrig)
       setHoraInicioExp(conFecha[0]?.horaInicio?.slice(0, 5) || '08:00')
       setHoraFinExp(conFecha[0]?.horaFin?.slice(0, 5) || '17:00')
       setError(null)
@@ -108,7 +120,10 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setLongitud('')
     setAmenidadIds([])
     setArchivos([])
+    setImagenesExistentes([])
+    setImagenesAEliminar([])
     setFechasSeleccionadas([])
+    setFechasOriginalesExp([])
     setHoraInicioExp('08:00')
     setHoraFinExp('17:00')
     setError(null)
@@ -121,6 +136,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
   const toggleAmenidad = (id) => {
     setAmenidadIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+  }
+
+  const quitarImagenExistente = (id) => {
+    setImagenesExistentes((prev) => prev.filter((img) => img.id !== id))
+    setImagenesAEliminar((prev) => (prev.includes(id) ? prev : [...prev, id]))
   }
 
   const subirArchivos = async () => {
@@ -148,6 +168,42 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     return urls
   }
 
+  // Edit-mode image reconciliation: delete the removed ones, upload the new
+  // files, then normalize order so the first image stays principal.
+  const sincronizarImagenes = async (publicacionId) => {
+    const restantes = imagenesExistentes.filter((img) => !imagenesAEliminar.includes(img.id))
+    for (const id of imagenesAEliminar) {
+      await api.delete(`/ImagenesPublicacion/${id}`)
+    }
+
+    const creadas = []
+    if (archivos.length > 0) {
+      const urls = await subirArchivos()
+      for (const url of urls) {
+        const res = await api.post('/ImagenesPublicacion', {
+          publicacionId,
+          url,
+          esPrincipal: false,
+          orden: 0,
+        })
+        creadas.push({ id: res.id, url })
+      }
+    }
+
+    const finales = [...restantes, ...creadas]
+    for (let i = 0; i < finales.length; i++) {
+      const img = finales[i]
+      const debePrincipal = i === 0
+      if (img.esPrincipal === debePrincipal && img.orden === i) continue
+      await api.put(`/ImagenesPublicacion/${img.id}`, {
+        publicacionId,
+        url: img.url,
+        esPrincipal: debePrincipal,
+        orden: i,
+      })
+    }
+  }
+
   const cambiarMesCal = (delta) => {
     let m = mesCal + delta
     let a = anioCal
@@ -161,9 +217,15 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
 
   const toggleFecha = (fecha) => {
-    setFechasSeleccionadas((prev) =>
-      prev.includes(fecha) ? prev.filter((f) => f !== fecha) : [...prev, fecha]
-    )
+    setFechasSeleccionadas((prev) => {
+      if (prev.includes(fecha)) {
+        if (esEdicion && tipo === 'experiencia' && fechasOriginalesExp.includes(fecha)) {
+          return prev
+        }
+        return prev.filter((f) => f !== fecha)
+      }
+      return [...prev, fecha]
+    })
   }
 
   const formatearFechaChip = (fecha) => formatDayMonthShort(fecha, locale)
@@ -231,11 +293,23 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         publicacion.banos = null
         publicacion.amenidadIds = []
         publicacion.experiencia = [{ nombre: titulo, duracionHoras: null, precioAdicional: null }]
-        publicacion.horarios = fechasSeleccionadas.map((fecha) => ({
-          fecha,
-          horaInicio: horaInicioExp,
-          horaFin: horaFinExp,
-        }))
+        // Preserve the per-date availability set through the availability
+        // manager: the PUT replaces every horario, so carry disponible/cupos.
+        const previosPorFecha = new Map(
+          (pubExistente?.horarios ?? [])
+            .filter((h) => h.fecha)
+            .map((h) => [String(h.fecha).slice(0, 10), h]),
+        )
+        publicacion.horarios = fechasSeleccionadas.map((fecha) => {
+          const previo = previosPorFecha.get(fecha)
+          return {
+            fecha,
+            horaInicio: horaInicioExp,
+            horaFin: horaFinExp,
+            disponible: previo ? previo.disponible !== false : true,
+            cupos: previo?.cupos ?? null,
+          }
+        })
       }
 
       publicacion.publicacionAmenidads = amenidadIds.map((aid) => ({ amenidadId: aid }))
@@ -246,16 +320,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           id: pubExistente.id,
         })
 
-        if (archivos.length > 0) {
-          const urls = await subirArchivos()
-          for (let i = 0; i < urls.length; i++) {
-            await api.post('/ImagenesPublicacion', {
-              publicacionId: pubExistente.id,
-              url: urls[i],
-              esPrincipal: i === 0,
-            })
-          }
-        }
+        await sincronizarImagenes(pubExistente.id)
       } else {
         const res = await api.post('/Publicacione', publicacion)
         const pubId = res.id
@@ -267,6 +332,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               publicacionId: pubId,
               url: urls[i],
               esPrincipal: i === 0,
+              orden: i,
             })
           }
         }
@@ -284,7 +350,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     return titulo || descripcion || anfitrionId || categoriaId || precio || capacidad ||
       habitaciones || camas || banos || horaEntrada || horaSalida || departamentoId || municipioId ||
       latitud || longitud || amenidadIds.length > 0 || archivos.length > 0 ||
-      fechasSeleccionadas.length > 0
+      imagenesAEliminar.length > 0 || fechasSeleccionadas.length > 0
   }
 
   const handleCerrar = () => {
@@ -300,20 +366,29 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     onCerrar()
   }
 
+  const refModal = useModalAccesible(handleCerrar, abierto)
+  const refConfirmar = useModalAccesible(() => setConfirmarSalida(false), confirmarSalida)
+
   if (!abierto) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      ref={refModal}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="crear-publicacion-titulo"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    >
       <div
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-crema shadow-2xl"
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[22px] bg-crema"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cafe-claro/30 bg-crema px-4 py-4 sm:px-6">
-          <h2 className="text-xl font-bold text-verde-bosque">{esEdicion ? t('modal.editTitle') : t('modal.createTitle')}</h2>
+          <h2 id="crear-publicacion-titulo" className="text-xl font-bold text-verde-bosque">{esEdicion ? t('modal.editTitle') : t('modal.createTitle')}</h2>
           <button
             type="button"
             onClick={handleCerrar}
             aria-label={t('common:modal.close')}
-            className="cursor-pointer rounded-lg p-1 text-cafe transition-colors hover:bg-cafe/10 hover:text-cafe-oscuro"
+            className="cursor-pointer rounded-full p-1 text-cafe transition-colors hover:bg-cafe/10 hover:text-verde-bosque"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-5 w-5">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -323,7 +398,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-6">
           {error && (
-            <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            <div className="mb-4 rounded-[22px] border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
               {error}
             </div>
           )}
@@ -332,11 +407,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           <fieldset className="mb-6">
             <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.typeLegend')}</legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all ${
+              <label className={`flex items-center justify-center gap-3 rounded-[22px] border-2 px-4 py-5 text-sm font-semibold transition-all ${
                 esEdicion ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
               } ${
                 tipo === 'hospedaje'
-                  ? 'border-verde-bosque bg-verde-bosque/10 text-verde-bosque shadow-sm'
+                  ? 'border-verde-bosque bg-verde-bosque/10 text-verde-bosque'
                   : 'border-neutral-200 bg-white text-neutral-600' + (esEdicion ? '' : ' hover:border-verde-hoja/50')
               }`}>
                 <input type="radio" name="tipo" value="hospedaje" checked={tipo === 'hospedaje'} onChange={(e) => setTipo(e.target.value)} disabled={esEdicion} className="sr-only" />
@@ -348,12 +423,12 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                 </svg>
                 {t('modal.stay')}
               </label>
-              <label className={`flex items-center justify-center gap-3 rounded-xl border-2 px-4 py-5 text-sm font-semibold transition-all ${
+              <label className={`flex items-center justify-center gap-3 rounded-[22px] border-2 px-4 py-5 text-sm font-semibold transition-all ${
                 esEdicion ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
               } ${
                 tipo === 'experiencia'
-                  ? 'border-terracota bg-terracota/10 text-terracota shadow-sm'
-                  : 'border-neutral-200 bg-white text-neutral-600' + (esEdicion ? '' : ' hover:border-terracota/50')
+                  ? 'border-iguana-hondo bg-iguana-hondo/10 text-iguana-hondo'
+                  : 'border-neutral-200 bg-white text-neutral-600' + (esEdicion ? '' : ' hover:border-iguana-hondo/50')
               }`}>
                 <input type="radio" name="tipo" value="experiencia" checked={tipo === 'experiencia'} onChange={(e) => setTipo(e.target.value)} disabled={esEdicion} className="sr-only" />
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-6 w-6">
@@ -368,6 +443,9 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
           {/* Información básica */}
           <fieldset className="mb-6">
             <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.basicLegend')}</legend>
+            <p className="mb-4 rounded-[22px] border border-verde-hoja/30 bg-verde-hoja/10 px-3 py-2 text-sm text-verde-bosque">
+              {t('modal.translationHint')}
+            </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className={labelCls}>{t('modal.title')} *</label>
@@ -497,7 +575,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.amenitiesLegend')}</legend>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {amenidades.map((a) => (
-                  <label key={a.id} className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 transition-colors hover:border-verde-hoja cursor-pointer">
+                  <label key={a.id} className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 transition-colors hover:border-verde-hoja cursor-pointer">
                     <input
                       type="checkbox"
                       checked={amenidadIds.includes(a.id)}
@@ -519,14 +597,28 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               accept="image/*"
               multiple
               onChange={(e) => setArchivos((prev) => [...prev, ...Array.from(e.target.files)])}
-              className="block w-full text-sm text-cafe file:mr-4 file:rounded-lg file:border-0 file:bg-terracota file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:cursor-pointer hover:file:bg-verde-bosque"
+              className="block w-full text-sm text-cafe file:mr-4 file:rounded-full file:border-0 file:bg-iguana-hondo file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:cursor-pointer hover:file:bg-verde-bosque"
             />
-            {archivos.length > 0 && (
+            {(imagenesExistentes.length > 0 || archivos.length > 0) && (
               <div className="mt-3 flex flex-wrap gap-3">
+                {imagenesExistentes.map((img, i) => (
+                  <div key={`existente-${img.id}`} className="relative h-20 w-20 overflow-hidden rounded-[22px] border border-neutral-200">
+                    <img src={img.url} alt="" className="h-full w-full object-cover" />
+                    {i === 0 && <span className="absolute top-0 left-0 rounded-br-[22px] bg-verde-bosque px-1.5 py-0.5 text-[10px] font-bold text-white">{t('modal.primaryBadge')}</span>}
+                    <button
+                      type="button"
+                      onClick={() => quitarImagenExistente(img.id)}
+                      aria-label={t('modal.removeImage')}
+                      className="absolute top-0.5 right-0.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                ))}
                 {archivos.map((a, i) => (
-                  <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-neutral-200">
+                  <div key={`nueva-${i}`} className="relative h-20 w-20 overflow-hidden rounded-[22px] border border-neutral-200">
                     <img src={URL.createObjectURL(a)} alt="" className="h-full w-full object-cover" />
-                    {i === 0 && <span className="absolute top-0 left-0 rounded-br bg-verde-bosque px-1.5 py-0.5 text-[10px] font-bold text-white">{t('modal.primaryBadge')}</span>}
+                    {imagenesExistentes.length === 0 && i === 0 && <span className="absolute top-0 left-0 rounded-br-[22px] bg-verde-bosque px-1.5 py-0.5 text-[10px] font-bold text-white">{t('modal.primaryBadge')}</span>}
                     <button type="button" onClick={() => setArchivos((prev) => prev.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>
@@ -541,16 +633,16 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
             <fieldset className="mb-6">
               <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.datesLegend')}</legend>
               <p className="mb-3 text-sm text-cafe">
-                {t('modal.datesHint')}
+                {esEdicion ? t('modal.datesHintEdit') : t('modal.datesHint')}
               </p>
 
-              <div className="rounded-xl border border-neutral-200 bg-white p-4">
+              <div className="rounded-[22px] border border-neutral-200 bg-white p-4">
                 <div className="flex items-center justify-between">
-                  <button type="button" onClick={() => cambiarMesCal(-1)} aria-label={t('common:calendar.prevMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+                  <button type="button" onClick={() => cambiarMesCal(-1)} aria-label={t('common:calendar.prevMonth')} className="cursor-pointer rounded-full p-1.5 text-iguana-hondo transition-colors hover:bg-iguana-hondo/10">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                   </button>
                   <p className="text-sm font-bold text-verde-bosque">{formatMonthYear(new Date(anioCal, mesCal, 1), locale)}</p>
-                  <button type="button" onClick={() => cambiarMesCal(1)} aria-label={t('common:calendar.nextMonth')} className="cursor-pointer rounded-lg p-1.5 text-terracota transition-colors hover:bg-terracota/10">
+                  <button type="button" onClick={() => cambiarMesCal(1)} aria-label={t('common:calendar.nextMonth')} className="cursor-pointer rounded-full p-1.5 text-iguana-hondo transition-colors hover:bg-iguana-hondo/10">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                   </button>
                 </div>
@@ -567,7 +659,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                           type="button"
                           onClick={() => toggleFecha(celda.fecha)}
                           disabled={celda.pasado}
-                          className={`h-9 w-full rounded-lg text-sm font-semibold transition-colors ${
+                          className={`h-9 w-full rounded-full text-sm font-semibold transition-colors ${
                             celda.pasado
                               ? 'cursor-not-allowed text-neutral-300'
                               : celda.seleccionado
@@ -597,24 +689,34 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               </div>
 
               <div className="mt-4">
-                <p className="mb-2 text-sm font-semibold text-cafe-oscuro">
+                <p className="mb-2 text-sm font-semibold text-verde-bosque">
                   {t('modal.selectedDates', { n: fechasSeleccionadas.length })}
                 </p>
                 {fechasSeleccionadas.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-cafe-claro bg-white px-3 py-4 text-center text-sm text-cafe">
+                  <p className="rounded-[22px] border border-dashed border-cafe-claro bg-white px-3 py-4 text-center text-sm text-cafe">
                     {t('modal.noDatesYet')}
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {[...fechasSeleccionadas].sort().map((f) => (
-                      <span key={f} className="flex items-center gap-1.5 rounded-full bg-verde-bosque/10 px-3 py-1 text-xs font-semibold text-verde-bosque">
-                        {formatearFechaChip(f)}
-                        <button type="button" onClick={() => toggleFecha(f)} aria-label={t('modal.removeDate')} className="cursor-pointer rounded-full p-0.5 hover:bg-verde-bosque/20">
-                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                        </button>
-                      </span>
-                    ))}
+                    {[...fechasSeleccionadas].sort().map((f) => {
+                      const esOriginal = esEdicion && fechasOriginalesExp.includes(f)
+                      return (
+                        <span key={f} className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${esOriginal ? 'bg-neutral-100 text-neutral-500' : 'bg-verde-bosque/10 text-verde-bosque'}`}>
+                          {formatearFechaChip(f)}
+                          {esEdicion && tipo === 'experiencia' && esOriginal ? (
+                            <span className="text-[10px]" title={t('modal.cannotRemoveDate')}>🔒</span>
+                          ) : (
+                            <button type="button" onClick={() => toggleFecha(f)} aria-label={t('modal.removeDate')} className="cursor-pointer rounded-full p-0.5 hover:bg-verde-bosque/20">
+                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                            </button>
+                          )}
+                        </span>
+                      )
+                    })}
                   </div>
+                )}
+                {esEdicion && tipo === 'experiencia' && fechasOriginalesExp.length > 0 && (
+                  <p className="mt-2 text-xs text-amber-700">{t('modal.cannotRemoveDateHint')}</p>
                 )}
               </div>
             </fieldset>
@@ -622,13 +724,13 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
           {/* Botones */}
           <div className="flex flex-col-reverse gap-3 border-t border-cafe-claro/30 pt-4 sm:flex-row sm:justify-end">
-            <button type="button" onClick={handleCerrar} className="cursor-pointer rounded-lg border border-cafe-claro bg-white px-5 py-2.5 text-sm font-semibold text-cafe-oscuro transition-colors hover:bg-neutral-50">
+            <button type="button" onClick={handleCerrar} className="cursor-pointer rounded-full border border-cafe-claro bg-white px-5 py-2.5 text-sm font-semibold text-verde-bosque transition-colors hover:bg-neutral-50">
               {t('common:actions.cancel')}
             </button>
             <button
               type="submit"
               disabled={enviando}
-              className="cursor-pointer rounded-lg bg-verde-bosque px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque/90 disabled:opacity-50"
+              className="cursor-pointer rounded-full bg-verde-bosque px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque/90 disabled:opacity-50"
             >
               {enviando ? (esEdicion ? t('modal.saving') : t('modal.creating')) : (esEdicion ? t('modal.save') : t('modal.create'))}
             </button>
@@ -637,22 +739,28 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       </div>
 
       {confirmarSalida && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-crema p-6 shadow-2xl">
-            <h3 className="mb-2 text-lg font-bold text-verde-bosque">{t('modal.leaveTitle')}</h3>
+        <div
+          ref={refConfirmar}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirmar-salida-titulo"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+        >
+          <div className="w-full max-w-sm rounded-[22px] bg-crema p-6">
+            <h3 id="confirmar-salida-titulo" className="mb-2 text-lg font-bold text-verde-bosque">{t('modal.leaveTitle')}</h3>
             <p className="mb-5 text-sm text-cafe">{t('modal.leaveBody')}</p>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setConfirmarSalida(false)}
-                className="cursor-pointer rounded-lg border border-cafe-claro bg-white px-4 py-2 text-sm font-semibold text-cafe-oscuro transition-colors hover:bg-neutral-50"
+                className="cursor-pointer rounded-full border border-cafe-claro bg-white px-4 py-2 text-sm font-semibold text-verde-bosque transition-colors hover:bg-neutral-50"
               >
                 {t('modal.stayButton')}
               </button>
               <button
                 type="button"
                 onClick={confirmarCierre}
-                className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+                className="cursor-pointer rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
               >
                 {t('modal.leaveYes')}
               </button>

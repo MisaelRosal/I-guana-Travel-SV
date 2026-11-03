@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createElement } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -32,6 +33,7 @@ vi.mock('react-leaflet', () => ({
 const fixtures = vi.hoisted(() => {
   const base = {
     id: 42,
+    publicacionId: 314,
     titulo: 'Ruta del café en Apan',
     categoria: 'Café',
     descripcion: 'Senderismo entre fincas cafetaleras.',
@@ -79,7 +81,23 @@ vi.mock('../../../services/reservas.js', () => ({
   crearReserva: vi.fn(async () => ({ id: 1 })),
 }))
 
+vi.mock('../../../services/resenas.js', () => ({
+  getResenasPublicacion: vi.fn(async () => ({ promedio: 0, total: 0, resenas: [] })),
+  getResumenAnfitrion: vi.fn(async () => ({ promedio: 0, total: 0 })),
+}))
+
+vi.mock('../../../components/ChatPanel.jsx', () => ({
+  default: (props) => props.abierto
+    ? createElement('div', {
+        'data-testid': 'chat-panel',
+        'data-host-id': props.anfitrionId,
+        'data-publication-id': props.publicacionId ?? '',
+      })
+    : null,
+}))
+
 import { getExperienciaById } from '../../../services/experiencias.js'
+import { getResenasPublicacion } from '../../../services/resenas.js'
 
 function renderDetail() {
   return render(
@@ -159,6 +177,41 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     expect(screen.queryByText(/experiencia:/)).toBeNull()
   })
 
+  it('loads translated review comments and host replies for the active locale', async () => {
+    getResenasPublicacion.mockResolvedValueOnce({
+      promedio: 5,
+      total: 1,
+      resenas: [{
+        id: 9,
+        calificacion: 5,
+        comentario: 'A wonderful stay near the beach.',
+        respuestaAnfitrion: 'Thank you for staying with us.',
+        hueped: 'Alex R.',
+        fecha: '2026-10-01T12:00:00Z',
+      }],
+    })
+
+    await openLoaded()
+
+    expect(getResenasPublicacion).toHaveBeenCalledWith('42', 'en')
+    expect(screen.getByText('A wonderful stay near the beach.')).toBeInTheDocument()
+    expect(screen.getByText('Thank you for staying with us.')).toBeInTheDocument()
+  })
+
+  it('renders translated nested experience details from the localized API response', async () => {
+    await openLoaded({
+      ...fixtures.experiencia,
+      experiencias: [{
+        nombre: 'Coffee tasting',
+        descripcion: 'Try coffee from a local family farm.',
+      }],
+    })
+
+    expect(screen.getByRole('heading', { level: 3, name: 'Experience details' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 4, name: 'Coffee tasting' })).toBeInTheDocument()
+    expect(screen.getByText('Try coffee from a local family farm.')).toBeInTheDocument()
+  })
+
   it('renders the experience branch, description and host card in English', async () => {
     await openLoaded(fixtures.experiencia)
 
@@ -177,9 +230,18 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     expect(screen.getAllByText('Carlos Mendoza')).toHaveLength(2)
     expect(screen.getByText('Verified')).toBeInTheDocument()
     expect(screen.getByText("This host hasn't added a description yet.")).toBeInTheDocument()
-    expect(screen.getByText('View full profile →')).toBeInTheDocument()
+    expect(screen.getByText('View full profile')).toBeInTheDocument()
     // F5 (task 6.4): the host card link emits the English-form alias URL under EN.
     expect(screen.getByRole('link', { name: /Carlos Mendoza/ })).toHaveAttribute('href', '/hosts/7')
+  })
+
+  it('opens chat with the mapped publication id, not a route-derived id', async () => {
+    await openLoaded(fixtures.experiencia)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send a message' }))
+
+    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-host-id', '7')
+    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-publication-id', '314')
   })
 
   it('localizes gallery accessibility names and the lightbox', async () => {
@@ -230,7 +292,10 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     fireEvent.click(screen.getByRole('button', { name: 'Book now' }))
     const calendar = await screen.findByRole('dialog', { name: 'Choose booking date' })
     fireEvent.click(within(calendar).getByRole('button', { name: 'Continue' }))
-    const day = await within(calendar).findByRole('button', { name: '15' })
+    // Pick day 15 of the NEXT month: the calendar opens on today's month and
+    // past days are disabled, so day 15 of the current month breaks after the 15th.
+    fireEvent.click(within(calendar).getByRole('button', { name: 'Next month' }))
+    const day = within(calendar).getByRole('button', { name: '15' })
     fireEvent.click(day)
     fireEvent.click(within(calendar).getByRole('button', { name: 'Continue' }))
 
@@ -286,7 +351,7 @@ describe('ES active: extraction keeps the canonical Spanish detail byte-comparab
     expect(screen.getByRole('heading', { level: 3, name: 'Ubicación' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 3, name: 'Tu anfitrión' })).toBeInTheDocument()
     expect(screen.getByText('Verificado')).toBeInTheDocument()
-    expect(screen.getByText('Ver perfil completo →')).toBeInTheDocument()
+    expect(screen.getByText('Ver perfil completo')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Imagen anterior' }).length).toBeGreaterThan(0)
   })
 
@@ -307,5 +372,32 @@ describe('ES active: extraction keeps the canonical Spanish detail byte-comparab
     expect(within(dialog).getByText('¿Para cuántas personas?')).toBeInTheDocument()
     expect(within(dialog).getByText('Capacidad máxima: 8 personas')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Continuar' })).toBeInTheDocument()
+  })
+})
+
+describe('Anfitrión dueño de la publicación: guard de UX', () => {
+  it('oculta el botón de reservar y muestra el aviso para el anfitrión', async () => {
+    sessionStorage.setItem(
+      'iguana_usuario',
+      JSON.stringify({ id: 23, nombre: 'Kevin', apellido: 'Hernández', email: 'kevin@correo.com', telefono: '' }),
+    )
+
+    await openLoaded({ ...fixtures.hospedaje, anfitrionUsuarioId: 23 })
+
+    expect(screen.getByText('Esta es tu publicación, así que no podés reservarla.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reservar ahora' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Enviar un mensaje' })).toBeInTheDocument()
+  })
+
+  it('mantiene el botón para un usuario que no es el anfitrión', async () => {
+    sessionStorage.setItem(
+      'iguana_usuario',
+      JSON.stringify({ id: 99, nombre: 'Ana', apellido: 'Pérez', email: 'ana@correo.com', telefono: '' }),
+    )
+
+    await openLoaded({ ...fixtures.hospedaje, anfitrionUsuarioId: 23 })
+
+    expect(screen.getByRole('button', { name: 'Reservar ahora' })).toBeInTheDocument()
+    expect(screen.queryByText('Esta es tu publicación, así que no podés reservarla.')).toBeNull()
   })
 })

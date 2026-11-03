@@ -157,3 +157,28 @@ describe('error and response handling', () => {
     await expect(api.delete('/Ruta')).resolves.toBeNull()
   })
 })
+
+// D-3: a request that never settles must reject instead of hanging the caller
+// (whose UI would otherwise spin forever). REQUEST_TIMEOUT_MS = 15000.
+describe('request timeout bounds a hung server', () => {
+  it('aborts and rejects when the server never responds', async () => {
+    vi.useFakeTimers()
+    try {
+      globalThis.fetch = vi.fn(
+        (url, init) =>
+          new Promise((_resolve, reject) => {
+            init.signal.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            )
+          }),
+      )
+
+      const promise = api.get('/Ruta')
+      const assertion = expect(promise).rejects.toThrow()
+      await vi.advanceTimersByTimeAsync(15000)
+      await assertion
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

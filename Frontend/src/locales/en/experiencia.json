@@ -6,7 +6,14 @@
     "stayRooms_other": "{{count}} rooms",
     "stayGuests_one": "{{count}} guest",
     "stayGuests_other": "{{count}} guests",
-    "popular": "Popular"
+    "popular": "Popular",
+    "saveAria": "Save publication",
+    "unsaveAria": "Remove publication from saved"
+  },
+  "favoritos": {
+    "save": "Save",
+    "saved": "Saved",
+    "error": "We couldn't update the saved publication. Please try again."
   },
   "form": {
     "dialogLabel": "Booking form",
@@ -39,6 +46,7 @@
     "stay": "Stay",
     "experience": "Experience",
     "basicLegend": "Basic information",
+    "translationHint": "Write the title and description in Spanish. An English version is generated automatically for public display.",
     "title": "Title",
     "titlePhStay": "E.g.: Beachfront house in El Tunco",
     "titlePhExp": "E.g.: Surf lessons in El Tunco",
@@ -65,13 +73,17 @@
     "amenitiesLegend": "Amenities",
     "imagesLegend": "Images",
     "primaryBadge": "Primary",
+    "removeImage": "Remove image",
     "datesLegend": "Available dates",
     "datesHint": "Pick in the calendar the days this experience can be booked.",
+    "datesHintEdit": "Existing dates cannot be removed while editing. Reschedule dates with bookings from the availability manager.",
     "startTime": "Start time",
     "endTime": "End time",
     "selectedDates": "Selected dates ({{n}})",
     "noDatesYet": "You haven't picked any dates yet",
     "removeDate": "Remove date",
+    "cannotRemoveDate": "This existing date cannot be removed here.",
+    "cannotRemoveDateHint": "Use the availability manager to change an existing date.",
     "saving": "Saving...",
     "creating": "Creating...",
     "save": "Save changes",
@@ -92,6 +104,7 @@
     "notFound": "Experience not found.",
     "descriptionTitle": "Description",
     "noDescription": "No description available.",
+    "experiencesTitle": "Experience details",
     "amenitiesTitle": "Amenities",
     "toastBooked": "Booking created successfully. Go to \"My bookings\" to pay."
   },
@@ -120,7 +133,8 @@
     "address": "Address",
     "status": "Status",
     "bookNow": "Book now",
-    "howToArrive": "How to get there"
+    "howToArrive": "How to get there",
+    "ownListing": "This is your listing, so you can't book it."
   },
   "host": {
     "title": "Your host",
@@ -160,5 +174,16 @@
     "pickArrival": "Pick the check-in date",
     "daySelected": "{{month}} {{day}}, {{year}}",
     "pickDay": "Pick a day"
+  },
+  "reviews": {
+    "title": "Reviews",
+    "empty": "No reviews yet",
+    "emptyHint": "Be the first to tell your experience.",
+    "verified": "Verified booking",
+    "hostReply": "Host's response",
+    "count_one": "{{count}} review",
+    "count_other": "{{count}} reviews",
+    "hostCount_one": "{{count}} review of their listings",
+    "hostCount_other": "{{count}} reviews of their listings"
   }
 }

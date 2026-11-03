@@ -103,6 +103,43 @@ public class EmailNotificationService : IEmailNotificationService
             cancellationToken: cancellationToken);
     }
 
+    public Task<bool> RestablecerPasswordAsync(
+        string destinatario, string nombre, string codigo, CancellationToken cancellationToken = default)
+    {
+        var cuerpo = $"""
+            <p>Hola {Esc(nombre)},</p>
+            <p>Recibimos un pedido para restablecer tu contraseña. Tu código es:</p>
+            <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:20px 0;font-family:monospace;">{codigo}</p>
+            <p>Ingresa este código junto con tu nueva contraseña para completar el cambio.</p>
+            <p>Caduca en {_options.VerificacionExpiraMinutos} minutos.</p>
+            <p>Si no pediste este cambio, ignora este correo: tu contraseña no cambió.</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Restablecer contraseña - I Guana Travel SV",
+            "reset_password",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    public Task<bool> PasswordCambiadaAsync(
+        string destinatario, string nombre, CancellationToken cancellationToken = default)
+    {
+        var cuerpo = $"""
+            <p>Hola {Esc(nombre)},</p>
+            <p>Tu contraseña en I Guana Travel SV fue cambiada correctamente.</p>
+            <p>Si no fuiste vos, contactanos de inmediato y revisá la seguridad de tu cuenta.</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Contraseña cambiada - I Guana Travel SV",
+            "password_cambiada",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
     public Task<bool> BienvenidaAsync(
         string destinatario, string nombre, CancellationToken cancellationToken = default)
     {
@@ -116,6 +153,23 @@ public class EmailNotificationService : IEmailNotificationService
             destinatario,
             "Cuenta activada - I Guana Travel SV",
             "bienvenida",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    public Task<bool> CuentaCreadaAsync(
+        string destinatario, string nombre, CancellationToken cancellationToken = default)
+    {
+        var cuerpo = $"""
+            <p>Hola {Esc(nombre)},</p>
+            <p>Creaste tu cuenta en I Guana Travel SV usando Google. Tu correo ya está verificado, así que no hace falta ningún código.</p>
+            <p>Ya podés reservar hospedajes y experiencias, y si querés, publicar tu propio espacio como anfitrión.</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Cuenta creada - I Guana Travel SV",
+            "cuenta_creada_google",
             cuerpo,
             cancellationToken: cancellationToken);
     }
@@ -211,6 +265,112 @@ public class EmailNotificationService : IEmailNotificationService
             destinatario,
             "Reserva registrada - I Guana Travel SV",
             "reserva_creada",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    public Task<bool> ReservaReprogramadaAsync(
+        string destinatario,
+        string nombreHuesped,
+        string tituloPublicacion,
+        DateOnly fechaAnterior,
+        DateOnly fechaNueva,
+        CancellationToken cancellationToken = default)
+    {
+        var enlace = $"{_options.SitioUrl.TrimEnd('/')}/reservas";
+        var cuerpo = $"""
+            <p>Hola {Esc(nombreHuesped)},</p>
+            <p>El anfitrión de "{Esc(tituloPublicacion)}" cambió la fecha de tu reserva.</p>
+            <p><strong>Fecha anterior:</strong> {fechaAnterior:dd/MM/yyyy}<br>
+               <strong>Nueva fecha:</strong> {fechaNueva:dd/MM/yyyy}</p>
+            <p>Tu reserva ya quedó movida a la nueva fecha. No necesitás hacer nada para conservarla.</p>
+            <p>Si preferís no asistir, podés cancelarla sin restricciones ni penalizaciones desde "Mis reservas".</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>
+              <td style="border-radius:8px;background:#1f4d3a;">
+                <a href="{Esc(enlace)}" style="display:inline-block;padding:12px 26px;color:#ffffff;font-weight:bold;text-decoration:none;">Ver mi reserva</a>
+              </td>
+            </tr></table>
+            <p>Gracias por viajar con nosotros.</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Cambio de fecha en tu reserva - I Guana Travel SV",
+            "reserva_reprogramada",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    public Task<bool> ResenaDisponibleAsync(
+        string destinatario, string nombre, string tituloPublicacion, CancellationToken cancellationToken = default)
+    {
+        var enlace = $"{_options.SitioUrl.TrimEnd('/')}/reservas";
+        var cuerpo = $"""
+            <p>Hola {Esc(nombre)},</p>
+            <p>¡Tu estancia en "{Esc(tituloPublicacion)}" ya comenzó y ahora podés contar tu experiencia!</p>
+            <p>Calificá con estrellas y, si querés, dejá un comentario. Tu reseña le ayuda a otros viajeros y al anfitrión.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>
+              <td style="border-radius:8px;background:#1f4d3a;">
+                <a href="{Esc(enlace)}" style="display:inline-block;padding:12px 26px;color:#ffffff;font-weight:bold;text-decoration:none;">Dejar mi reseña</a>
+              </td>
+            </tr></table>
+            <p>Si ya volviste a casa, contanos cómo te fue. ¡Gracias por viajar con nosotros!</p>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Ya podés calificar tu experiencia - I Guana Travel SV",
+            "resena_disponible",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    public Task<bool> ResenaRecibidaAsync(
+        string destinatario, string nombreAnfitrion, string tituloPublicacion, short calificacion, CancellationToken cancellationToken = default)
+    {
+        var estrellas = new string('★', Math.Clamp((int)calificacion, 0, 5)) + new string('☆', 5 - Math.Clamp((int)calificacion, 0, 5));
+        var enlace = $"{_options.SitioUrl.TrimEnd('/')}/panel";
+        var cuerpo = $"""
+            <p>Hola {Esc(nombreAnfitrion)},</p>
+            <p>Tu publicación "{Esc(tituloPublicacion)}" recibió una nueva reseña:</p>
+            <p style="font-size:22px;margin:14px 0;color:#f5a623;letter-spacing:3px;">{estrellas} <span style="font-size:15px;color:#3a3a3a;font-weight:700;">{calificacion}/5</span></p>
+            <p>Entrá a tu panel para leer el comentario y responderle al huésped.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>
+              <td style="border-radius:8px;background:#1f4d3a;">
+                <a href="{Esc(enlace)}" style="display:inline-block;padding:12px 26px;color:#ffffff;font-weight:bold;text-decoration:none;">Ver reseñas</a>
+              </td>
+            </tr></table>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Nueva reseña recibida - I Guana Travel SV",
+            "resena_recibida",
+            cuerpo,
+            cancellationToken: cancellationToken);
+    }
+
+    public Task<bool> CalificacionRecibidaAsync(
+        string destinatario, string nombreHuesped, string tituloPublicacion, short calificacion, CancellationToken cancellationToken = default)
+    {
+        var estrellas = new string('★', Math.Clamp((int)calificacion, 0, 5)) + new string('☆', 5 - Math.Clamp((int)calificacion, 0, 5));
+        var enlace = $"{_options.SitioUrl.TrimEnd('/')}/mi-cuenta";
+        var cuerpo = $"""
+            <p>Hola {Esc(nombreHuesped)},</p>
+            <p>El anfitrión de tu estancia en "{Esc(tituloPublicacion)}" te ha calificado:</p>
+            <p style="font-size:22px;margin:14px 0;color:#f5a623;letter-spacing:3px;">{estrellas} <span style="font-size:15px;color:#3a3a3a;font-weight:700;">{calificacion}/5</span></p>
+            <p>Podés ver tu calificación en tu cuenta. ¡Gracias por ser un gran huésped!</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr>
+              <td style="border-radius:8px;background:#1f4d3a;">
+                <a href="{Esc(enlace)}" style="display:inline-block;padding:12px 26px;color:#ffffff;font-weight:bold;text-decoration:none;">Ver mi cuenta</a>
+              </td>
+            </tr></table>
+            """;
+
+        return NotificarAsync(
+            destinatario,
+            "Nueva calificación recibida - I Guana Travel SV",
+            "calificacion_recibida",
             cuerpo,
             cancellationToken: cancellationToken);
     }

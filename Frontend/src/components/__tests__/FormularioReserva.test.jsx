@@ -131,14 +131,14 @@ describe('EN active: booking form chrome comes from the experiencia namespace', 
     crearReserva.mockRejectedValueOnce({ mensaje: 'No autorizado' })
     renderForm()
     fireEvent.click(screen.getByRole('button', { name: 'Confirm booking' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('No autorizado')
+    expect(await screen.findByRole('alert')).toHaveTextContent('No autorizado')
 
     cleanup()
     // No server message at all: the frontend-owned fallback resolves from resources.
     crearReserva.mockRejectedValueOnce({})
     renderForm()
     fireEvent.click(screen.getByRole('button', { name: 'Confirm booking' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Error creating the booking.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Error creating the booking.')
   })
 })
 

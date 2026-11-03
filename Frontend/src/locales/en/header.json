@@ -15,6 +15,7 @@
   },
   "user": {
     "profilePhotoAlt": "Profile photo",
+    "myAccount": "My account",
     "myProfile": "My profile",
     "signOut": "Sign out"
   },

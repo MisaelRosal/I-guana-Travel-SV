@@ -39,6 +39,21 @@ public partial class Reserva
 
     public string? IdTransaccion { get; set; }
 
+    // Set once the "you can now review" email has been sent for this stay, so
+    // the availability job never notifies the same reservation twice.
+    public DateTime? ResenasNotificadasEn { get; set; }
+
+    // Set when the host reprogrammed the experience date and this reservation
+    // was moved with it. It lifts the normal cancel windows (paid/grace/date)
+    // so the guest can always decline the new date without restriction.
+    public bool CancelacionLibre { get; set; }
+
+    // Audit of the last host-driven reschedule: the date the reservation was
+    // moved away from and when the move happened.
+    public DateOnly? ReprogramadaDesde { get; set; }
+
+    public DateTime? ReprogramadaEn { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
@@ -46,6 +61,8 @@ public partial class Reserva
     public virtual ICollection<Notificacione> Notificaciones { get; set; } = new List<Notificacione>();
 
     public virtual Publicacione? Publicacion { get; set; }
+
+    public virtual Resena? Resena { get; set; }
 
     public virtual Usuario? Usuario { get; set; }
 

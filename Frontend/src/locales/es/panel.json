@@ -7,6 +7,11 @@
     "emptyTitle": "Aún no hay publicaciones",
     "emptyBody": "Usa el botón «Crear publicación» para agregar la primera."
   },
+  "verification": {
+    "pendingTitle": "Verificación pendiente",
+    "pendingBody": "Un administrador debe verificar tu cuenta de anfitrión antes de que puedas crear publicaciones.",
+    "pendingTooltip": "Tu cuenta de anfitrión todavía no fue verificada."
+  },
   "table": {
     "listing": "Publicación",
     "category": "Categoría",
@@ -26,5 +31,125 @@
     "created": "Publicación creada exitosamente.",
     "updated": "Publicación actualizada exitosamente.",
     "deleted": "«{{title}}» eliminada exitosamente."
+  },
+  "tabs": {
+    "publications": "Publicaciones"
+  },
+  "availability": {
+    "tab": "Disponibilidad",
+    "emptyTitle": "Sin experiencias con fechas",
+    "emptyBody": "Crea una experiencia y elige sus fechas para poder gestionar cupos y bloqueos.",
+    "selectLabel": "Experiencia",
+    "hint": "Bloquea una fecha desmarcando «Disponible» o ajusta los cupos, y guarda los cambios.",
+    "table": {
+      "date": "Fecha",
+      "time": "Horario",
+      "slots": "Cupos",
+      "available": "Estado",
+      "actions": "Acciones"
+    },
+    "available": "Disponible",
+    "blocked": "Bloqueada",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "saved": "Disponibilidad actualizada correctamente.",
+    "error": "No se pudo actualizar la disponibilidad.",
+    "newDate": "Nueva fecha",
+    "reprogram": "Reprogramar fecha",
+    "reprogramming": "Reprogramando…",
+    "reprogramConfirm": "¿Mover esta fecha al {{date}}? Las reservas de ese día se moverán también y los huéspedes recibirán un correo. Podrán cancelar sin restricciones.",
+    "reprogrammed": "Fecha reprogramada. Reservas movidas: {{count}}.",
+    "reprogramError": "No se pudo reprogramar la fecha."
+  },
+  "agenda": {
+    "tab": "Agenda",
+    "filter": {
+      "label": "Publicación",
+      "all": "Todas las publicaciones"
+    },
+    "adminNote": "Ves las reservas de todas las publicaciones.",
+    "loading": "Cargando agenda…",
+    "error": "No se pudo cargar la agenda.",
+    "legend": {
+      "occupied": "Con reserva",
+      "today": "Hoy"
+    },
+    "dayOccupied_one": "{{count}} reserva",
+    "dayOccupied_other": "{{count}} reservas",
+    "guests_one": "{{count}} huésped",
+    "guests_other": "{{count}} huéspedes",
+    "emptyTitle": "Aún no hay reservas",
+    "emptyBody": "Las reservas de tus publicaciones aparecerán aquí.",
+    "upcomingTitle": "Próximas reservas",
+    "upcomingEmpty": "No tienes reservas próximas en este filtro.",
+    "pastTitle": "Reservas anteriores",
+    "confirm": "Confirmar",
+    "confirmError": "No se pudo confirmar la reserva. Probá de nuevo.",
+    "estado": {
+      "pendiente": "Pendiente",
+      "confirmada": "Confirmada",
+      "completada": "Completada",
+      "cancelada": "Cancelada"
+    }
+  },
+  "reviews": {
+    "tab": "Reseñas ({{count}})",
+    "count_one": "{{count}} reseña",
+    "count_other": "{{count}} reseñas",
+    "emptyTitle": "Aún no hay reseñas",
+    "emptyBody": "Las reseñas de tus huéspedes aparecerán aquí.",
+    "yourReply": "Tu respuesta",
+    "replyPlaceholder": "Escribe tu respuesta a este huésped… (déjalo vacío para eliminar la respuesta)",
+    "publishing": "Guardando…",
+    "publish": "Publicar respuesta",
+    "respond": "Responder",
+    "editReply": "Editar respuesta",
+    "updated": "Respuesta publicada correctamente.",
+    "error": "No se pudo publicar la respuesta."
+  },
+  "dashboard": {
+    "tab": "Dashboard",
+    "period": {
+      "label": "Período",
+      "dia": "Día",
+      "semana": "Semana",
+      "mes": "Mes"
+    },
+    "publication": {
+      "label": "Publicación",
+      "all": "Todas las publicaciones"
+    },
+    "adminNote": "Ves las ganancias de todas las publicaciones.",
+    "shortcuts": {
+      "title": "Accesos directos",
+      "create": "Crear publicación",
+      "publications": "Ver mis publicaciones",
+      "reviews": "Gestionar reseñas"
+    },
+    "loading": "Calculando ganancias…",
+    "error": "No se pudieron cargar las ganancias.",
+    "card": {
+      "total": "Total del período",
+      "reservas": "Reservas",
+      "promedio": "Promedio por reserva",
+      "general": "Total histórico"
+    },
+    "chart": {
+      "title": "Evolución de las ganancias",
+      "empty": "No hay ganancias en este período.",
+      "tooltip": "{{count}} reservas"
+    },
+    "table": {
+      "title": "Ganancias por publicación",
+      "listing": "Publicación",
+      "type": "Tipo",
+      "reservas": "Reservas",
+      "total": "Ganancias",
+      "empty": "Sin ganancias en este período."
+    },
+    "type": {
+      "hospedaje": "Hospedaje",
+      "experiencia": "Experiencia"
+    }
   }
 }

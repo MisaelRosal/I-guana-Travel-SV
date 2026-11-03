@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
+import { formatPrice } from '../../i18n/format.js'
 import { getMiPerfil, actualizarMiPerfilAnfitrion, getMunicipios, obtenerSesion } from '../../services/anfitriones.js'
+import { getResumenAnfitrion } from '../../services/resenas.js'
+import { getGuardadas } from '../../services/favoritos.js'
 import { api } from '../../services/api.js'
+import { Estrellas } from '../../components/Estrellas.jsx'
+import ExperienceCard from '../../components/ExperienceCard.jsx'
 import Toast from '../../components/Toast.jsx'
 
-const inputCls = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
+const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
 const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 function Avatar({ anfitrion }) {
@@ -14,7 +20,7 @@ function Avatar({ anfitrion }) {
   // `anfitrion.*` fields are DB data and always render verbatim (passthrough).
   const { t } = useTranslation('perfil')
   return (
-    <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-4xl font-bold text-cafe shadow-md">
+    <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-crema text-4xl font-bold text-cafe">
       {anfitrion.fotoPerfil ? (
         <img src={anfitrion.fotoPerfil} alt={t('avatarAlt')} className="h-full w-full object-cover" />
       ) : (
@@ -25,7 +31,7 @@ function Avatar({ anfitrion }) {
 }
 
 export default function MiPerfilPage() {
-  const { t } = useTranslation('perfil')
+  const { t, i18n } = useTranslation('perfil')
   const navigate = useNavigate()
   const usuario = obtenerSesion()
   const [anfitrion, setAnfitrion] = useState(null)
@@ -41,6 +47,19 @@ export default function MiPerfilPage() {
   const [editando, setEditando] = useState(false)
   const [toast, setToast] = useState(null)
   const [error, setError] = useState('')
+  const [campoError, setCampoError] = useState('')
+  const [resumen, setResumen] = useState(null)
+  const [guardadas, setGuardadas] = useState([])
+  const [cargandoGuardadas, setCargandoGuardadas] = useState(false)
+  const [errorGuardadas, setErrorGuardadas] = useState(null)
+  const [guardadasAbierto, setGuardadasAbierto] = useState(false)
+
+  // Asocia el mensaje con el campo que lo causó y lleva el foco hasta él.
+  const marcarError = (campo, mensaje) => {
+    setError(mensaje)
+    setCampoError(campo)
+    document.getElementById(campo)?.focus()
+  }
 
   // Fills the form fields from the current profile. Used both on load and
   // when cancelling an edit, so the inputs always mirror the saved state.
@@ -77,6 +96,34 @@ export default function MiPerfilPage() {
     return () => { activo = false }
   }, [usuario?.rol, usuario?.id, navigate])
 
+  // Calificación general del anfitrión (promedio de todas sus reseñas) y lista de guardados.
+  useEffect(() => {
+    let activo = true
+    if (!anfitrion?.id) return
+    getResumenAnfitrion(anfitrion.id)
+      .then((r) => { if (activo) setResumen(r) })
+      .catch(() => { if (activo) setResumen({ promedio: 0, total: 0 }) })
+    return () => { activo = false }
+  }, [anfitrion?.id])
+
+  // Lista de guardados / wishlist del usuario autenticado.
+  useEffect(() => {
+    if (!usuario) {
+      setGuardadas([])
+      setCargandoGuardadas(false)
+      setErrorGuardadas(null)
+      return
+    }
+    let activo = true
+    setCargandoGuardadas(true)
+    setErrorGuardadas(null)
+    const contentLocale = getContentLocale(i18n.language ?? 'es')
+    getGuardadas(contentLocale)
+      .then((g) => { if (activo) { setGuardadas(g); setCargandoGuardadas(false) } })
+      .catch((e) => { if (activo) { setGuardadas([]); setCargandoGuardadas(false); setErrorGuardadas(e?.mensaje || e?.message || 'Error al cargar guardados') } })
+    return () => { activo = false }
+  }, [usuario?.email])
+
   // Same departamento→municipio cascade as SerAnfitrionPage: filter the full
   // municipio list client-side by departamentoId.
   useEffect(() => {
@@ -90,25 +137,26 @@ export default function MiPerfilPage() {
     e.preventDefault()
     if (!anfitrion) return
     setError('')
+    setCampoError('')
 
     if (!correo.trim()) {
-      setError(t('errors.emailRequired'))
+      marcarError('mp-correo', t('errors.emailRequired'))
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim())) {
-      setError(t('errors.emailInvalid'))
+      marcarError('mp-correo', t('errors.emailInvalid'))
       return
     }
     if (correo.trim().length > 150) {
-      setError(t('errors.emailLength'))
+      marcarError('mp-correo', t('errors.emailLength'))
       return
     }
     if (telefono.trim().length > 20) {
-      setError(t('errors.phoneLength'))
+      marcarError('mp-telefono', t('errors.phoneLength'))
       return
     }
     if (!municipioId) {
-      setError(t('errors.municipioRequired'))
+      marcarError('mp-municipio', t('errors.municipioRequired'))
       return
     }
 
@@ -141,40 +189,55 @@ export default function MiPerfilPage() {
 
   if (cargando) {
     return (
-      <main className="flex justify-center px-4 py-20">
+      <div className="flex justify-center px-4 py-20">
         <p className="text-cafe">{t('loading')}</p>
-      </main>
+      </div>
     )
   }
 
   if (!anfitrion) {
     return (
-      <main className="flex justify-center px-4 py-20">
+      <div className="flex justify-center px-4 py-20">
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-verde-bosque">{t('title')}</h1>
           <p className="mt-3 text-cafe">{t('missing.body')}</p>
-          <Link to={localePath('becomeHost')} className="cursor-pointer mt-6 inline-block rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors">
+          <Link to={localePath('becomeHost')} className="cursor-pointer mt-6 inline-block rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors">
             {t('missing.cta')}
           </Link>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10">
-      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-azul-cielo">
+    <div className="mx-auto max-w-4xl px-4 py-10">
+      <Link to={localePath('catalog')} className="mb-4 block font-medium text-azul hover:text-verde-hoja">
         {t('back')}
       </Link>
 
-      <div className="rounded-xl border border-cafe-claro/60 bg-white p-5 shadow-md sm:p-8">
+      <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
           <Avatar anfitrion={anfitrion} />
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-verde-bosque">{anfitrion.nombre}</h1>
-            <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber-100 text-amber-700'}`}>
+            <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${anfitrion.verificado ? 'bg-verde-hoja/15 text-verde-bosque' : 'bg-amber/10 text-verde-bosque'}`}>
               {anfitrion.verificado ? t('badge.verified') : t('badge.pending')}
             </span>
+            {resumen && (
+              <div className="mt-2 flex items-center gap-1">
+                {resumen.total > 0 ? (
+                  <>
+                    <Estrellas valor={resumen.promedio} className="h-4 w-4" />
+                    <span className="text-sm font-bold text-neutral-800">{Number(resumen.promedio).toFixed(1)}</span>
+                    <span className="text-xs text-cafe">
+                      · {t('reviews.hostCount', { count: resumen.total })}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs italic text-cafe">{t('reviews.empty')}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -186,26 +249,26 @@ export default function MiPerfilPage() {
           <div className="mt-6 border-t border-neutral-100 pt-6">
             <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.email')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.email')}</dt>
                 <dd className="mt-0.5 text-neutral-800 break-all">{anfitrion.email}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.phone')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.phone')}</dt>
                 <dd className="mt-0.5 text-neutral-800">{anfitrion.telefono || '—'}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.publications')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.publications')}</dt>
                 <dd className="mt-0.5 text-neutral-800">{anfitrion.publicacionesCount ?? 0}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.location')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.location')}</dt>
                 <dd className="mt-0.5 text-neutral-800">
                   {anfitrion.municipio?.nombre ?? '—'}
                   {anfitrion.municipio?.departamento ? `, ${anfitrion.municipio.departamento.nombre}` : ''}
                 </dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-cafe">{t('view.description')}</dt>
+                <dt className="text-xs font-semibold text-cafe">{t('view.description')}</dt>
                 <dd className="mt-0.5 whitespace-pre-line text-neutral-800">{anfitrion.descripcion || '—'}</dd>
               </div>
             </dl>
@@ -213,7 +276,7 @@ export default function MiPerfilPage() {
               <button
                 type="button"
                 onClick={() => { cargarCampos(anfitrion); setError(''); setEditando(true) }}
-                className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
+                className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
               >
                 {t('edit')}
               </button>
@@ -237,6 +300,8 @@ export default function MiPerfilPage() {
                 onChange={(e) => setCorreo(e.target.value)}
                 placeholder={t('form.emailPlaceholder')}
                 required
+                aria-invalid={campoError === 'mp-correo' ? true : undefined}
+                aria-describedby={campoError === 'mp-correo' ? 'mp-form-error' : undefined}
               />
             </div>
             <div>
@@ -249,6 +314,8 @@ export default function MiPerfilPage() {
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
                 placeholder={t('form.phonePlaceholder')}
+                aria-invalid={campoError === 'mp-telefono' ? true : undefined}
+                aria-describedby={campoError === 'mp-telefono' ? 'mp-form-error' : undefined}
               />
             </div>
             <div>
@@ -279,6 +346,8 @@ export default function MiPerfilPage() {
                 onChange={(e) => setMunicipioId(e.target.value)}
                 required
                 disabled={!departamentoId}
+                aria-invalid={campoError === 'mp-municipio' ? true : undefined}
+                aria-describedby={campoError === 'mp-municipio' ? 'mp-form-error' : undefined}
               >
                 <option value="">{t('form.muniOption')}</option>
                 {municipios.map((m) => (
@@ -292,7 +361,7 @@ export default function MiPerfilPage() {
               </label>
               <textarea
                 id="mp-descripcion"
-                className={inputCls + ' h-28 resize-none'}
+                className={inputCls.replace('rounded-full', 'rounded-xl') + ' h-28 resize-none'}
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 placeholder={t('form.descPlaceholder')}
@@ -301,7 +370,7 @@ export default function MiPerfilPage() {
             </div>
           </div>
           {error && (
-            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+            <p id="mp-form-error" role="alert" className="mt-2 rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
               {error}
             </p>
           )}
@@ -309,14 +378,14 @@ export default function MiPerfilPage() {
             <button
               type="button"
               onClick={() => { cargarCampos(anfitrion); setError(''); setEditando(false) }}
-              className="cursor-pointer rounded-lg border border-neutral-300 bg-white px-5 py-2.5 font-semibold text-cafe hover:bg-neutral-50 transition-colors"
+              className="cursor-pointer rounded-full border border-neutral-300 bg-white px-5 py-2.5 font-semibold text-cafe hover:bg-neutral-50 transition-colors"
             >
               {t('form.cancel')}
             </button>
             <button
               type="submit"
               disabled={guardando}
-              className="cursor-pointer rounded-lg bg-terracota px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+              className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
             >
               {guardando ? t('form.saving') : t('form.save')}
             </button>
@@ -325,11 +394,64 @@ export default function MiPerfilPage() {
         )}
       </div>
 
-      <Toast
-        mensaje={toast?.mensaje || ''}
-        tipo={toast?.tipo || 'exito'}
-        onCerrar={() => setToast(null)}
-      />
-    </main>
+        {/* Sección de guardados / wishlist (desplegable) */}
+        <section className="mt-10">
+          <button
+            type="button"
+            onClick={() => setGuardadasAbierto((prev) => !prev)}
+            aria-expanded={guardadasAbierto}
+            className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-full border-2 border-verde-bosque bg-verde-bosque/5 px-4 py-3 text-sm font-bold text-verde-bosque transition-colors hover:bg-verde-bosque/10 focus:outline-none focus:ring-2 focus:ring-verde-hoja/40"
+          >
+            <span className="flex items-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
+              </svg>
+              {guardadasAbierto ? t('host.hideSaved') : `${t('host.showSaved')} (${guardadas.length})`}
+            </span>
+            <svg
+              className={`h-4 w-4 shrink-0 transition-transform ${guardadasAbierto ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+
+          {guardadasAbierto && (
+            <div className="mt-4">
+              {cargandoGuardadas && (
+                <p className="text-cafe">{t('loading')}</p>
+              )}
+              {!cargandoGuardadas && errorGuardadas && (
+                <p className="text-red-600">{errorGuardadas}</p>
+              )}
+              {!cargandoGuardadas && !errorGuardadas && guardadas.length === 0 && (
+                <p className="text-cafe">{t('host.noSavedYet')}</p>
+              )}
+              {!cargandoGuardadas && !errorGuardadas && guardadas.length > 0 && (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {guardadas.map((exp) => (
+                    <ExperienceCard
+                      key={exp.id}
+                      experiencia={exp}
+                      proximaFecha={exp.proximaFecha}
+                      resena={exp.resumenResenas}
+                      guardado={true}
+                      onToggleGuardado={undefined}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        <Toast
+          mensaje={toast?.mensaje || ''}
+          tipo={toast?.tipo || 'exito'}
+          onCerrar={() => setToast(null)}
+        />
+      </div>
   )
 }

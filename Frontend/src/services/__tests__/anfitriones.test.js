@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getMiPerfil, actualizarMiPerfilAnfitrion } from '../anfitriones.js'
+import { getMiPerfil, actualizarMiPerfilAnfitrion, getAnfitrionPorId } from '../anfitriones.js'
 
 // Contract of the W4 self-service host-profile helpers. Same stubbing
 // technique as api.test.js: fetch is replaced per test; CSRF/credentials are
@@ -43,6 +43,16 @@ describe('getMiPerfil', () => {
     expect(init.method).toBe('GET')
     expect(init.credentials).toBe('include')
     expect(init.headers['X-CSRF-Token']).toBeUndefined()
+  })
+})
+
+describe('getAnfitrionPorId', () => {
+  it('requests the public profile in the active content locale', async () => {
+    await getAnfitrionPorId(7, 'en-US')
+
+    const [url, init] = lastFetchCall()
+    expect(url).toBe('/api/Anfitrione/7?contentLocale=en')
+    expect(init.method).toBe('GET')
   })
 })
 

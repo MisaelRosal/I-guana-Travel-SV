@@ -1,0 +1,39 @@
+{
+  "title": "Mi cuenta",
+  "loading": "Cargando tu cuenta…",
+  "back": "← Volver al inicio",
+  "avatarAlt": "Iniciales del usuario",
+  "roles": {
+    "usuario": "Huésped",
+    "anfitrion": "Anfitrión",
+    "admin": "Administrador"
+  },
+  "verification": {
+    "verified": "Correo verificado",
+    "pending": "Correo pendiente de verificación"
+  },
+  "view": {
+    "email": "Correo electrónico",
+    "phone": "Teléfono",
+    "role": "Tipo de cuenta",
+    "memberSince": "Miembro desde",
+    "notAvailable": "—"
+  },
+  "rating": {
+    "title": "Calificación",
+    "empty": "Sin calificaciones todavía",
+    "hint": "Cuando tu cuenta reciba calificaciones, aparecerán aquí.",
+    "loading": "Cargando calificación…",
+    "count_one": "{{count}} calificación",
+    "count_other": "{{count}} calificaciones"
+  },
+  "saved": {
+    "title": "Publicaciones guardadas",
+    "empty": "Aún no guardaste publicaciones.",
+    "cta": "Explorar experiencias",
+    "loading": "Cargando tus publicaciones guardadas…",
+    "loadError": "No pudimos cargar tus publicaciones guardadas. Intentá de nuevo.",
+    "count_one": "1 publicación guardada",
+    "count_other": "{{count}} publicaciones guardadas"
+  }
+}

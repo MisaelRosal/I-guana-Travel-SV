@@ -63,7 +63,7 @@ export default function Footer() {
   explorar.push({ key: 'becomeHost', to: localePath('becomeHost'), label: t('becomeHost') })
 
   return (
-    <footer className="bg-cafe-oscuro text-crema/75 mt-16">
+    <footer className="bg-verde-bosque text-crema/75 mt-16">
       <div className="mx-auto max-w-7xl px-4 py-12 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <div>
           <Logo />

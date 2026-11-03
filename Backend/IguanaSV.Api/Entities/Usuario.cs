@@ -29,4 +29,6 @@ public partial class Usuario
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public virtual ICollection<Resena> Resenas { get; set; } = new List<Resena>();
 }

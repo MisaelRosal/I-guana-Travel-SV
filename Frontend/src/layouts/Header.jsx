@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
+import MessageLauncher from '../components/MessageLauncher.jsx'
 import { localePath } from '../i18n/routes.jsx'
 import { LOCALE_STORAGE_KEY } from '../i18n/config.js'
 import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
+import { useChatNoLeidos } from '../hooks/useChatNoLeidos.js'
 
 // NOTE (W3a): the role/name read from the session here drives VISIBILITY only
 // (which links/buttons to show). It is a UI convenience backed by the cache that
@@ -26,8 +28,9 @@ function iniciales(nombre, apellido) {
 function ToggleIdioma() {
   const { t, i18n } = useTranslation('header')
   const activo = i18n.language === 'en' ? 'en' : 'es'
+  // `after:*` expands the tap target to 44x44 without growing the visible pill.
   const clasePill = (lng) =>
-    `cursor-pointer text-sm px-3 py-2 rounded-md transition-colors ${
+    `relative cursor-pointer text-sm px-3 py-2 rounded-full transition-colors after:absolute after:-inset-y-1 after:-inset-x-0.5 after:content-[''] ${
       lng === activo
         ? 'bg-white/15 text-white'
         : 'text-crema/85 hover:text-white hover:bg-white/10'
@@ -63,6 +66,8 @@ export default function Header() {
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
   const navigate = useNavigate()
+  // Shared unread-chat badge for every authenticated role (15 s poll).
+  const noLeidos = useChatNoLeidos(!!usuario)
 
   useEffect(() => {
     // JD-INFO-2: `iguana_locale` is owned by the i18n runtime (config.js has
@@ -73,7 +78,6 @@ export default function Header() {
     const actualizar = (event) => {
       if (event && event.key === LOCALE_STORAGE_KEY) return
       setUsuario(leerSesionCache())
-      setFotoPerfil('')
       setMenuAbierto(false)
     }
     window.addEventListener('auth-change', actualizar)
@@ -133,7 +137,7 @@ export default function Header() {
       setFotoPerfil('')
     }
     return () => { activo = false }
-  }, [usuario?.rol, usuario?.id, usuario?.fotoPerfil])
+  }, [usuario])
 
   const rol = usuario?.rol ?? ''
   // F5 (task 6.3): nav targets resolve through the locale route table, so EN
@@ -141,7 +145,9 @@ export default function Header() {
   const links = [
     { to: localePath('catalog'), label: t('nav.home') },
   ]
-  links.push({ to: localePath('reservations'), label: t('nav.reservations') })
+  if (!esAdmin(rol)) {
+    links.push({ to: localePath('reservations'), label: t('nav.reservations') })
+  }
   if (rol === 'anfitrion') {
     links.push({ to: localePath('panel'), label: t('nav.operatorPanel') })
   }
@@ -159,14 +165,15 @@ export default function Header() {
   }
 
   const claseNavLink = ({ isActive }) =>
-    `text-sm px-3 py-2 rounded-md transition-colors ${
+    `text-sm px-3 py-2 rounded-full transition-colors ${
       isActive
         ? 'bg-white/15 text-white'
         : 'text-crema/85 hover:text-white hover:bg-white/10'
     }`
 
   return (
-    <header className="bg-verde-bosque text-white sticky top-0 z-20 shadow-md">
+    <>
+    <header className="bg-verde-bosque text-white sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4" data-menu-movil>
         <Link to={localePath('catalog')} aria-label={t('brand.ariaLabel')}>
           <Logo />
@@ -178,8 +185,14 @@ export default function Header() {
               key={link.to}
               to={link.to}
               className={claseNavLink}
+              aria-label={link.badge ? `${link.label} — ${t('chat:badge.aria', { count: link.badge })}` : undefined}
             >
               {link.label}
+              {link.badge > 0 && (
+                <span aria-hidden="true" className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-iguana-hondo px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                  {link.badge}
+                </span>
+              )}
             </NavLink>
           ))}
           <ToggleIdioma />
@@ -190,14 +203,14 @@ export default function Header() {
                 onClick={() => setMenuAbierto((v) => !v)}
                 aria-expanded={menuAbierto}
                 aria-haspopup="menu"
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-white/10"
+                className="flex cursor-pointer items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-white/10"
               >
                 <span
-                  className="h-9 w-9 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white shadow-sm"
+                  className="h-9 w-9 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white"
                   title={usuario.nombre + ' ' + (usuario.apellido || '')}
                 >
                   {esAdmin(rol) ? (
-                    <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
+                    <span className="bg-iguana-hondo text-white flex h-full w-full items-center justify-center">AD</span>
                   ) : rol === 'anfitrion' && fotoPerfil ? (
                     <img src={fotoPerfil} alt={t('user.profilePhotoAlt')} className="h-full w-full object-cover" />
                   ) : (
@@ -210,7 +223,21 @@ export default function Header() {
                 </svg>
               </button>
               {menuAbierto && (
-                <div role="menu" className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-lg border border-cafe-claro/40 bg-white shadow-lg">
+                <div role="menu" className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
+                  {rol !== 'anfitrion' && (
+                    <Link
+                      to={localePath('miCuenta')}
+                      role="menuitem"
+                      onClick={() => setMenuAbierto(false)}
+                      className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-cafe transition-colors hover:bg-crema hover:text-verde-bosque"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                        <circle cx="12" cy="8" r="4" />
+                        <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
+                      </svg>
+                      {t('user.myAccount')}
+                    </Link>
+                  )}
                   {rol === 'anfitrion' && (
                     <Link
                       to={localePath('miPerfil')}
@@ -242,7 +269,7 @@ export default function Header() {
           ) : (
             <Link
               to={localePath('login')}
-              className="cursor-pointer text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold hover:bg-[#00B4D8] hover:text-verde-bosque transition-colors"
+              className="cursor-pointer text-sm px-4 py-2 rounded-full bg-iguana-hondo text-white font-semibold hover:bg-verde-bosque transition-colors"
             >
               {t('session.signIn')}
             </Link>
@@ -255,7 +282,7 @@ export default function Header() {
           aria-expanded={menuMovilAbierto}
           aria-controls="menu-movil"
           aria-label={menuMovilAbierto ? t('mobileMenu.close') : t('mobileMenu.open')}
-          className="md:hidden flex cursor-pointer items-center justify-center rounded-lg p-2 text-white/90 transition-colors hover:bg-white/10"
+          className="md:hidden flex cursor-pointer items-center justify-center rounded-full p-2 text-white/90 transition-colors hover:bg-white/10"
         >
           {menuMovilAbierto ? (
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -273,7 +300,7 @@ export default function Header() {
         <nav
           id="menu-movil"
           aria-label={t('mobileMenu.label')}
-          className="md:hidden border-t border-white/10 bg-verde-bosque px-4 pb-4 pt-3 shadow-lg"
+          className="md:hidden border-t border-white/10 bg-verde-bosque px-4 pb-4 pt-3"
         >
           <div className="flex flex-col gap-1">
             {links.map((link) => (
@@ -298,11 +325,11 @@ export default function Header() {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-3 px-3 py-2">
                   <span
-                    className="h-10 w-10 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white shadow-sm"
+                    className="h-10 w-10 flex items-center justify-center overflow-hidden rounded-full border-2 border-white/70 text-sm font-bold text-verde-bosque bg-white"
                     title={usuario.nombre + ' ' + (usuario.apellido || '')}
                   >
                     {esAdmin(rol) ? (
-                      <span className="bg-terracota text-white flex h-full w-full items-center justify-center">AD</span>
+                      <span className="bg-iguana-hondo text-white flex h-full w-full items-center justify-center">AD</span>
                     ) : rol === 'anfitrion' && fotoPerfil ? (
                       <img src={fotoPerfil} alt={t('user.profilePhotoAlt')} className="h-full w-full object-cover" />
                     ) : (
@@ -317,15 +344,24 @@ export default function Header() {
                   <Link
                     to={localePath('miPerfil')}
                     onClick={() => setMenuMovilAbierto(false)}
-                    className="text-sm px-3 py-2 rounded-md text-crema/85 hover:text-white hover:bg-white/10"
+                    className="text-sm px-3 py-2 rounded-full text-crema/85 hover:text-white hover:bg-white/10"
                   >
                     {t('user.myProfile')}
+                  </Link>
+                )}
+                {rol !== 'anfitrion' && (
+                  <Link
+                    to={localePath('miCuenta')}
+                    onClick={() => setMenuMovilAbierto(false)}
+                    className="text-sm px-3 py-2 rounded-full text-crema/85 hover:text-white hover:bg-white/10"
+                  >
+                    {t('user.myAccount')}
                   </Link>
                 )}
                 <button
                   type="button"
                   onClick={cerrarSesion}
-                  className="cursor-pointer text-sm px-3 py-2 rounded-md text-left text-crema/85 hover:text-white hover:bg-white/10"
+                  className="cursor-pointer text-sm px-3 py-2 rounded-full text-left text-crema/85 hover:text-white hover:bg-white/10"
                 >
                   {t('user.signOut')}
                 </button>
@@ -334,7 +370,7 @@ export default function Header() {
               <Link
                 to={localePath('login')}
                 onClick={() => setMenuMovilAbierto(false)}
-                className="block cursor-pointer text-center text-sm px-4 py-2 rounded-md bg-terracota text-white font-semibold transition-colors"
+                className="block cursor-pointer text-center text-sm px-4 py-2 rounded-full bg-iguana-hondo text-white font-semibold transition-colors"
               >
                 {t('session.signIn')}
               </Link>
@@ -343,5 +379,7 @@ export default function Header() {
         </nav>
       )}
     </header>
+    {usuario && <MessageLauncher unreadCount={noLeidos} />}
+    </>
   )
 }

@@ -191,7 +191,7 @@ public sealed class UploadHardeningTests
     public async Task AuthedDelete_TraversalName_Returns400_AndNotForwarded()
     {
         var (factory, storage) = NewHarness();
-        var client = Authed(NewClient(factory));
+        var client = Authed(NewClient(factory), "admin");
 
         // A traversal-flavored key must be refused before reaching the store, even
         // for an authenticated caller.
@@ -199,6 +199,36 @@ public sealed class UploadHardeningTests
 
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
         Assert.DoesNotContain("../secret", storage.Deleted);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Upload")]
+    public async Task NonAdminDelete_Returns403_WithoutCallingStorage()
+    {
+        var (factory, storage) = NewHarness();
+        const string fileName = "private-object.jpg";
+        storage.Objects[fileName] = (JpegBytes, "image/jpeg");
+
+        var res = await Authed(NewClient(factory)).DeleteAsync($"/api/Imagenes/{fileName}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
+        Assert.Empty(storage.Deleted);
+        Assert.Contains(fileName, storage.Objects);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Upload")]
+    public async Task AdminDelete_Returns204_AndDeletesFromStorage()
+    {
+        var (factory, storage) = NewHarness();
+        const string fileName = "admin-object.jpg";
+        storage.Objects[fileName] = (JpegBytes, "image/jpeg");
+
+        var res = await Authed(NewClient(factory), "admin").DeleteAsync($"/api/Imagenes/{fileName}");
+
+        Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+        Assert.Equal(new[] { fileName }, storage.Deleted);
+        Assert.DoesNotContain(fileName, storage.Objects);
     }
 
     // ---- helpers ----------------------------------------------------------------
@@ -223,11 +253,11 @@ public sealed class UploadHardeningTests
         return (factory, storage);
     }
 
-    private static HttpClient Authed(HttpClient client)
+    private static HttpClient Authed(HttpClient client, string role = "usuario")
     {
         // Mint a valid token (test key) + a self-paired CSRF cookie/header, exactly
         // the technique the AuthZ slice uses for admin sessions.
-        var token = MintToken("42", "anfitrion");
+        var token = MintToken("42", role);
         var csrf = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
         client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie",
             $"{AuthConstants.AuthCookieName}={token}; {AuthConstants.CsrfCookieName}={csrf}");

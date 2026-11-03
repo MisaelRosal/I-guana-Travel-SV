@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
@@ -84,11 +84,11 @@ const fixtures = vi.hoisted(() => ({
   },
 }))
 
-function renderCard(experiencia) {
+function renderCard(experiencia, props = {}) {
   return render(
     <I18nextProvider i18n={i18n}>
       <MemoryRouter>
-        <ExperienceCard experiencia={experiencia} proximaFecha={null} />
+        <ExperienceCard experiencia={experiencia} proximaFecha={null} {...props} />
       </MemoryRouter>
     </I18nextProvider>,
   )
@@ -190,5 +190,40 @@ describe('ES active: extraction keeps the canonical Spanish card byte-comparable
     renderCard(fixtures.soloStay)
     expect(screen.getByText('1 hab · 1 huésped')).toBeInTheDocument()
     expect(screen.queryByText('1 hab · 1 huéspedes')).toBeNull()
+  })
+})
+
+// Fase 2 (guardar publicación): the heart is driven by the `guardado` /
+// `onToggleGuardado` props the catalog, detail and my-account pages pass. It is
+// a SIBLING of the card link — never a <button> inside the <a> — and it carries
+// the pressed state through aria-pressed plus an accessible name that flips
+// between save and unsave.
+describe('Save toggle (Fase 2): pressed state and accessible labels', () => {
+  it('renders no heart when the parent does not wire a toggle', () => {
+    renderCard(fixtures.hospedaje)
+
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/experiencias/10')
+  })
+
+  it('paints the saved state with the unsave label and forwards the id', () => {
+    const onToggleGuardado = vi.fn()
+    renderCard(fixtures.hospedaje, { guardado: true, onToggleGuardado })
+
+    const boton = screen.getByRole('button', { name: 'Quitar publicación de guardados' })
+    expect(boton).toHaveAttribute('aria-pressed', 'true')
+
+    // The button is NOT inside the anchor: clicking it can never navigate.
+    expect(screen.getByRole('link').contains(boton)).toBe(false)
+
+    fireEvent.click(boton)
+    expect(onToggleGuardado).toHaveBeenCalledWith(10)
+  })
+
+  it('paints the unsaved state with the save label', () => {
+    renderCard(fixtures.hospedaje, { guardado: false, onToggleGuardado: vi.fn() })
+
+    expect(screen.getByRole('button', { name: 'Guardar publicación' }))
+      .toHaveAttribute('aria-pressed', 'false')
   })
 })

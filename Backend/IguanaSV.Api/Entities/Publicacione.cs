@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace IguanaSV.Api.Entities;
 
@@ -16,6 +17,12 @@ public partial class Publicacione
     public string Titulo { get; set; } = null!;
 
     public string? Descripcion { get; set; }
+
+    [JsonIgnore]
+    public string? TituloEn { get; set; }
+
+    [JsonIgnore]
+    public string? DescripcionEn { get; set; }
 
     public decimal PrecioPorNoche { get; set; }
 
@@ -56,4 +63,6 @@ public partial class Publicacione
     public virtual ICollection<PublicacionAmenidad> PublicacionAmenidads { get; set; } = new List<PublicacionAmenidad>();
 
     public virtual ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
+
+    public virtual ICollection<Resena> Resenas { get; set; } = new List<Resena>();
 }

@@ -94,7 +94,7 @@ public sealed class SchemaSingleSourceGuardTests
         // Reference data must still be present and guarded for idempotent re-runs.
         Assert.Contains("INSERT INTO departamentos", text, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("ON CONFLICT", text, StringComparison.OrdinalIgnoreCase);
-        // Reference-data-only demotion (v0.6): the seed must NOT resurrect demo rows;
+        // Reference-data-only demotion: the seed must NOT resurrect demo rows;
         // anfitriones/publicaciones/reservas are created by real users through the app.
         Assert.DoesNotContain("INSERT INTO publicaciones", text, StringComparison.OrdinalIgnoreCase);
     }

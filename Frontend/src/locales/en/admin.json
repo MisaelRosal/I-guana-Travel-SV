@@ -48,7 +48,15 @@
   },
   "reviews": {
     "title": "Review management",
-    "soon": "This section will be available soon."
+    "loading": "Loading reviews…",
+    "empty": "No reviews yet.",
+    "error": "Reviews could not be loaded.",
+    "summaryTitle": "Average per listing",
+    "delete": "Delete review",
+    "deleteConfirm": "Delete this review?",
+    "deleted": "The review was deleted.",
+    "deleteError": "The review could not be deleted.",
+    "hostReply": "Host reply"
   },
   "toast": {
     "hostDeleted": "The profile of \"{{name}}\" was deleted.",

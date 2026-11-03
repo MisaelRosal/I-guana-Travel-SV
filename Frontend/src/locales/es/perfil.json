@@ -52,6 +52,15 @@
     "phone": "Teléfono",
     "location": "Ubicación",
     "publications": "Publicaciones de {{name}}",
+    "publicationsSaved": "Tus publicaciones guardadas de {{name}}",
+    "showSaved": "Ver guardados",
+    "hideSaved": "Ocultar guardados",
+    "noSavedYet": "Todavía no tienes publicaciones guardadas.",
     "noImage": "Sin imagen"
+  },
+  "reviews": {
+    "empty": "Aún no tiene reseñas",
+    "hostCount_one": "{{count}} reseña de sus experiencias",
+    "hostCount_other": "{{count}} reseñas de sus experiencias"
   }
 }

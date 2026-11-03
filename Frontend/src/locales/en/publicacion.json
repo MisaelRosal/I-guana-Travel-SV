@@ -8,6 +8,7 @@
   "photoLabel": "Profile photo *",
   "photoAlt": "Profile photo",
   "choosePhoto": "Choose photo",
+  "choosePhotoAria": "Choose profile photo",
   "photoHint": "JPG or PNG. It will be visible to your guests.",
   "emailLabel": "Email address *",
   "phoneLabel": "Phone",
