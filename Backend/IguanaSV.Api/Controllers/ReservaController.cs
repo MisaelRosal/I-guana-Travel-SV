@@ -16,11 +16,16 @@ public class ReservaController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly INotificacionSitioService _notificacionesSitio;
 
-    public ReservaController(IguanasDbContext context, IEmailNotificationService notificaciones)
+    public ReservaController(
+        IguanasDbContext context,
+        IEmailNotificationService notificaciones,
+        INotificacionSitioService notificacionesSitio)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _notificacionesSitio = notificacionesSitio;
     }
 
     // Owner-scoped list (W4): a plain user sees only their own reservations;
@@ -341,6 +346,49 @@ public class ReservaController : ControllerBase
             return Conflict(OverlapConflict());
         }
 
+        // Experience slot capacity (A4): the experience range collapses to an
+        // empty daterange so the EXCLUDE never fires here; the binding guard
+        // instead lives in this same booking transaction, which already holds
+        // the publication advisory lock taken above (it serializes concurrent
+        // bookings for this publication, so the count below cannot race).
+        if (esExperiencia)
+        {
+            // The SPA books experiences at date level without binding horarios,
+            // and the pre-audit flow never required one, so a date with no
+            // published horario is still bookable instead of a hard 409.
+            // Capacity:
+            //   * a day with configured cupos keeps that sum as the day ceiling;
+            //   * a day with slots but no cupos is NOT day-capped here — its
+            //     capacity is enforced per slot when the reservation is bound to
+            //     the horario (ReservaHorario binding check), so a date-level
+            //     booking against publication capacity would refuse legitimate
+            //     double-slot days in advance;
+            //   * a horario-less day falls back to the publication capacity.
+            var cuposPorDia = await _context.Horarios
+                .Where(h => h.PublicacionId == publicacion.Id && h.Fecha == inicio)
+                .Select(h => h.Cupos ?? 0)
+                .ToListAsync();
+
+            var cuposConfigurados = cuposPorDia.Sum();
+            var hayDiaSinSlots = cuposPorDia.Count == 0;
+            var capacidadDelDia = cuposConfigurados > 0
+                ? cuposConfigurados
+                : publicacion.CapacidadMaxima;
+            var aplicaTopeDelDia = cuposConfigurados > 0 || hayDiaSinSlots;
+
+            var ocupadosDia = await _context.Reservas
+                .Where(r => r.PublicacionId == publicacion.Id
+                    && r.FechaInicio == inicio
+                    && (r.Estado ?? "") != "cancelada")
+                .SumAsync(r => (int?)r.NumeroHuespedes) ?? 0;
+
+            if (aplicaTopeDelDia
+                && ocupadosDia + dto.NumeroHuespedes > capacidadDelDia)
+            {
+                return Conflict(new { mensaje = "El cupo de este horario ya no está disponible." });
+            }
+        }
+
         var reserva = new Reserva
         {
             PublicacionId = dto.PublicacionId,
@@ -397,6 +445,15 @@ public class ReservaController : ControllerBase
                 reserva.PrecioTotal);
         }
 
+        // In-site copy for the host (never fails the reservation; the service
+        // logs and swallows).
+        await _notificacionesSitio.NotificarAsync(
+            publicacion.Anfitrion?.UsuarioId,
+            publicacion.Anfitrion?.Email,
+            "reserva_creada",
+            $"Nueva reserva pendiente de confirmación para {publicacion.Titulo ?? "tu publicación"}",
+            reserva.Id);
+
         return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);
     }
 
@@ -421,17 +478,31 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden confirmar reservas pendientes." });
         }
 
-        reserva.Estado = "confirmada";
-        reserva.UpdatedAt = DateTime.Now;
+        // Atomic transition: the WHERE estado == 'pendiente' makes the write the
+        // race tie-breaker against any concurrent payer/canceller/expiration pass
+        // (no rowversion column; a lost transition answers 409 instead of
+        // last-write-wins stamping a cancelled row as confirmed).
+        var confirmadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado == "pendiente")
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "confirmada")
+                .SetProperty(r => r.UpdatedAt, DateTime.Now));
 
-        try
+        if (confirmadas == 0)
         {
-            await _context.SaveChangesAsync();
+            return Conflict(new { mensaje = "La reserva ya no está en estado pendiente." });
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict();
-        }
+
+        // Keep the still-tracked entity in sync with what was written so the
+        // response payload reports the new state (no SaveChanges from here).
+        reserva.Estado = "confirmada";
+
+        await _notificacionesSitio.NotificarAsync(
+            reserva.UsuarioId,
+            reserva.EmailHuesped,
+            "reserva_confirmada",
+            $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue confirmada",
+            reserva.Id);
 
         return Ok(new { mensaje = "Reserva confirmada exitosamente.", reserva });
     }
@@ -464,29 +535,42 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = "La reserva venció y se cancelará." });
         }
 
-        reserva.Estado = "confirmada";
-        reserva.MetodoPago = dto.MetodoPago;
-        reserva.FechaPago = DateTime.Now;
-        reserva.IdTransaccion = $"TXN-{Guid.NewGuid():N}".Substring(0, 20);
-        reserva.UpdatedAt = DateTime.Now;
+        // Atomic payment stamp: every payment attribute is written in the SAME
+        // conditional update, so a row cancelled by a concurrent expiration pass
+        // can never gain a payment record (0 rows affected → 409).
+        var ahoraPago = DateTime.Now;
+        var idTransaccion = $"TXN-{Guid.NewGuid():N}".Substring(0, 20);
+        var pagadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado == "pendiente")
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "confirmada")
+                .SetProperty(r => r.MetodoPago, dto.MetodoPago)
+                .SetProperty(r => r.FechaPago, ahoraPago)
+                .SetProperty(r => r.IdTransaccion, idTransaccion)
+                .SetProperty(r => r.UpdatedAt, ahoraPago));
 
-        try
+        if (pagadas == 0)
         {
-            await _context.SaveChangesAsync();
+            return Conflict(new { mensaje = "La reserva ya no está en estado pendiente." });
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict();
-        }
+
+        // The simulated payment auto-confirms the reservation, so the guest gets
+        // the same in-site confirmation as the manual path above.
+        await _notificacionesSitio.NotificarAsync(
+            reserva.UsuarioId,
+            reserva.EmailHuesped,
+            "reserva_confirmada",
+            $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue confirmada",
+            reserva.Id);
 
         return Ok(new
         {
             mensaje = "Pago simulado exitosamente. Reserva confirmada.",
             reserva.Id,
-            reserva.Estado,
-            reserva.MetodoPago,
-            reserva.FechaPago,
-            reserva.IdTransaccion,
+            Estado = "confirmada",
+            MetodoPago = dto.MetodoPago,
+            FechaPago = ahoraPago,
+            idTransaccion,
             reserva.PrecioTotal,
         });
     }
@@ -543,16 +627,53 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy." });
         }
 
-        reserva.Estado = "cancelada";
-        reserva.UpdatedAt = DateTime.Now;
+        // Atomic transition conditional on every state the business rules above
+        // allow for THIS row. A short reservation's allowed set is {pendiente}
+        // only (a paid row is locked), so a graceful concurrent payment wins the
+        // race and this update finds 0 rows → 409, never a cancelled contract.
+        var estadosCanceldables = reserva.FechaExpiracionGracia != null && !reserva.CancelacionLibre
+            ? new[] { "pendiente" }
+            : new[] { "pendiente", "confirmada" };
+        var canceladas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado != null && estadosCanceldables.Contains(r.Estado))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "cancelada")
+                .SetProperty(r => r.UpdatedAt, DateTime.Now));
 
-        try
+        if (canceladas == 0)
         {
-            await _context.SaveChangesAsync();
+            return Conflict(new { mensaje = "La reserva ya no está en un estado cancelable." });
         }
-        catch (DbUpdateConcurrencyException)
+
+        // Response payload consistency (see ConfirmarReserva note).
+        reserva.Estado = "cancelada";
+
+        // Notify the OTHER side: a guest cancellation reaches the host, a
+        // host/admin cancellation reaches the guest.
+        var subCancelador = User.GetSubjectId();
+        var canceloElHuesped = subCancelador.HasValue && reserva.UsuarioId == subCancelador.Value;
+        if (canceloElHuesped)
         {
-            return Conflict();
+            var anfitrionDestino = await _context.Publicaciones
+                .AsNoTracking()
+                .Where(p => p.Id == reserva.PublicacionId)
+                .Select(p => new { UsuarioId = p.Anfitrion!.UsuarioId, Email = p.Anfitrion!.Email })
+                .FirstOrDefaultAsync();
+            await _notificacionesSitio.NotificarAsync(
+                anfitrionDestino?.UsuarioId,
+                anfitrionDestino?.Email,
+                "reserva_cancelada",
+                $"Tu huésped canceló la reserva de {await TituloReservaAsync(reserva.PublicacionId)}",
+                reserva.Id);
+        }
+        else
+        {
+            await _notificacionesSitio.NotificarAsync(
+                reserva.UsuarioId,
+                reserva.EmailHuesped,
+                "reserva_cancelada",
+                $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue cancelada",
+                reserva.Id);
         }
 
         return Ok(new { mensaje = "Reserva cancelada exitosamente.", reserva });
@@ -598,8 +719,20 @@ public class ReservaController : ControllerBase
             return BadRequest("No es posible eliminar una reserva cuando falta un día o menos para la fecha de entrada.");
         }
 
-        _context.Reservas.Remove(reserva);
-        await _context.SaveChangesAsync();
+        // Atomic delete conditional on every state the gates above allow for
+        // THIS row. Short reservations only ever delete a 'pendiente' row, so a
+        // concurrent payment inside the grace race removes the row from reach
+        // (0 rows → the caller must re-read; a paid row is never hard-deleted).
+        var estadosEliminables = reserva.FechaExpiracionGracia != null && !reserva.CancelacionLibre
+            ? new[] { "pendiente" }
+            : new[] { "pendiente", "confirmada" };
+        var eliminadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado != null && estadosEliminables.Contains(r.Estado))
+            .ExecuteDeleteAsync();
+        if (eliminadas == 0)
+        {
+            return BadRequest("La reserva ya no puede eliminarse.");
+        }
 
         return NoContent();
     }
@@ -688,6 +821,18 @@ public class ReservaController : ControllerBase
             .Select(e => e.PrecioAdicional)
             .FirstOrDefaultAsync();
     }
+
+    /// <summary>
+    /// Publication title for the in-site notification messages; the reservations
+    /// are loaded without navigations, so it is fetched by projection. Falls back
+    /// to a generic label when the row is missing.
+    /// </summary>
+    private async Task<string> TituloReservaAsync(int publicacionId) =>
+        await _context.Publicaciones
+            .AsNoTracking()
+            .Where(p => p.Id == publicacionId)
+            .Select(p => p.Titulo)
+            .FirstOrDefaultAsync() ?? "tu reserva";
 
     /// <summary>
     /// True while a short reservation's one-hour grace window has not yet

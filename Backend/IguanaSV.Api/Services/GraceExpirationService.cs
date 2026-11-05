@@ -59,24 +59,24 @@ public class GraceExpirationService : BackgroundService
             var db = scope.ServiceProvider.GetRequiredService<IguanasDbContext>();
 
             var now = DateTime.Now;
-            var vencidas = await db.Reservas
+
+            // Single conditional UPDATE: a row is cancelled only while it is
+            // still 'pendiente' AND its grace has lapsed, so a payment that
+            // committed a second earlier wins the race and the worker can never
+            // flip a paid row to 'cancelada' (last-write-wins guard). Idempotent:
+            // every expired row is flipped in one set-based statement per pass.
+            var canceladas = await db.Reservas
                 .Where(r => r.Estado == "pendiente"
                     && r.FechaExpiracionGracia != null
                     && r.FechaExpiracionGracia <= now)
-                .ToListAsync(cancellationToken);
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.Estado, "cancelada")
+                    .SetProperty(r => r.UpdatedAt, now), cancellationToken);
 
-            if (vencidas.Count == 0)
+            if (canceladas > 0)
             {
-                return;
+                _logger.LogInformation("Grace expiration pass cancelled {Count} lapsed reservation(s).", canceladas);
             }
-
-            foreach (var reserva in vencidas)
-            {
-                reserva.Estado = "cancelada";
-                reserva.UpdatedAt = now;
-            }
-
-            await db.SaveChangesAsync(cancellationToken);
         }
         catch (OperationCanceledException)
         {

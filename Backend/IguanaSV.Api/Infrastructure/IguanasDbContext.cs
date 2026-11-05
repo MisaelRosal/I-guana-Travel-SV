@@ -407,6 +407,8 @@ public class IguanasDbContext : DbContext
 
             entity.HasIndex(e => e.ReservaId, "idx_notificaciones_reserva");
 
+            entity.HasIndex(e => e.UsuarioId, "idx_notificaciones_usuario");
+
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -423,6 +425,7 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Tipo)
                 .HasMaxLength(30)
                 .HasColumnName("tipo");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
@@ -430,7 +433,13 @@ public class IguanasDbContext : DbContext
 
             entity.HasOne(d => d.Reserva).WithMany(p => p.Notificaciones)
                 .HasForeignKey(d => d.ReservaId)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("notificaciones_reserva_id_fkey");
+
+            entity.HasOne(d => d.Usuario).WithMany()
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("notificaciones_usuario_id_fkey");
         });
 
         modelBuilder.Entity<NotificacionEmail>(entity =>

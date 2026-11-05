@@ -4,6 +4,7 @@ import { I18nextProvider } from 'react-i18next'
 import i18n from './i18n/config.js'
 import { ROUTE_PAIRS } from './i18n/routes.jsx'
 import RootLayout from './layouts/RootLayout.jsx'
+import NotFoundPage from './pages/NotFound/NotFoundPage.jsx'
 import './css/app.css'
 
 function App() {
@@ -38,6 +39,8 @@ function App() {
                   : <Route key={`${pair.key}:${path}`} path={path} element={pair.element} />,
               )
             })}
+            {/* A7: catch-all under the same layout so header/footer stay put. */}
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

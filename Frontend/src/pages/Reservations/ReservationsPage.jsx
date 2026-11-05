@@ -76,8 +76,10 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar, on
 
   return (
     <article className="flex flex-col overflow-hidden rounded-[22px] border border-cafe-claro bg-white sm:flex-row">
+      {/* Same fallback idiom as ExperienceCard: an empty image URL would
+          render the browser's broken-image glyph. */}
       <img
-        src={reserva.experienciaImagen}
+        src={reserva.experienciaImagen || '/logo.png'}
         alt={reserva.experienciaTitulo}
         loading="lazy"
         className="h-40 w-full object-cover sm:h-auto sm:w-52 sm:shrink-0"
@@ -615,9 +617,6 @@ function ModalPago({ reserva, onCerrar, onExito }) {
   const locale = useFormatLocale()
   const refDialogo = useModalAccesible(onCerrar)
   const [metodoPago, setMetodoPago] = useState('')
-  const [numeroTarjeta, setNumeroTarjeta] = useState('')
-  const [nombreTitular, setNombreTitular] = useState('')
-  const [vencimiento, setVencimiento] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState(null)
   const [campoError, setCampoError] = useState('')
@@ -628,18 +627,6 @@ function ModalPago({ reserva, onCerrar, onExito }) {
       setError(t('pay.errorMethod'))
       setCampoError('metodo')
       document.getElementById('pay-metodo')?.querySelector('button')?.focus()
-      return
-    }
-    if (metodoPago !== 'paypal' && !numeroTarjeta.trim()) {
-      setError(t('pay.errorCardNumber'))
-      setCampoError('pay-numero')
-      document.getElementById('pay-numero')?.focus()
-      return
-    }
-    if (metodoPago !== 'paypal' && !nombreTitular.trim()) {
-      setError(t('pay.errorHolder'))
-      setCampoError('pay-titular')
-      document.getElementById('pay-titular')?.focus()
       return
     }
 
@@ -716,55 +703,11 @@ function ModalPago({ reserva, onCerrar, onExito }) {
             </div>
           </div>
 
-          {metodoPago && metodoPago !== 'paypal' && (
-            <>
-              <div>
-                <label htmlFor="pay-numero" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                  {t('pay.cardNumber')}
-                </label>
-                <input
-                  id="pay-numero"
-                  type="text"
-                  value={numeroTarjeta}
-                  onChange={(e) => setNumeroTarjeta(e.target.value)}
-                  placeholder="**** **** **** ****"
-                  maxLength={19}
-                  aria-invalid={campoError === 'pay-numero' ? true : undefined}
-                  aria-describedby={campoError === 'pay-numero' ? 'pay-error' : undefined}
-                  className="w-full rounded-full border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-iguana-hondo focus:outline-none focus:ring-1 focus:ring-iguana-hondo"
-                />
-              </div>
-              <div>
-                <label htmlFor="pay-titular" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                  {t('pay.holderName')}
-                </label>
-                <input
-                  id="pay-titular"
-                  type="text"
-                  value={nombreTitular}
-                  onChange={(e) => setNombreTitular(e.target.value)}
-                  placeholder={t('pay.holderPlaceholder')}
-                  aria-invalid={campoError === 'pay-titular' ? true : undefined}
-                  aria-describedby={campoError === 'pay-titular' ? 'pay-error' : undefined}
-                  className="w-full rounded-full border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-iguana-hondo focus:outline-none focus:ring-1 focus:ring-iguana-hondo"
-                />
-              </div>
-              <div>
-                <label htmlFor="pay-vencimiento" className="mb-1 block text-sm font-semibold text-verde-bosque">
-                  {t('pay.expiry')}
-                </label>
-                <input
-                  id="pay-vencimiento"
-                  type="text"
-                  value={vencimiento}
-                  onChange={(e) => setVencimiento(e.target.value)}
-                  placeholder={t('pay.expiryPlaceholder')}
-                  maxLength={5}
-                  className="w-full rounded-full border border-neutral-300 px-3 py-2.5 text-sm text-verde-bosque placeholder:text-neutral-400 focus:border-iguana-hondo focus:outline-none focus:ring-1 focus:ring-iguana-hondo"
-                />
-              </div>
-            </>
-          )}
+          {/* M2: the flow is simulated — collection of card data was removed
+              because the backend contract only ever receives metodoPago. */}
+          <p className="rounded-[22px] bg-amber/10 px-3 py-2 text-center text-sm text-verde-bosque">
+            {t('pay.simulatedNote')}
+          </p>
 
           {metodoPago === 'paypal' && (
             <div className="rounded-[22px] bg-blue-50 p-3 text-center text-sm text-blue-800">

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter } from 'react-router-dom'
@@ -40,6 +40,8 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
+  // Renders accumulate without an explicit cleanup here (no global afterEach).
+  cleanup()
   sessionStorage.clear()
   if (i18n.language !== 'es') await i18n.changeLanguage('es')
 })
@@ -67,5 +69,34 @@ describe('ChatPage inbox', () => {
     expect(screen.getByRole('heading', { name: 'Iniciá sesión para ver tus mensajes' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute('href', '/login')
     expect(getMias).not.toHaveBeenCalled()
+  })
+})
+
+// M8: the unread badge must never be zeroed before the server confirms the
+// read stamp — a failed PUT /Chat/{id}/leido keeps the previous count.
+describe('ChatPage inbox: read mark only after the PUT succeeds', () => {
+  it('clears the unread count once the read PUT succeeds', async () => {
+    renderPage()
+    await screen.findByText('2 sin leer')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir conversación' }))
+
+    expect(await screen.findByRole('heading', { name: 'Ana Host' })).toBeInTheDocument()
+    expect(marcarLeido).toHaveBeenCalledWith(22)
+    await waitFor(() => expect(screen.queryByText('2 sin leer')).toBeNull())
+  })
+
+  it('keeps the unread count when the read PUT fails', async () => {
+    marcarLeido.mockRejectedValueOnce(new Error('boom'))
+    renderPage()
+    await screen.findByText('2 sin leer')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir conversación' }))
+
+    expect(await screen.findByRole('heading', { name: 'Ana Host' })).toBeInTheDocument()
+    expect(marcarLeido).toHaveBeenCalledWith(22)
+    // Failure restores nothing: the badge was never optimistically zeroed.
+    await waitFor(() => expect(marcarLeido).toHaveBeenCalledOnce())
+    expect(screen.getByText('2 sin leer')).toBeInTheDocument()
   })
 })

@@ -12,6 +12,9 @@ export default function ExperienceCard({
   experiencia,
   proximaFecha,
   resena,
+  // M7: surfaces without a review summary (e.g. the wishlist) can omit the
+  // review row entirely instead of the always-true "no reviews yet" line.
+  mostrarResenas = true,
   guardado = false,
   onToggleGuardado,
 }) {
@@ -69,21 +72,23 @@ export default function ExperienceCard({
 
         <div className="flex flex-1 flex-col p-4">
           <h3 className={`text-lg font-bold text-verde-bosque line-clamp-1 ${onToggleGuardado ? 'pr-12' : ''}`}>{experiencia.titulo}</h3>
-          <div className="mt-1 flex min-h-[20px] items-center gap-1.5 text-sm">
-            {conResenas ? (
-              <>
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-amber" aria-hidden="true">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-                <span className="font-bold text-neutral-800">{Number(resena.promedio).toFixed(1)}</span>
-                <span className="text-cafe">
-                  ({t('reviews.count', { count: resena.total })})
-                </span>
-              </>
-            ) : (
-              <span className="text-xs italic text-cafe">{t('reviews.empty')}</span>
-            )}
-          </div>
+          {mostrarResenas && (
+            <div className="mt-1 flex min-h-[20px] items-center gap-1.5 text-sm">
+              {conResenas ? (
+                <>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-amber" aria-hidden="true">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  <span className="font-bold text-neutral-800">{Number(resena.promedio).toFixed(1)}</span>
+                  <span className="text-cafe">
+                    ({t('reviews.count', { count: resena.total })})
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs italic text-cafe">{t('reviews.empty')}</span>
+              )}
+            </div>
+          )}
           <p className="mt-1 text-base text-cafe">
             {experiencia.municipio}, {experiencia.departamento}
           </p>

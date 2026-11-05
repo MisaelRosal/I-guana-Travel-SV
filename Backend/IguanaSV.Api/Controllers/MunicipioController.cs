@@ -1,4 +1,5 @@
 using MunicipioEntity = IguanaSV.Api.Entities.Municipio;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -23,7 +24,6 @@ public class MunicipioController : ControllerBase
     {
         return await _context.Municipios
             .Include(m => m.Departamento)
-            .Include(m => m.Anfitriones)
             .ToListAsync();
     }
 
@@ -32,7 +32,6 @@ public class MunicipioController : ControllerBase
     {
         var municipio = await _context.Municipios
             .Include(m => m.Departamento)
-            .Include(m => m.Anfitriones)
             .FirstOrDefaultAsync(m => m.Id == id);
 
         if (municipio == null)
@@ -47,6 +46,11 @@ public class MunicipioController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> PutMunicipio(int id, CreateMunicipioDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var municipio = await _context.Municipios.FindAsync(id);
 
         if (municipio == null)
@@ -81,6 +85,11 @@ public class MunicipioController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<MunicipioEntity>> PostMunicipio(CreateMunicipioDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         if (!await _context.Departamentos.AnyAsync(d => d.Id == dto.DepartamentoId))
         {
             return NotFound($"El departamento con id {dto.DepartamentoId} no existe.");
@@ -103,6 +112,11 @@ public class MunicipioController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteMunicipio(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var municipio = await _context.Municipios.FindAsync(id);
 
         if (municipio == null)

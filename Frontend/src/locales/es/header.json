@@ -27,5 +27,14 @@
     "open": "Abrir menú",
     "close": "Cerrar menú",
     "label": "Menú móvil"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "markAll": "Marcar todas",
+    "empty": "Sin notificaciones todavía",
+    "error": "No se pudieron cargar las notificaciones",
+    "loading": "Cargando…",
+    "unreadLabel_one": "Notificaciones, 1 sin leer",
+    "unreadLabel_other": "Notificaciones, {{count}} sin leer"
   }
 }

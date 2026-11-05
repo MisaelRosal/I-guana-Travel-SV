@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useFormatLocale } from '../i18n/config.js'
 import { localePath } from '../i18n/routes.jsx'
-import { getMias } from '../services/chat.js'
+import { getMias, marcarLeido } from '../services/chat.js'
 import { leerSesionCache } from '../services/session.js'
 import { ChatConversation } from './ChatPanel.jsx'
 
@@ -50,10 +50,17 @@ export default function ChatInbox({ modal = false }) {
   }
 
   const abrir = (hilo) => {
+    // M8: the thread opens immediately, but the unread badge is only zeroed
+    // once the server confirms the read stamp (PUT /Chat/{id}/leido). Never
+    // zeroed optimistically, so a failing PUT simply keeps the previous count.
     setSeleccion(hilo)
-    setHilos((prev) =>
-      (prev ?? []).map((h) => (h.conversacion_id === hilo.conversacion_id ? { ...h, no_leidos: 0 } : h)),
-    )
+    marcarLeido(hilo.conversacion_id)
+      .then(() => {
+        setHilos((prev) =>
+          (prev ?? []).map((h) => (h.conversacion_id === hilo.conversacion_id ? { ...h, no_leidos: 0 } : h)),
+        )
+      })
+      .catch(() => {})
   }
 
   return (

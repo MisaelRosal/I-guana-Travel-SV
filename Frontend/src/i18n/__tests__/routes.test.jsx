@@ -11,8 +11,9 @@ import { ROUTE_PAIRS, localePath } from '../routes.jsx'
 //     compatibility MUST: no existing URL may 404 or change screens);
 //   * the English aliases from AD-1 resolve to the IDENTICAL screens, with
 //     parameter parity (/hosts/42 renders exactly what /anfitriones/42 does);
-//   * unmatched paths keep today's behavior — no catch-all was added, so a
-//     path no route pair owns renders neither the layout nor any screen;
+//   * unmatched paths resolve to the A7 catch-all: the not-found screen
+//     renders under the same layout (header/footer stay) for any path no
+//     route pair owns;
 //   * in-app Link targets emit the locale-form URL (English chrome hrefs for
 //     EN users, canonical Spanish for ES users — approval block).
 // The screens are replaced by named markers so this suite proves ROUTE
@@ -275,17 +276,24 @@ describe('parameter parity between the alias forms', () => {
   })
 })
 
-describe("unmatched paths keep today's no-match behavior (no catch-all added)", () => {
+describe('A7: unmatched paths resolve to the not-found catch-all', () => {
+  const copy = {
+    es: { title: 'No encontramos la página', back: 'Volver al catálogo' },
+    en: { title: "We couldn't find that page", back: 'Back to the catalog' },
+  }
   for (const locale of ['es', 'en']) {
-    it(`renders neither layout nor screen for /noexiste under ${locale.toUpperCase()}`, async () => {
+    it(`renders the not-found screen with layout chrome for /noexiste under ${locale.toUpperCase()}`, async () => {
       await i18n.changeLanguage(locale)
       mockNoSession()
       await renderAt('/noexiste')
 
+      // The catch-all must not claim any registered screen.
       expect(screen.queryByText(/screen:/)).toBeNull()
-      // Today the pathless layout only mounts when a child matches: a blank
-      // document IS the existing behavior and MUST be preserved verbatim.
-      expect(document.querySelector('header')).toBeNull()
+      // It sits under the layout route: header/footer render around it
+      // (supersedes the former blank-document no-match behavior).
+      expect(document.querySelector('header')).not.toBeNull()
+      expect(screen.getByRole('heading', { name: copy[locale].title })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: copy[locale].back })).toBeInTheDocument()
     })
   }
 })

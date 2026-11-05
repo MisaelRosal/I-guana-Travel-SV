@@ -3,11 +3,13 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
 import MessageLauncher from '../components/MessageLauncher.jsx'
+import NotificacionesCampana from '../components/NotificacionesCampana.jsx'
 import { localePath } from '../i18n/routes.jsx'
 import { LOCALE_STORAGE_KEY } from '../i18n/config.js'
 import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
 import { useChatNoLeidos } from '../hooks/useChatNoLeidos.js'
+import { useNotificaciones } from '../hooks/useNotificaciones.js'
 
 // NOTE (W3a): the role/name read from the session here drives VISIBILITY only
 // (which links/buttons to show). It is a UI convenience backed by the cache that
@@ -68,6 +70,9 @@ export default function Header() {
   const navigate = useNavigate()
   // Shared unread-chat badge for every authenticated role (15 s poll).
   const noLeidos = useChatNoLeidos(!!usuario)
+  // Shared site-notification inbox for the bell (30 s poll). One hook for both
+  // the desktop and the mobile campana instance: never a second poller.
+  const campana = useNotificaciones(!!usuario)
 
   useEffect(() => {
     // JD-INFO-2: `iguana_locale` is owned by the i18n runtime (config.js has
@@ -196,6 +201,8 @@ export default function Header() {
             </NavLink>
           ))}
           <ToggleIdioma />
+          {/* In-site notifications bell; the poll is Header-owned and shared. */}
+          {usuario && <NotificacionesCampana datos={campana} />}
           {usuario ? (
             <div className="relative flex items-center gap-3" data-menu-usuario>
               <button
@@ -275,6 +282,11 @@ export default function Header() {
             </Link>
           )}
         </nav>
+
+        {/* Mobile bell: same shared `campana` state, rendered beside the
+            hamburger. Not inside the menu body because Header's outside-click
+            effect (keyed to [data-menu-movil]) would unmount it when opened. */}
+        {usuario && <div className="md:hidden"><NotificacionesCampana datos={campana} /></div>}
 
         <button
           type="button"

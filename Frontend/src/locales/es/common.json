@@ -24,6 +24,11 @@
   "banner": {
     "dismiss": "Descartar mensaje"
   },
+  "notFound": {
+    "title": "No encontramos la página",
+    "body": "La dirección que buscás no existe o fue movida a otra sección.",
+    "back": "Volver al catálogo"
+  },
   "stars": {
     "ariaLabel": "{{valor}} de 5 estrellas",
     "pickerAria": "Calificación de 0 a 5 estrellas",

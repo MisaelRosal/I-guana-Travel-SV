@@ -4,6 +4,8 @@
   "create": "Create listing",
   "status": {
     "loading": "Loading listings…",
+    "error": "The listings could not be loaded.",
+    "retry": "Retry",
     "emptyTitle": "No listings yet"
   },
   "verification": {
@@ -29,7 +31,8 @@
   "toast": {
     "created": "Listing created successfully.",
     "updated": "Listing updated successfully.",
-    "deleted": "\"{{title}}\" deleted successfully."
+    "deleted": "\"{{title}}\" deleted successfully.",
+    "deleteError": "The listing could not be deleted."
   },
   "tabs": {
     "publications": "Listings"

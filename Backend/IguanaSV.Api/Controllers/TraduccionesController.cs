@@ -10,7 +10,7 @@ namespace IguanaSV.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = AuthConstants.AdminRole)]
+[Authorize]
 public sealed class TraduccionesController : ControllerBase
 {
     private readonly IguanasDbContext _context;
@@ -34,6 +34,13 @@ public sealed class TraduccionesController : ControllerBase
         [FromQuery] int? afterId = null,
         CancellationToken cancellationToken = default)
     {
+        // Every action here WRITES translations (M10): gate each call on the
+        // fresh DB role instead of the 60-minute JWT claim.
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         if (batchSize is < 1 or > 25)
         {
             return BadRequest(new { mensaje = "batchSize must be between 1 and 25." });

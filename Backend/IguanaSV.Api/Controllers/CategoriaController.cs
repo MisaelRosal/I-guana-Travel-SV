@@ -1,3 +1,4 @@
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -51,6 +52,11 @@ public class CategoriaController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> PutCategoria(int id, Categoria categoria)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         if (id != categoria.Id)
         {
             return BadRequest();
@@ -86,6 +92,11 @@ public class CategoriaController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         if (categoria.Tipo != "hospedaje" && categoria.Tipo != "experiencia")
         {
             return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
@@ -101,6 +112,11 @@ public class CategoriaController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCategoria(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var categoria = await _context.Categorias.FindAsync(id);
 
         if (categoria == null)

@@ -40,6 +40,9 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const [longitud, setLongitud] = useState('')
   const [amenidadIds, setAmenidadIds] = useState([])
   const [archivos, setArchivos] = useState([])
+  // M7: object URLs for the new-image previews, one per archivo, revoked when
+  // the list changes or the modal unmounts (never created during render).
+  const [previews, setPreviews] = useState([])
   const [imagenesExistentes, setImagenesExistentes] = useState([])
   const [imagenesAEliminar, setImagenesAEliminar] = useState([])
   const [fechasSeleccionadas, setFechasSeleccionadas] = useState([])
@@ -62,6 +65,12 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     if (!departamentoId) { setMunicipios([]); return }
     setMunicipios(allMunicipios.filter((m) => m.departamentoId === parseInt(departamentoId)))
   }, [departamentoId, allMunicipios])
+
+  useEffect(() => {
+    const urls = archivos.map((a) => URL.createObjectURL(a))
+    setPreviews(urls)
+    return () => { urls.forEach((url) => URL.revokeObjectURL(url)) }
+  }, [archivos])
 
   useEffect(() => {
     if (!abierto) return
@@ -617,7 +626,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                 ))}
                 {archivos.map((a, i) => (
                   <div key={`nueva-${i}`} className="relative h-20 w-20 overflow-hidden rounded-[22px] border border-neutral-200">
-                    <img src={URL.createObjectURL(a)} alt="" className="h-full w-full object-cover" />
+                    <img src={previews[i] ?? ''} alt="" className="h-full w-full object-cover" />
                     {imagenesExistentes.length === 0 && i === 0 && <span className="absolute top-0 left-0 rounded-br-[22px] bg-verde-bosque px-1.5 py-0.5 text-[10px] font-bold text-white">{t('modal.primaryBadge')}</span>}
                     <button type="button" onClick={() => setArchivos((prev) => prev.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3"><path d="M18 6 6 18M6 6l12 12" /></svg>

@@ -1,4 +1,5 @@
 using PublicacionAmenidadEntity = IguanaSV.Api.Entities.PublicacionAmenidad;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -87,6 +88,12 @@ public class PublicacionAmenidadController : ControllerBase
             return Conflict("Esa relacion publicacion-amenidad ya existe.");
         }
 
+        // A non-admin may only attach an amenidad to a publication they own.
+        if (!User.IsInRole(AuthConstants.AdminRole) && !await CallerOwnsPublicationAsync(dto.PublicacionId))
+        {
+            return Forbid();
+        }
+
         var publicacionAmenidad = new PublicacionAmenidadEntity
         {
             PublicacionId = dto.PublicacionId,
@@ -112,9 +119,24 @@ public class PublicacionAmenidadController : ControllerBase
             return NotFound();
         }
 
+        // Owner-or-admin gate (spec: "Publication ownership gate").
+        if (!User.IsInRole(AuthConstants.AdminRole)
+            && !await CallerOwnsPublicationAsync(publicacionAmenidad.PublicacionId))
+        {
+            return Forbid();
+        }
+
         _context.PublicacionAmenidads.Remove(publicacionAmenidad);
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>True when the token subject owns the host behind the given publication.</summary>
+    private async Task<bool> CallerOwnsPublicationAsync(int publicacionId)
+    {
+        var sub = User.GetSubjectId();
+        return sub.HasValue
+            && await _context.Publicaciones.AnyAsync(p => p.Id == publicacionId && p.Anfitrion!.UsuarioId == sub.Value);
     }
 }

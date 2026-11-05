@@ -4,6 +4,8 @@
   "create": "Crear publicación",
   "status": {
     "loading": "Cargando publicaciones…",
+    "error": "No se pudieron cargar las publicaciones.",
+    "retry": "Reintentar",
     "emptyTitle": "Aún no hay publicaciones",
     "emptyBody": "Usa el botón «Crear publicación» para agregar la primera."
   },
@@ -30,7 +32,8 @@
   "toast": {
     "created": "Publicación creada exitosamente.",
     "updated": "Publicación actualizada exitosamente.",
-    "deleted": "«{{title}}» eliminada exitosamente."
+    "deleted": "«{{title}}» eliminada exitosamente.",
+    "deleteError": "No se pudo eliminar la publicación."
   },
   "tabs": {
     "publications": "Publicaciones"

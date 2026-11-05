@@ -115,6 +115,10 @@ public sealed class AuthApiFixture : IAsyncLifetime
         // These suites register and immediately use the returned session, so the
         // email-verification hold is switched off here.
         Environment.SetEnvironmentVariable("Email__VerificacionHabilitada", "false");
+        // A5: all Testcontainers requests share one remote IP, so the 10/min
+        // auth limiter would starve the suites; the limiter is built-in-off
+        // under test (prod/dev defaults to enabled in Program.cs).
+        Environment.SetEnvironmentVariable("RateLimit__Enabled", "false");
 
         Factory = new AuthApiFactory();
     }

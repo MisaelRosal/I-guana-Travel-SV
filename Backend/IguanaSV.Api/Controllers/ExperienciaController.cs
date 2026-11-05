@@ -1,4 +1,5 @@
 using ExperienciaEntity = IguanaSV.Api.Entities.Experiencia;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using IguanaSV.Api.Services;
@@ -82,6 +83,18 @@ public class ExperienciaController : ControllerBase
             return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
+        // Owner-or-admin gate (spec: "Publication ownership gate"): a non-admin
+        // must own both the experiencia's current publication and the target one
+        // (re-parenting to a foreign publication is the tampering vector).
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            if (!await CallerOwnsPublicationAsync(experiencia.PublicacionId)
+                || !await CallerOwnsPublicationAsync(dto.PublicacionId))
+            {
+                return Forbid();
+            }
+        }
+
         var nombreCambio = !string.Equals(experiencia.Nombre, dto.Nombre, StringComparison.Ordinal);
         var descripcionCambio = !string.Equals(experiencia.Descripcion, dto.Descripcion, StringComparison.Ordinal);
         experiencia.PublicacionId = dto.PublicacionId;
@@ -118,6 +131,12 @@ public class ExperienciaController : ControllerBase
             return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
+        // A non-admin may only attach an experiencia to a publication they own.
+        if (!User.IsInRole(AuthConstants.AdminRole) && !await CallerOwnsPublicationAsync(dto.PublicacionId))
+        {
+            return Forbid();
+        }
+
         var experiencia = new ExperienciaEntity
         {
             PublicacionId = dto.PublicacionId,
@@ -146,10 +165,25 @@ public class ExperienciaController : ControllerBase
             return NotFound();
         }
 
+        // Owner-or-admin gate (spec: "Publication ownership gate").
+        if (!User.IsInRole(AuthConstants.AdminRole)
+            && !await CallerOwnsPublicationAsync(experiencia.PublicacionId))
+        {
+            return Forbid();
+        }
+
         _context.Experiencias.Remove(experiencia);
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>True when the token subject owns the host behind the given publication.</summary>
+    private async Task<bool> CallerOwnsPublicationAsync(int publicacionId)
+    {
+        var sub = User.GetSubjectId();
+        return sub.HasValue
+            && await _context.Publicaciones.AnyAsync(p => p.Id == publicacionId && p.Anfitrion!.UsuarioId == sub.Value);
     }
 
     private async Task TranslateMissingAsync(ExperienciaEntity experiencia, CancellationToken cancellationToken)

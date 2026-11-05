@@ -1,4 +1,5 @@
 using DepartamentoEntity = IguanaSV.Api.Entities.Departamento;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -45,6 +46,11 @@ public class DepartamentoController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> PutDepartamento(int id, CreateDepartamentoDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var departamento = await _context.Departamentos.FindAsync(id);
 
         if (departamento == null)
@@ -73,6 +79,11 @@ public class DepartamentoController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<DepartamentoEntity>> PostDepartamento(CreateDepartamentoDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var departamento = new DepartamentoEntity
         {
             Nombre = dto.Nombre,
@@ -89,6 +100,11 @@ public class DepartamentoController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteDepartamento(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var departamento = await _context.Departamentos.FindAsync(id);
 
         if (departamento == null)

@@ -6,10 +6,12 @@ using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Middleware;
 using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +29,27 @@ builder.Services.AddControllers(options =>
 builder.Services.AddDbContext<IguanasDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddSingleton<IMinioStorageService, MinioStorageService>();
+
+// NOTE (A5): the integration-test fixture (AuthApiFixture) sets this flag to
+// false; every request of a Testcontainers suite shares one remote IP, so the
+// 10/min login register partition would starve the suites themselves.
+var rateLimitEnabled = builder.Configuration.GetValue("RateLimit:Enabled", true);
+
+// --- Rate limiting (A5): brute-force guard on the credential-heavy endpoints ---
+// Fixed window, partitioned per client IP. The policy is applied ONLY where the
+// controllers opt in with [EnableRateLimiting("auth")] (login, register and the
+// password-reset request). ASP.NET answers 429 on rejection and no other
+// endpoint is rate limited.
+if (rateLimitEnabled)
+{
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+    });
+}
 
 // LibreTranslate is optional for direct backend runs. Source publication writes
 // remain available while the translator is disabled or unavailable.
@@ -63,6 +86,8 @@ builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email
 builder.Services.AddTransient<IEmailService, GmailEmailService>();
 // Scoped: the audit log and the code table are written through the request DbContext.
 builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
+// In-site notifications (notificaciones table), written by the event producers.
+builder.Services.AddScoped<INotificacionSitioService, NotificacionSitioService>();
 builder.Services.AddScoped<VerificationCodeService>();
 
 // Background worker that auto-cancels short reservations whose one-hour grace
@@ -74,6 +99,10 @@ builder.Services.AddHostedService<GraceExpirationService>();
 // reservation reviewable (marked via reservas.resenas_notificadas_en).
 builder.Services.AddHostedService<ReservaCompletionService>();
 builder.Services.AddHostedService<ResenaAvailabilityService>();
+
+// Background worker that writes the <24h check-in in-site reminder for both
+// sides of every confirmed reservation starting tomorrow.
+builder.Services.AddHostedService<CheckinRecordatorioService>();
 
 // --- AuthN (design TD4): short-lived JWT delivered in an HttpOnly cookie ---
 // The real signing key is injected via user-secrets (dev) or the Jwt__Key
@@ -186,7 +215,18 @@ app.UseAuthentication();
 app.UseMiddleware<CsrfMiddleware>();
 app.UseAuthorization();
 
+// A5: after UseAuthorization so the [EnableRateLimiting] endpoint metadata is
+// already bound; only opt-in endpoints are limited.
+if (rateLimitEnabled)
+{
+    app.UseRateLimiter();
+}
+
 app.MapControllers();
+
+// Docker-compose healthcheck (A8/A9): anonymous, cheap liveness probe so the
+// frontend can wait on the API being up instead of proxying transient 502s.
+app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new { status = "ok" }));
 
 app.Run();
 

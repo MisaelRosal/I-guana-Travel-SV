@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
 import { eliminarResena, getMisResenas } from '../../../services/resenas.js'
+import { api } from '../../../services/api.js'
 import AdminPanelPage from '../AdminPanelPage.jsx'
 
 // F2b-1 (i18n-es-en): the admin panel reads its chrome from the `admin`
@@ -45,8 +46,8 @@ const fixtures = vi.hoisted(() => ({
     },
   ],
   resenas: {
-    Resumenes: [{ publicacionId: 3, titulo: 'Ruta del café en Apan', promedio: 4.3, total: 2 }],
-    Resenas: [
+    resumenes: [{ publicacionId: 3, titulo: 'Ruta del café en Apan', promedio: 4.3, total: 2 }],
+    resenas: [
       {
         id: 9, calificacion: 4, comentario: 'Buena vista y mejor anfitrión.',
         fecha: '2026-05-01T12:00:00', respuestaAnfitrion: null, fechaRespuesta: null,
@@ -250,5 +251,18 @@ describe('Reseñas tab: admin moderation', () => {
     expect(eliminarResena).toHaveBeenCalledWith(9)
     expect(await screen.findByText('La reseña fue eliminada.')).toBeInTheDocument()
     expect(getMisResenas).toHaveBeenCalledTimes(2)
+  })
+})
+
+// M5: a hosts/listings load failure surfaces with a retry instead of empty tables.
+describe('M5: load errors surface in the admin panel', () => {
+  it('shows a retryable error banner when the data request fails', async () => {
+    api.get.mockRejectedValueOnce(new Error('boom'))
+    renderAdmin()
+
+    expect(await screen.findByText('No se pudieron cargar anfitriones ni publicaciones.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
+    // A failure must never be reported as "no hosts registered yet".
+    expect(screen.queryByText('Aún no hay anfitriones registrados.')).toBeNull()
   })
 })

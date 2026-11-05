@@ -33,6 +33,9 @@ export default function AdminPanelPage() {
   const [anfitriones, setAnfitriones] = useState([])
   const [publicaciones, setPublicaciones] = useState([])
   const [cargando, setCargando] = useState(true)
+  // M5: a load failure must surface for the hosts/listings tables instead of
+  // an silent empty table (same shape as the reviews errorResenas flag).
+  const [errorCarga, setErrorCarga] = useState(false)
   const [mensaje, setMensaje] = useState(null)
   const [confirmando, setConfirmando] = useState(null)
   const [confirmandoPub, setConfirmandoPub] = useState(null)
@@ -50,6 +53,7 @@ export default function AdminPanelPage() {
 
   const cargar = useCallback(async () => {
     setCargando(true)
+    setErrorCarga(false)
     try {
       const [anfs, pubs] = await Promise.all([
         api.get('/Anfitrione'),
@@ -60,6 +64,7 @@ export default function AdminPanelPage() {
     } catch {
       setAnfitriones([])
       setPublicaciones([])
+      setErrorCarga(true)
     } finally {
       setCargando(false)
     }
@@ -199,6 +204,17 @@ export default function AdminPanelPage() {
         <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
           {cargando ? (
             <p className="px-6 py-14 text-center text-cafe">{t('hosts.loading')}</p>
+          ) : errorCarga ? (
+            <div role="alert" className="px-6 py-14 text-center">
+              <p className="text-lg font-semibold text-red-700">{t('error.load')}</p>
+              <button
+                type="button"
+                onClick={cargar}
+                className="mt-5 cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
+              >
+                {t('error.retry')}
+              </button>
+            </div>
           ) : anfitriones.length === 0 ? (
             <p className="px-6 py-14 text-center text-cafe">{t('hosts.empty')}</p>
           ) : (
@@ -309,6 +325,17 @@ export default function AdminPanelPage() {
         <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
           {cargando ? (
             <p className="px-6 py-14 text-center text-cafe">{t('listings.loading')}</p>
+          ) : errorCarga ? (
+            <div role="alert" className="px-6 py-14 text-center">
+              <p className="text-lg font-semibold text-red-700">{t('error.load')}</p>
+              <button
+                type="button"
+                onClick={cargar}
+                className="mt-5 cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
+              >
+                {t('error.retry')}
+              </button>
+            </div>
           ) : publicaciones.length === 0 ? (
             <p className="px-6 py-14 text-center text-cafe">{t('listings.empty')}</p>
           ) : (
@@ -400,7 +427,7 @@ export default function AdminPanelPage() {
             <p className="px-6 py-14 text-center text-cafe">{t('reviews.error')}</p>
           ) : cargandoResenas ? (
             <p className="px-6 py-14 text-center text-cafe">{t('reviews.loading')}</p>
-          ) : (resenas?.Resenas?.length ?? 0) === 0 ? (
+          ) : (resenas?.resenas?.length ?? 0) === 0 ? (
             <p className="px-6 py-14 text-center text-cafe">{t('reviews.empty')}</p>
           ) : (
             <div>
@@ -408,7 +435,7 @@ export default function AdminPanelPage() {
                 <span className="w-full text-xs font-semibold uppercase tracking-wide text-cafe">
                   {t('reviews.summaryTitle')}
                 </span>
-                {(resenas?.Resumenes ?? []).map((s) => (
+                {(resenas?.resumenes ?? []).map((s) => (
                   <span
                     key={s.publicacionId}
                     className="inline-flex items-center gap-2 rounded-full bg-verde-hoja/15 px-3 py-1 text-xs font-semibold text-verde-bosque"
@@ -420,7 +447,7 @@ export default function AdminPanelPage() {
                 ))}
               </div>
               <ul className="divide-y divide-cafe-claro/30">
-                {(resenas?.Resenas ?? []).map((r) => (
+                {(resenas?.resenas ?? []).map((r) => (
                   <li key={r.id} className="p-4 sm:p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">

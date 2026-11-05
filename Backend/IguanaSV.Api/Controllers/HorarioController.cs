@@ -15,20 +15,36 @@ public class HorarioController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly INotificacionSitioService _notificacionesSitio;
 
-    public HorarioController(IguanasDbContext context, IEmailNotificationService notificaciones)
+    public HorarioController(
+        IguanasDbContext context,
+        IEmailNotificationService notificaciones,
+        INotificacionSitioService notificacionesSitio)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _notificacionesSitio = notificacionesSitio;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<HorarioEntity>>> GetHorarios()
+    public async Task<ActionResult<IEnumerable<HorarioEntity>>> GetHorarios(
+        [FromQuery] int? page, [FromQuery] int? pageSize)
     {
-        return await _context.Horarios
+        // Opt-in pagination (M11): omitting pageSize keeps the full list so the
+        // existing callers are unaffected; when given, it is clamped defensively.
+        IQueryable<HorarioEntity> query = _context.Horarios
             .Include(h => h.Publicacion)
-            .Include(h => h.ReservaHorarios)
-            .ToListAsync();
+            .Include(h => h.ReservaHorarios);
+
+        if (pageSize != null)
+        {
+            var tamano = Math.Clamp(pageSize.Value, 1, 300);
+            var salto = Math.Max(page ?? 1, 1);
+            query = query.Skip((salto - 1) * tamano).Take(tamano);
+        }
+
+        return await query.ToListAsync();
     }
 
     [HttpGet("{id}")]
@@ -256,6 +272,14 @@ public class HorarioController : ControllerBase
         var fallidos = 0;
         foreach (var reserva in reservas)
         {
+            // In-site copy for the guest account (independent of the email below).
+            await _notificacionesSitio.NotificarAsync(
+                reserva.UsuarioId,
+                reserva.EmailHuesped,
+                "reserva_reprogramada",
+                $"Tu reserva en {publicacion.Titulo ?? "tu experiencia"} fue reprogramada para el {fechaNueva:dd/MM/yyyy}",
+                reserva.Id);
+
             if (string.IsNullOrWhiteSpace(reserva.EmailHuesped))
             {
                 fallidos++;

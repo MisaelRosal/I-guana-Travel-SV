@@ -29,6 +29,9 @@ export default function SerAnfitrionPage() {
   const [descripcion, setDescripcion] = useState('')
   const [foto, setFoto] = useState(null)
   const [fotoUrl, setFotoUrl] = useState('')
+  // M7: the preview is one object URL per selected file, revoked whenever the
+  // selection changes or the component unmounts (never created during render).
+  const [fotoPreview, setFotoPreview] = useState('')
   const [subiendo, setSubiendo] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
@@ -59,6 +62,13 @@ export default function SerAnfitrionPage() {
       setMunicipios(ms.filter((m) => m.departamentoId === parseInt(departamentoId)))
     }).catch(() => {})
   }, [departamentoId])
+
+  useEffect(() => {
+    if (!foto) return undefined
+    const url = URL.createObjectURL(foto)
+    setFotoPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [foto])
 
   const elegirFoto = (e) => {
     const archivo = e.target.files?.[0]
@@ -173,7 +183,7 @@ export default function SerAnfitrionPage() {
                     className="cursor-pointer flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-neutral-300 bg-crema text-3xl text-cafe hover:border-verde-hoja"
                   >
                     {foto || fotoUrl ? (
-                      <img src={foto ? URL.createObjectURL(foto) : fotoUrl} alt={t('photoAlt')} className="h-full w-full object-cover" />
+                      <img src={foto ? fotoPreview : fotoUrl} alt={t('photoAlt')} className="h-full w-full object-cover" />
                     ) : (
                       '+'
                     )}

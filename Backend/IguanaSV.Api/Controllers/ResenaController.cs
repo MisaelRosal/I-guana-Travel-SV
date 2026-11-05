@@ -16,17 +16,20 @@ public class ResenaController : ControllerBase
 {
     private readonly IguanasDbContext _context;
     private readonly IEmailNotificationService _notificaciones;
+    private readonly INotificacionSitioService _notificacionesSitio;
     private readonly IContentTranslationService _translationService;
     private readonly ILogger<ResenaController> _logger;
 
     public ResenaController(
         IguanasDbContext context,
         IEmailNotificationService notificaciones,
+        INotificacionSitioService notificacionesSitio,
         IContentTranslationService? translationService = null,
         ILogger<ResenaController>? logger = null)
     {
         _context = context;
         _notificaciones = notificaciones;
+        _notificacionesSitio = notificacionesSitio;
         _translationService = translationService ?? NoOpContentTranslationService.Instance;
         _logger = logger ?? NullLogger<ResenaController>.Instance;
     }
@@ -157,6 +160,14 @@ public class ResenaController : ControllerBase
                 resena.Calificacion);
         }
 
+        // In-site copy for the host account.
+        await _notificacionesSitio.NotificarAsync(
+            anfitrion?.UsuarioId,
+            anfitrion?.Email,
+            "resena_recibida",
+            $"Recibiste una reseña en {reserva.Publicacion?.Titulo ?? "tu publicación"}",
+            reserva.Id);
+
         return Ok(new
         {
             resena.Id,
@@ -260,6 +271,14 @@ public class ResenaController : ControllerBase
                 reserva.Publicacion?.Titulo ?? "tu experiencia",
                 resena.Calificacion);
         }
+
+        // In-site copy for the guest account.
+        await _notificacionesSitio.NotificarAsync(
+            reserva.UsuarioId,
+            reserva.Usuario?.Email,
+            "calificacion_recibida",
+            $"El anfitrión calificó tu estadía en {reserva.Publicacion?.Titulo ?? "tu experiencia"}",
+            reserva.Id);
 
         return Ok(new
         {
@@ -486,6 +505,23 @@ public class ResenaController : ControllerBase
         }
 
         await TranslateReplyIfMissingAsync(resena, HttpContext.RequestAborted);
+
+        // In-site notice for the review author when a real reply lands (not on
+        // a clear).
+        if (respuesta != null)
+        {
+            var autorEmail = await _context.Usuarios
+                .AsNoTracking()
+                .Where(u => u.Id == resena.UsuarioId)
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync();
+            await _notificacionesSitio.NotificarAsync(
+                resena.UsuarioId,
+                autorEmail,
+                "respuesta_resena",
+                "El anfitrión respondió tu reseña",
+                resena.ReservaId);
+        }
 
         return Ok(new { resena.RespuestaAnfitrion, resena.FechaRespuesta });
     }

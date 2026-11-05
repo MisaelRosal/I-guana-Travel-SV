@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
@@ -319,6 +319,41 @@ function renderCatalogAt(initialEntries) {
     </I18nextProvider>,
   )
 }
+
+// M4: typing debounces the refetch (one call per keystroke burst) while the
+// URL keeps updating instantly; non-typed URL changes (deep links, back nav)
+// still refetch immediately.
+describe('debounced search: typed keystrokes refetch once per burst', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    getExperiencias.mockImplementation(async () => [])
+  })
+
+  it('syncs the URL on every keystroke but only refetches after the debounce window', async () => {
+    vi.useFakeTimers()
+    getExperiencias.mockImplementation(async ({ search }) => [fixtures.experiencia])
+
+    renderCatalogAt(['/'])
+
+    // Mount fetch happened synchronously; the burst has not fired yet.
+    expect(getExperiencias).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'a' } })
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'ap' } })
+
+    // URL result is instant (last keystroke wins), refetch is not.
+    expect(screen.getByTestId('url').textContent).toBe('/?q=ap')
+    expect(getExperiencias).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(getExperiencias).toHaveBeenCalledTimes(2)
+    expect(getExperiencias).toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: 'ap' }),
+    )
+  })
+})
 
 describe('filters live in the URL (deep-linkable catalog)', () => {
   beforeEach(() => {
