@@ -81,17 +81,11 @@
       "debit": "Debit card",
       "paypal": "PayPal"
     },
-    "cardNumber": "Card number",
-    "holderName": "Cardholder name",
-    "holderPlaceholder": "As it appears on the card",
-    "expiry": "Expiry",
-    "expiryPlaceholder": "MM/YY",
+    "simulatedNote": "Simulated payment: no real charge is made.",
     "paypalNotice": "You'll be redirected to PayPal to complete the payment.",
     "submit": "Confirm payment",
     "processing": "Processing payment...",
     "errorMethod": "Select a payment method",
-    "errorCardNumber": "Enter the card number",
-    "errorHolder": "Enter the cardholder name",
     "errorGeneric": "Error processing the payment"
   },
   "cancel": {

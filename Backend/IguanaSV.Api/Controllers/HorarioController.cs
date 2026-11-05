@@ -28,12 +28,23 @@ public class HorarioController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<HorarioEntity>>> GetHorarios()
+    public async Task<ActionResult<IEnumerable<HorarioEntity>>> GetHorarios(
+        [FromQuery] int? page, [FromQuery] int? pageSize)
     {
-        return await _context.Horarios
+        // Opt-in pagination (M11): omitting pageSize keeps the full list so the
+        // existing callers are unaffected; when given, it is clamped defensively.
+        IQueryable<HorarioEntity> query = _context.Horarios
             .Include(h => h.Publicacion)
-            .Include(h => h.ReservaHorarios)
-            .ToListAsync();
+            .Include(h => h.ReservaHorarios);
+
+        if (pageSize != null)
+        {
+            var tamano = Math.Clamp(pageSize.Value, 1, 300);
+            var salto = Math.Max(page ?? 1, 1);
+            query = query.Skip((salto - 1) * tamano).Take(tamano);
+        }
+
+        return await query.ToListAsync();
     }
 
     [HttpGet("{id}")]

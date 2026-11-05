@@ -6,6 +6,7 @@ using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -48,6 +49,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<RegistroResponseDto>> Register(RegistroRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Nombre) ||
@@ -58,7 +60,30 @@ public class AuthController : ControllerBase
             return BadRequest(new { mensaje = "Todos los campos son obligatorios." });
         }
 
+        // (A6) Register hardening: password policy + caps matching the DB
+        // columns (usuarios.nombre/apellido varchar(100), email varchar(150),
+        // telefono varchar(20)). The 6-char minimum matches the reset flow and
+        // applies only to NEW accounts; existing users are never retro-strengthened.
+        if (request.Password.Length < 6)
+        {
+            return BadRequest(new { mensaje = "La contraseña debe tener al menos 6 caracteres." });
+        }
+
+        if (request.Nombre.Trim().Length > 100 || request.Apellido.Trim().Length > 100)
+        {
+            return BadRequest(new { mensaje = "El nombre y el apellido no pueden exceder los 100 caracteres." });
+        }
+
         var email = request.Email.Trim().ToLowerInvariant();
+        if (email.Length > 150 || !System.Net.Mail.MailAddress.TryCreate(email, out _))
+        {
+            return BadRequest(new { mensaje = "El correo no es válido." });
+        }
+
+        if ((request.Telefono?.Length ?? 0) > 20)
+        {
+            return BadRequest(new { mensaje = "El teléfono no puede exceder los 20 caracteres." });
+        }
 
         var existe = await _context.Usuarios.AnyAsync(u => u.Email == email);
         if (existe)
@@ -133,6 +158,7 @@ public class AuthController : ControllerBase
     /// (same cookies as login) only when the newest unused, unexpired code for
     /// that address matches.
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("verificar-email")]
     public async Task<ActionResult<UsuarioResponse>> VerificarEmail(VerificarEmailRequest request)
     {
@@ -218,6 +244,7 @@ public class AuthController : ControllerBase
     /// Rate-limited per user through the same hourly code count as resend.
     /// </summary>
     [HttpPost("solicitar-reset-password")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> SolicitarResetPassword(SolicitarResetPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -290,6 +317,7 @@ public class AuthController : ControllerBase
     /// code reuses the generic message so a caller cannot probe which accounts
     /// requested a reset.
     /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("restablecer-password")]
     public async Task<ActionResult<UsuarioResponse>> RestablecerPassword(RestablecerPasswordRequest request)
     {
@@ -345,6 +373,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<UsuarioResponse>> Login(LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))

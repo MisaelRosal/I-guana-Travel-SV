@@ -147,6 +147,24 @@ export default function CatalogPage() {
   const precioMax = searchParams.get('precio') ?? ''
   const orden = searchParams.get('orden') ?? ''
 
+  // M4 (debounce de refetch): la URL sigue siendo instantánea en cada tecla,
+  // pero la llamada al catálogo espera ~300ms a que la escritura termine.
+  // El ref está en true solo cuando el cambio viene del input: los cambios
+  // "externos" (filtros, Atrás/Adelante, deep link) se sincronizan al toque.
+  const RETARDO_BUSQUEDA_MS = 300
+  const [busquedaAplazada, setBusquedaAplazada] = useState(busqueda)
+  const tecleandoRef = useRef(false)
+
+  useEffect(() => {
+    if (!tecleandoRef.current) {
+      setBusquedaAplazada(busqueda)
+      return undefined
+    }
+    tecleandoRef.current = false
+    const temporizador = setTimeout(() => setBusquedaAplazada(busqueda), RETARDO_BUSQUEDA_MS)
+    return () => clearTimeout(temporizador)
+  }, [busqueda])
+
   // Escribir en el buscador reemplaza la entrada actual (no llena el historial);
   // elegir un filtro empuja una entrada nueva para que Atrás restaure el anterior.
   const actualizarFiltro = (clave, valor, opciones) => {
@@ -194,7 +212,7 @@ export default function CatalogPage() {
     let activo = true
     if (primeraCarga.current) setCargando(true)
 
-    getExperiencias({ search: busqueda, categoria, zona, tipo, precioMax, locale: contentLocale })
+    getExperiencias({ search: busquedaAplazada, categoria, zona, tipo, precioMax, locale: contentLocale })
       .then((datos) => { if (activo) { setExperiencias(datos); setError(false) } })
       .catch(() => { if (activo) setError(true) })
       .finally(() => {
@@ -205,7 +223,7 @@ export default function CatalogPage() {
       })
 
     return () => { activo = false }
-  }, [busqueda, categoria, zona, tipo, precioMax, contentLocale, reintento])
+  }, [busquedaAplazada, categoria, zona, tipo, precioMax, contentLocale, reintento])
 
   useEffect(() => {
     getProximasExperiencias(PROXIMAS_LIMITE, contentLocale)
@@ -288,7 +306,12 @@ export default function CatalogPage() {
               <input
                 type="search"
                 value={busqueda}
-                onChange={(e) => actualizarFiltro('q', e.target.value, { replace: true })}
+                onChange={(e) => {
+                  // Keystrokes mark the next URL change as typed so the
+                  // refetch (not the URL sync) waits out the debounce window.
+                  tecleandoRef.current = true
+                  actualizarFiltro('q', e.target.value, { replace: true })
+                }}
                 aria-label={t('search.label')}
                 placeholder={t('search.placeholder')}
                 className="w-full rounded-full border-2 border-verde-bosque bg-white py-3 pl-11 pr-4 text-neutral-800 placeholder:text-neutral-500 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"

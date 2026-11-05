@@ -24,6 +24,11 @@
   "banner": {
     "dismiss": "Dismiss message"
   },
+  "notFound": {
+    "title": "We couldn't find that page",
+    "body": "The address you're looking for doesn't exist or has moved.",
+    "back": "Back to the catalog"
+  },
   "stars": {
     "ariaLabel": "{{valor}} out of 5 stars",
     "pickerAria": "Rating from 0 to 5 stars",

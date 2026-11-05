@@ -5,6 +5,10 @@
     "title": "Restricted access",
     "body": "This section is exclusive to system administrators."
   },
+  "error": {
+    "load": "Hosts and listings could not be loaded.",
+    "retry": "Retry"
+  },
   "tabs": {
     "hosts": "Hosts",
     "listings": "Listings",

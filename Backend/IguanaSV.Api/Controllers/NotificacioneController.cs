@@ -21,11 +21,23 @@ public class NotificacioneController : ControllerBase
 
     [HttpGet]
     [Authorize(Roles = AuthConstants.AdminRole)]
-    public async Task<ActionResult<IEnumerable<NotificacioneEntity>>> GetNotificaciones()
+    public async Task<ActionResult<IEnumerable<NotificacioneEntity>>> GetNotificaciones(
+        [FromQuery] int? page, [FromQuery] int? pageSize)
     {
-        return await _context.Notificaciones
+        // Opt-in pagination (M11): without pageSize the list stays full for the
+        // current admin consumers; when given, it is clamped defensively.
+        IQueryable<NotificacioneEntity> query = _context.Notificaciones
             .Include(n => n.Reserva)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (pageSize != null)
+        {
+            var tamano = Math.Clamp(pageSize.Value, 1, 300);
+            var salto = Math.Max(page ?? 1, 1);
+            query = query.Skip((salto - 1) * tamano).Take(tamano);
+        }
+
+        return await query.ToListAsync();
     }
 
     [HttpGet("{id}")]
@@ -135,7 +147,7 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = AuthConstants.AdminRole)]
+    [Authorize(Policy = "FreshAdmin")]
     public async Task<IActionResult> PutNotificacione(int id, CreateNotificacioneDto dto)
     {
         var notificacione = await _context.Notificaciones.FindAsync(id);
@@ -171,7 +183,7 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = AuthConstants.AdminRole)]
+    [Authorize(Policy = "FreshAdmin")]
     public async Task<ActionResult<NotificacioneEntity>> PostNotificacione(CreateNotificacioneDto dto)
     {
         if (!await _context.Reservas.AnyAsync(r => r.Id == dto.ReservaId))
@@ -196,7 +208,7 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = AuthConstants.AdminRole)]
+    [Authorize(Policy = "FreshAdmin")]
     public async Task<IActionResult> DeleteNotificacione(int id)
     {
         var notificacione = await _context.Notificaciones.FindAsync(id);

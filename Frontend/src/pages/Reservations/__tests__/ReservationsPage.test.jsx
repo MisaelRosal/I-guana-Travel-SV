@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
 import ReservationsPage from '../ReservationsPage.jsx'
-import { getMisReservas } from '../../../services/reservas.js'
+import { getMisReservas, pagarReserva } from '../../../services/reservas.js'
 
 // F2b-1 (i18n-es-en): the reservations page reads its chrome from the
 // `reservas` namespace (task 4.1 RED — strict-tdd forbids touching
@@ -175,29 +175,33 @@ describe('EN active: reservations chrome comes from the reservas namespace', () 
     expect(await screen.findByRole('status')).toHaveTextContent('Booking updated.')
   })
 
-  it('validates the payment form in EN and serves the locale-linguistic expiry placeholder', async () => {
+  it('keeps the simulated-payment modal minimal (no card fields) and pays by method', async () => {
     renderReservations()
     await screen.findAllByText('Pending')
 
     fireEvent.click(screen.getByRole('button', { name: 'Pay' }))
-    expect(await screen.findByText('Simulate payment')).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', { name: 'Simulate payment' })
     expect(screen.getByText('Booking #1')).toBeInTheDocument()
     expect(screen.getByText('Credit card')).toBeInTheDocument()
     expect(screen.getByText('Debit card')).toBeInTheDocument()
+    expect(screen.getByText('PayPal')).toBeInTheDocument()
+    // M2: the backend contract only ever received metodoPago, so the card
+    // inputs are gone and the modal explains the simulated charge instead.
+    expect(screen.getByText('Simulated payment: no real charge is made.')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('**** **** **** ****')).toBeNull()
+    expect(screen.queryByText('MM/YY')).toBeNull()
 
+    // Submitting without a selection still validates the method.
     fireEvent.click(screen.getByRole('button', { name: 'Confirm payment' }))
     expect(await screen.findByText('Select a payment method')).toBeInTheDocument()
+    expect(pagarReserva).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByText('Credit card'))
-    // '**** **** **** ****' mask stays inline (glyph policy); MM/AA is linguistic.
-    expect(screen.getByPlaceholderText('**** **** **** ****')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('MM/YY')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('As it appears on the card')).toBeInTheDocument()
+    // Paying with the selected method calls pagarReserva(id, metodoPago);
+    // only the pending Upcoming booking carries a Pay button (id 1).
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Debit card' }))
     fireEvent.click(screen.getByRole('button', { name: 'Confirm payment' }))
-    expect(await screen.findByText('Enter the card number')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('PayPal'))
-    expect(await screen.findByText("You'll be redirected to PayPal to complete the payment.")).toBeInTheDocument()
+    // The modal's 1.5s simulated processing delay precedes the API call.
+    await waitFor(() => expect(pagarReserva).toHaveBeenCalledWith(1, 'tarjeta_debito'), { timeout: 3000 })
   })
 
   it('runs the cancel flow in EN with localized confirmations and toast', async () => {
@@ -405,7 +409,7 @@ describe('Accesibilidad del pago: estado de selección y error asociado', () => 
     await i18n.changeLanguage('es')
   })
 
-  it('expone el método seleccionado y enfoca el primer campo inválido del pago', async () => {
+  it('expone el método seleccionado, enfoca el grupo inválido y paga con ese método', async () => {
     renderReservations()
     await screen.findAllByText('Pendiente')
 
@@ -418,15 +422,20 @@ describe('Accesibilidad del pago: estado de selección y error asociado', () => 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar pago' }))
     expect(await screen.findByText('Seleccioná un método de pago')).toBeInTheDocument()
     expect(within(dialog).getByRole('group', { name: 'Método de pago' })).toHaveAttribute('aria-invalid', 'true')
+    expect(within(dialog).getByRole('group', { name: 'Método de pago' })).toHaveAttribute('aria-describedby', 'pay-error')
     expect(document.activeElement).toBe(credito)
 
     fireEvent.click(credito)
     expect(credito).toHaveAttribute('aria-pressed', 'true')
 
+    // Without card inputs the selection is the only field left to verify.
+    expect(within(dialog).queryByPlaceholderText('**** **** **** ****')).toBeNull()
+    expect(within(dialog).getByText('Pago simulado: no se realiza ningún cobro real.')).toBeInTheDocument()
+
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar pago' }))
-    const numero = within(dialog).getByPlaceholderText('**** **** **** ****')
-    expect(numero).toHaveAttribute('aria-invalid', 'true')
-    expect(numero).toHaveAttribute('aria-describedby', 'pay-error')
-    expect(document.activeElement).toBe(numero)
+    // The 1.5s simulated processing delay precedes the API call.
+    await waitFor(() => expect(pagarReserva).toHaveBeenCalledWith(1, 'tarjeta_credito'), { timeout: 3000 })
+    // The success toast is the server passthrough mensaje when present.
+    expect(await screen.findByRole('status')).toHaveTextContent('Pago realizado')
   })
 })

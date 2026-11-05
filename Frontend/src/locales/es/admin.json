@@ -5,6 +5,10 @@
     "title": "Acceso restringido",
     "body": "Esta sección es exclusiva para administradores del sistema."
   },
+  "error": {
+    "load": "No se pudieron cargar anfitriones ni publicaciones.",
+    "retry": "Reintentar"
+  },
   "tabs": {
     "hosts": "Anfitriones",
     "listings": "Publicaciones",

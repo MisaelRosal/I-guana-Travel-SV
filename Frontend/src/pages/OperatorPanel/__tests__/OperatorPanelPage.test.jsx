@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../../../i18n/config.js'
 import { getMiPerfil } from '../../../services/anfitriones.js'
+import { api } from '../../../services/api.js'
 import OperatorPanelPage from '../OperatorPanelPage.jsx'
 
 // F2b-1 (i18n-es-en): the operator panel reads its chrome from the `panel`
@@ -221,5 +222,42 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
       screen.getByText('Un administrador debe verificar tu cuenta de anfitrión antes de que puedas crear publicaciones.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Crear publicación/ })).toBeDisabled()
+  })
+})
+
+// M5: load/delete failures surface instead of a silent empty table.
+describe('M5: publications load/delete errors surface in the panel', () => {
+  afterEach(() => {
+    // Restore the module-mock default for the following tests.
+    api.get.mockImplementation(async (url) =>
+      (url.startsWith('/Publicacione/anfitrion/') ? fixtures.publicaciones : []),
+    )
+    api.delete.mockImplementation(async () => ({ ok: true }))
+  })
+
+  it('shows a retryable error banner when the listings request fails', async () => {
+    // Scope the failure to the listings URL: mount also fires reviews/reports
+    // requests through the same mocked api client.
+    api.get.mockImplementation(async (url) => {
+      if (url.startsWith('/Publicacione')) throw new Error('boom')
+      return []
+    })
+    renderPanel()
+
+    expect(await screen.findByText('No se pudieron cargar las publicaciones.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
+    // A failure must never be reported as "no listings yet".
+    expect(screen.queryByText('Aún no hay publicaciones')).toBeNull()
+  })
+
+  it('reports a failed delete through the page banner instead of swallowing it', async () => {
+    renderPanel()
+    await screen.findByText('Publicación')
+
+    api.delete.mockRejectedValueOnce(new Error('boom'))
+    fireEvent.click(screen.getAllByTitle('Eliminar publicación')[0])
+    fireEvent.click(await screen.findByText('Sí, eliminar'))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('No se pudo eliminar la publicación.')
   })
 })

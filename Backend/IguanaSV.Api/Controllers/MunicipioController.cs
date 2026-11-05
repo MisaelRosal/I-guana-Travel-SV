@@ -1,4 +1,5 @@
 using MunicipioEntity = IguanaSV.Api.Entities.Municipio;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -23,7 +24,6 @@ public class MunicipioController : ControllerBase
     {
         return await _context.Municipios
             .Include(m => m.Departamento)
-            .Include(m => m.Anfitriones)
             .ToListAsync();
     }
 
@@ -32,7 +32,6 @@ public class MunicipioController : ControllerBase
     {
         var municipio = await _context.Municipios
             .Include(m => m.Departamento)
-            .Include(m => m.Anfitriones)
             .FirstOrDefaultAsync(m => m.Id == id);
 
         if (municipio == null)
@@ -43,7 +42,7 @@ public class MunicipioController : ControllerBase
         return municipio;
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutMunicipio(int id, CreateMunicipioDto dto)
     {
@@ -77,7 +76,7 @@ public class MunicipioController : ControllerBase
         return NoContent();
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpPost]
     public async Task<ActionResult<MunicipioEntity>> PostMunicipio(CreateMunicipioDto dto)
     {
@@ -99,7 +98,7 @@ public class MunicipioController : ControllerBase
         return CreatedAtAction(nameof(GetMunicipio), new { id = municipio.Id }, municipio);
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteMunicipio(int id)
     {

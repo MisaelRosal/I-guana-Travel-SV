@@ -24,6 +24,8 @@ export default function OperatorPanelPage() {
   const usuario = obtenerSesion()
   const [publicaciones, setPublicaciones] = useState([])
   const [cargando, setCargando] = useState(true)
+  // M5: a load failure must surface in the panel instead of an silent empty table.
+  const [errorPublicaciones, setErrorPublicaciones] = useState(false)
   const [modalAbierto, setModalAbierto] = useState(false)
   const [pubEditando, setPubEditando] = useState(null)
   const [mensaje, setMensaje] = useState(null)
@@ -52,6 +54,7 @@ export default function OperatorPanelPage() {
 
   const cargar = useCallback(async () => {
     setCargando(true)
+    setErrorPublicaciones(false)
     try {
       if (esAdmin(usuario?.rol)) {
         setPublicaciones(await api.get('/Publicacione'))
@@ -74,6 +77,7 @@ export default function OperatorPanelPage() {
       }
     } catch {
       setPublicaciones([])
+      setErrorPublicaciones(true)
     } finally {
       setCargando(false)
     }
@@ -178,6 +182,8 @@ export default function OperatorPanelPage() {
       window.scrollTo({ top: 0, behavior: scrollBehavior() })
     } catch {
       setEliminando(null)
+      // M5: a swallowed delete must be reported like every other failure.
+      setMensaje(t('toast.deleteError'))
     }
   }
 
@@ -260,6 +266,20 @@ export default function OperatorPanelPage() {
       <div className="overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white">
         {cargando ? (
           <p className="px-6 py-14 text-center text-cafe">{t('status.loading')}</p>
+        ) : errorPublicaciones ? (
+          <div
+            role="alert"
+            className="px-6 py-14 text-center"
+          >
+            <p className="text-lg font-semibold text-red-700">{t('status.error')}</p>
+            <button
+              type="button"
+              onClick={cargar}
+              className="mt-5 cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
+            >
+              {t('status.retry')}
+            </button>
+          </div>
         ) : publicaciones.length === 0 ? (
           <div className="px-6 py-14 text-center">
             <p className="text-lg font-semibold text-verde-bosque">{t('status.emptyTitle')}</p>

@@ -10,7 +10,9 @@ namespace IguanaSV.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = AuthConstants.AdminRole)]
+// Every action here WRITES translations (M10): gate each call on the fresh DB
+// role instead of the 60-minute JWT claim.
+[Authorize(Policy = "FreshAdmin")]
 public sealed class TraduccionesController : ControllerBase
 {
     private readonly IguanasDbContext _context;

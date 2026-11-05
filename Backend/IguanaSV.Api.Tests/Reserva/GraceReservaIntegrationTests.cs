@@ -120,7 +120,7 @@ public sealed class GraceReservaIntegrationTests
         var reservaId = await PostShortReservationAsync(user, pubId, Iso(0), Iso(1));
 
         var res = await AuthedClient(user)
-            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "card" }));
+            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "paypal" }));
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         Assert.Equal("confirmada", await ReadEstadoAsync(reservaId));
@@ -170,7 +170,7 @@ public sealed class GraceReservaIntegrationTests
         Assert.Equal(HttpStatusCode.BadRequest, cancel.StatusCode);
 
         var pay = await AuthedClient(user)
-            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "card" }));
+            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "paypal" }));
         Assert.Equal(HttpStatusCode.BadRequest, pay.StatusCode);
 
         // Still pending until the background service runs its pass.
@@ -195,7 +195,7 @@ public sealed class GraceReservaIntegrationTests
         var reservaId = await PostShortReservationAsync(user, pubId, Iso(0), Iso(1));
 
         var pay = await AuthedClient(user)
-            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "card" }));
+            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "paypal" }));
         Assert.Equal(HttpStatusCode.OK, pay.StatusCode);
         Assert.Equal("confirmada", await ReadEstadoAsync(reservaId));
 

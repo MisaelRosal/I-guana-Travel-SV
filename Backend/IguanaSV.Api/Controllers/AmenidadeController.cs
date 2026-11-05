@@ -1,4 +1,5 @@
 using AmenidadeEntity = IguanaSV.Api.Entities.Amenidade;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -41,7 +42,7 @@ public class AmenidadeController : ControllerBase
         return amenidade;
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutAmenidade(int id, CreateAmenidadDto dto)
     {
@@ -70,7 +71,7 @@ public class AmenidadeController : ControllerBase
         return NoContent();
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpPost]
     public async Task<ActionResult<AmenidadeEntity>> PostAmenidade(CreateAmenidadDto dto)
     {
@@ -87,7 +88,7 @@ public class AmenidadeController : ControllerBase
         return CreatedAtAction(nameof(GetAmenidade), new { id = amenidade.Id }, amenidade);
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAmenidade(int id)
     {

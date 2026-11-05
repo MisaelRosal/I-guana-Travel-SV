@@ -1,3 +1,4 @@
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -47,7 +48,7 @@ public class CategoriaController : ControllerBase
         return categoria;
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutCategoria(int id, Categoria categoria)
     {
@@ -82,7 +83,7 @@ public class CategoriaController : ControllerBase
         return NoContent();
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpPost]
     public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria)
     {
@@ -97,7 +98,7 @@ public class CategoriaController : ControllerBase
         return CreatedAtAction(nameof(GetCategoria), new { id = categoria.Id }, categoria);
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCategoria(int id)
     {

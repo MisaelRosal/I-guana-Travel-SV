@@ -436,7 +436,10 @@ export default function MiPerfilPage() {
                       key={exp.id}
                       experiencia={exp}
                       proximaFecha={exp.proximaFecha}
-                      resena={exp.resumenResenas}
+                      // M7 (wishlist): /Favorito/mios carries no review summary
+                      // (mapearPublicacion never produced one), so stop passing
+                      // the always-undefined prop that faked "no reviews".
+                      mostrarResenas={false}
                       guardado={true}
                       onToggleGuardado={undefined}
                     />

@@ -3,6 +3,11 @@ import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
+// M9: marker assets come from the installed leaflet package through static
+// URL imports (same idiom as the hero image) — never an external CDN.
+import markerIconPng from 'leaflet/dist/images/marker-icon.png'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { getContentLocale, useFormatLocale } from '../../i18n/config.js'
 import { localePath } from '../../i18n/routes.jsx'
 import {
@@ -27,9 +32,9 @@ import Toast from '../../components/Toast.jsx'
 import { Estrellas } from '../../components/Estrellas.jsx'
 
 const markerIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl: markerIconPng,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],

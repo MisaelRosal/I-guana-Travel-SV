@@ -28,6 +28,8 @@ public class ImagenesController : ControllerBase
     // (W3b). W6 adds content validation on top of that gate.
     [HttpPost("upload")]
     [Authorize]
+    // 30 MB batch cap (M6); the 5 MB per-file check below stays authoritative.
+    [RequestSizeLimit(31_457_280)]
     public async Task<IActionResult> Upload()
     {
         var files = Request.Form.Files;

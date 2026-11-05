@@ -126,7 +126,27 @@ public class ReporteController : ControllerBase
         if (reporte == null) return NotFound();
         if (reporte.Anfitrion.UsuarioId != sub.Value) return Forbid();
 
-        var url = await _storage.UploadAsync(file);
+        // Size mapping first: beyond the 10 MB request limit per-file uploads
+        // answer 413 (M6). The attribute below caps the whole request including
+        // multipart overhead.
+        if (file.Length > 10_485_760)
+        {
+            return StatusCode(StatusCodes.Status413PayloadTooLarge,
+                new { mensaje = "El archivo excede el límite de 10 MB." });
+        }
+
+        string url;
+        try
+        {
+            url = await _storage.UploadAsync(file);
+        }
+        catch (InvalidOperationException)
+        {
+            // Storage refuses bytes that are not an allowed image type; surface
+            // it as 415 instead of letting it bubble up as a 500 (M6).
+            return StatusCode(StatusCodes.Status415UnsupportedMediaType,
+                new { mensaje = "Solo se permiten imágenes JPEG, PNG, GIF o WEBP." });
+        }
         var ev = new ReporteEvidencia
         {
             ReporteId = reporte.Id,
@@ -142,20 +162,31 @@ public class ReporteController : ControllerBase
 
     [HttpGet("mis")]
     [Authorize]
-    public async Task<IActionResult> Mis()
+    public async Task<IActionResult> Mis(
+        [FromQuery] int? page, [FromQuery] int? pageSize)
     {
         var sub = User.GetSubjectId();
         if (!sub.HasValue) return Forbid();
         var anfitrion = await _context.Anfitriones.AsNoTracking().FirstOrDefaultAsync(a => a.UsuarioId == sub.Value);
         if (anfitrion == null) return Ok(Array.Empty<object>());
 
-        var reportes = await _context.Reportes
+        // Opt-in pagination (M11): same optional pattern as Todos.
+        IQueryable<Reporte> query = _context.Reportes
             .AsNoTracking()
             .Where(r => r.AnfitrionId == anfitrion.Id)
             .Include(r => r.UsuarioHuesped)
             .Include(r => r.Publicacion)
             .Include(r => r.Evidencias)
-            .OrderByDescending(r => r.CreadoEn)
+            .OrderByDescending(r => r.CreadoEn);
+
+        if (pageSize != null)
+        {
+            var tamano = Math.Clamp(pageSize.Value, 1, 300);
+            var salto = Math.Max(page ?? 1, 1);
+            query = query.Skip((salto - 1) * tamano).Take(tamano);
+        }
+
+        var reportes = await query
             .Select(r => new
             {
                 id = r.Id,
@@ -179,16 +210,28 @@ public class ReporteController : ControllerBase
 
     [HttpGet]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Todos()
+    public async Task<IActionResult> Todos(
+        [FromQuery] int? page, [FromQuery] int? pageSize)
     {
-        var reportes = await _context.Reportes
+        // Opt-in pagination (M11): without pageSize the list stays full for the
+        // current admin panel; when given, it is clamped defensively.
+        IQueryable<Reporte> query = _context.Reportes
             .AsNoTracking()
             .Include(r => r.UsuarioHuesped)
             .Include(r => r.Publicacion)
             .Include(r => r.Anfitrion)
             .Include(r => r.Reserva)
             .Include(r => r.Evidencias)
-            .OrderByDescending(r => r.CreadoEn)
+            .OrderByDescending(r => r.CreadoEn);
+
+        if (pageSize != null)
+        {
+            var tamano = Math.Clamp(pageSize.Value, 1, 300);
+            var salto = Math.Max(page ?? 1, 1);
+            query = query.Skip((salto - 1) * tamano).Take(tamano);
+        }
+
+        var reportes = await query
             .Select(r => new
             {
                 id = r.Id,
@@ -214,7 +257,7 @@ public class ReporteController : ControllerBase
     }
 
     [HttpPut("{id}/estado")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "FreshAdmin")]
     public async Task<IActionResult> CambiarEstado(int id, CambiarEstadoDto dto)
     {
         var sub = User.GetSubjectId();

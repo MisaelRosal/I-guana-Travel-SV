@@ -41,6 +41,9 @@ public class PublicacioneController : ControllerBase
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
 
+        // shortcut: the public catalog is designed to load everything client-side
+        // (full list, no UI pagination), so we only bound the anonymous blast
+        // surface; revisit when the SPA learns server-side pagination.
         var publicaciones = await _context.Publicaciones
             .AsNoTracking()
             .Include(p => p.Anfitrion)
@@ -54,6 +57,9 @@ public class PublicacioneController : ControllerBase
             .Include(p => p.ImagenesPublicacions)
             .Include(p => p.PublicacionAmenidads)
                 .ThenInclude(pa => pa.Amenidad)
+            // M11: generous cap on the anonymous full-catalog read (see shortcut above).
+            .OrderBy(p => p.Id)
+            .Take(500)
             .ToListAsync();
 
         PublicacionContentLocale.ApplyContentLocale(publicaciones, locale);

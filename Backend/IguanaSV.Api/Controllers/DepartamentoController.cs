@@ -1,4 +1,5 @@
 using DepartamentoEntity = IguanaSV.Api.Entities.Departamento;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -41,7 +42,7 @@ public class DepartamentoController : ControllerBase
         return departamento;
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutDepartamento(int id, CreateDepartamentoDto dto)
     {
@@ -69,7 +70,7 @@ public class DepartamentoController : ControllerBase
         return NoContent();
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpPost]
     public async Task<ActionResult<DepartamentoEntity>> PostDepartamento(CreateDepartamentoDto dto)
     {
@@ -85,7 +86,7 @@ public class DepartamentoController : ControllerBase
         return CreatedAtAction(nameof(GetDepartamento), new { id = departamento.Id }, departamento);
     }
 
-    [Authorize]
+    [Authorize(Policy = "FreshAdmin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteDepartamento(int id)
     {

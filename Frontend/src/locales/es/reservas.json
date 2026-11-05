@@ -82,17 +82,11 @@
       "debit": "Tarjeta de débito",
       "paypal": "PayPal"
     },
-    "cardNumber": "Número de tarjeta",
-    "holderName": "Nombre del titular",
-    "holderPlaceholder": "Como aparece en la tarjeta",
-    "expiry": "Vencimiento",
-    "expiryPlaceholder": "MM/AA",
+    "simulatedNote": "Pago simulado: no se realiza ningún cobro real.",
     "paypalNotice": "Serás redirigido a PayPal para completar el pago.",
     "submit": "Confirmar pago",
     "processing": "Procesando pago...",
     "errorMethod": "Seleccioná un método de pago",
-    "errorCardNumber": "Ingresa el número de tarjeta",
-    "errorHolder": "Ingresa el nombre del titular",
     "errorGeneric": "Error al procesar el pago"
   },
   "cancel": {

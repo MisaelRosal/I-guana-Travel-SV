@@ -346,6 +346,41 @@ public class ReservaController : ControllerBase
             return Conflict(OverlapConflict());
         }
 
+        // Experience slot capacity (A4): the experience range collapses to an
+        // empty daterange so the EXCLUDE never fires here; the binding guard
+        // instead lives in this same booking transaction, which already holds
+        // the publication advisory lock taken above (it serializes concurrent
+        // bookings for this publication, so the count below cannot race).
+        if (esExperiencia)
+        {
+            // Bookings on a day without a published horario are invalid: the
+            // host never opened that date for the experience.
+            var horariosDelDia = await _context.Horarios
+                .Where(h => h.PublicacionId == publicacion.Id && h.Fecha == inicio)
+                .ToListAsync();
+
+            if (horariosDelDia.Count == 0)
+            {
+                return Conflict(new { mensaje = "La fecha seleccionada no tiene horario disponible. Elegí otra fecha." });
+            }
+
+            // Day capacity: the slots' cupos when configured, otherwise the
+            // publication capacity. Occupancy counts every active reservation
+            // pinned to that date (the SPA books experiences at date level).
+            var cuposConfigurados = horariosDelDia.Sum(h => h.Cupos ?? 0);
+            var capacidadDelDia = cuposConfigurados > 0 ? cuposConfigurados : publicacion.CapacidadMaxima;
+            var ocupadosDia = await _context.Reservas
+                .Where(r => r.PublicacionId == publicacion.Id
+                    && r.FechaInicio == inicio
+                    && (r.Estado ?? "") != "cancelada")
+                .SumAsync(r => (int?)r.NumeroHuespedes) ?? 0;
+
+            if (ocupadosDia + dto.NumeroHuespedes > capacidadDelDia)
+            {
+                return Conflict(new { mensaje = "El cupo de este horario ya no está disponible." });
+            }
+        }
+
         var reserva = new Reserva
         {
             PublicacionId = dto.PublicacionId,
@@ -435,17 +470,24 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden confirmar reservas pendientes." });
         }
 
-        reserva.Estado = "confirmada";
-        reserva.UpdatedAt = DateTime.Now;
+        // Atomic transition: the WHERE estado == 'pendiente' makes the write the
+        // race tie-breaker against any concurrent payer/canceller/expiration pass
+        // (no rowversion column; a lost transition answers 409 instead of
+        // last-write-wins stamping a cancelled row as confirmed).
+        var confirmadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado == "pendiente")
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "confirmada")
+                .SetProperty(r => r.UpdatedAt, DateTime.Now));
 
-        try
+        if (confirmadas == 0)
         {
-            await _context.SaveChangesAsync();
+            return Conflict(new { mensaje = "La reserva ya no está en estado pendiente." });
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict();
-        }
+
+        // Keep the still-tracked entity in sync with what was written so the
+        // response payload reports the new state (no SaveChanges from here).
+        reserva.Estado = "confirmada";
 
         await _notificacionesSitio.NotificarAsync(
             reserva.UsuarioId,
@@ -485,19 +527,23 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = "La reserva venció y se cancelará." });
         }
 
-        reserva.Estado = "confirmada";
-        reserva.MetodoPago = dto.MetodoPago;
-        reserva.FechaPago = DateTime.Now;
-        reserva.IdTransaccion = $"TXN-{Guid.NewGuid():N}".Substring(0, 20);
-        reserva.UpdatedAt = DateTime.Now;
+        // Atomic payment stamp: every payment attribute is written in the SAME
+        // conditional update, so a row cancelled by a concurrent expiration pass
+        // can never gain a payment record (0 rows affected → 409).
+        var ahoraPago = DateTime.Now;
+        var idTransaccion = $"TXN-{Guid.NewGuid():N}".Substring(0, 20);
+        var pagadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado == "pendiente")
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "confirmada")
+                .SetProperty(r => r.MetodoPago, dto.MetodoPago)
+                .SetProperty(r => r.FechaPago, ahoraPago)
+                .SetProperty(r => r.IdTransaccion, idTransaccion)
+                .SetProperty(r => r.UpdatedAt, ahoraPago));
 
-        try
+        if (pagadas == 0)
         {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict();
+            return Conflict(new { mensaje = "La reserva ya no está en estado pendiente." });
         }
 
         // The simulated payment auto-confirms the reservation, so the guest gets
@@ -513,10 +559,10 @@ public class ReservaController : ControllerBase
         {
             mensaje = "Pago simulado exitosamente. Reserva confirmada.",
             reserva.Id,
-            reserva.Estado,
-            reserva.MetodoPago,
-            reserva.FechaPago,
-            reserva.IdTransaccion,
+            Estado = "confirmada",
+            MetodoPago = dto.MetodoPago,
+            FechaPago = ahoraPago,
+            idTransaccion,
             reserva.PrecioTotal,
         });
     }
@@ -573,17 +619,26 @@ public class ReservaController : ControllerBase
             return BadRequest(new { mensaje = "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy." });
         }
 
-        reserva.Estado = "cancelada";
-        reserva.UpdatedAt = DateTime.Now;
+        // Atomic transition conditional on every state the business rules above
+        // allow for THIS row. A short reservation's allowed set is {pendiente}
+        // only (a paid row is locked), so a graceful concurrent payment wins the
+        // race and this update finds 0 rows → 409, never a cancelled contract.
+        var estadosCanceldables = reserva.FechaExpiracionGracia != null && !reserva.CancelacionLibre
+            ? new[] { "pendiente" }
+            : new[] { "pendiente", "confirmada" };
+        var canceladas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado != null && estadosCanceldables.Contains(r.Estado))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "cancelada")
+                .SetProperty(r => r.UpdatedAt, DateTime.Now));
 
-        try
+        if (canceladas == 0)
         {
-            await _context.SaveChangesAsync();
+            return Conflict(new { mensaje = "La reserva ya no está en un estado cancelable." });
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict();
-        }
+
+        // Response payload consistency (see ConfirmarReserva note).
+        reserva.Estado = "cancelada";
 
         // Notify the OTHER side: a guest cancellation reaches the host, a
         // host/admin cancellation reaches the guest.
@@ -656,8 +711,20 @@ public class ReservaController : ControllerBase
             return BadRequest("No es posible eliminar una reserva cuando falta un día o menos para la fecha de entrada.");
         }
 
-        _context.Reservas.Remove(reserva);
-        await _context.SaveChangesAsync();
+        // Atomic delete conditional on every state the gates above allow for
+        // THIS row. Short reservations only ever delete a 'pendiente' row, so a
+        // concurrent payment inside the grace race removes the row from reach
+        // (0 rows → the caller must re-read; a paid row is never hard-deleted).
+        var estadosEliminables = reserva.FechaExpiracionGracia != null && !reserva.CancelacionLibre
+            ? new[] { "pendiente" }
+            : new[] { "pendiente", "confirmada" };
+        var eliminadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado != null && estadosEliminables.Contains(r.Estado))
+            .ExecuteDeleteAsync();
+        if (eliminadas == 0)
+        {
+            return BadRequest("La reserva ya no puede eliminarse.");
+        }
 
         return NoContent();
     }

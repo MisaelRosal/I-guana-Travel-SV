@@ -364,14 +364,14 @@ public sealed class ReservaOwnershipIntegrationTests
 
         var stranger = await RegisterUserAsync();
         var strangerRes = await AuthedClient(stranger)
-            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "card" }));
+            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "paypal" }));
         Assert.Equal(HttpStatusCode.Forbidden, strangerRes.StatusCode);
 
         var ownerRes = await AuthedClient(owner)
-            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "card" }));
+            .PutAsync($"/api/Reserva/{reservaId}/pagar", Json(new { metodoPago = "paypal" }));
         Assert.Equal(HttpStatusCode.OK, ownerRes.StatusCode);
         Assert.Equal("confirmada", await ReadEstadoAsync(reservaId));
-        Assert.Equal("card", await ReadMetodoPagoAsync(reservaId));
+        Assert.Equal("paypal", await ReadMetodoPagoAsync(reservaId));
         Assert.Equal(200m, await ReadPrecioTotalAsync(reservaId)); // not recomputed on client value
         Assert.Equal(owner.UserId, await ReadUsuarioIdAsync(reservaId));
     }

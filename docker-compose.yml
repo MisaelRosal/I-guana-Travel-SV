@@ -7,7 +7,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      # Loopback-only (A9): the database and object store are dev/ops tooling,
+      # never public surface; the app reaches them through the compose network.
+      - "127.0.0.1:5432:5432"
     # No initdb.d mount: EF migrations are the single schema source and the
     # `migrator` service applies them, then loads database/seed.sql.
     volumes:
@@ -30,8 +32,9 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      # Loopback-only (A9), same reasoning as postgres.
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - miniodata:/bitnami/minio/data
     healthcheck:
@@ -107,7 +110,9 @@ services:
       - Minio__AccessKey=${MINIO_ROOT_USER}
       - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
       - Minio__BucketName=rutasv
-      - Minio__PublicEndpoint=http://localhost:9000
+      # A8: URL the SPA receives for stored images. Defaults to localhost for
+      # dev; deployments set MINIO_PUBLIC_ENDPOINT to the real origin.
+      - Minio__PublicEndpoint=${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
       - Jwt__Key=${Jwt__Key}
       - Email__From=${EMAIL_FROM}
       - Email__VerificacionHabilitada=${EMAIL_VERIFICACION_HABILITADA:-true}
@@ -119,6 +124,17 @@ services:
       - Translation__LibreTranslate__Enabled=${LIBRETRANSLATE_ENABLED:-true}
       - Translation__LibreTranslate__BaseUrl=http://libretranslate:5000
       - Translation__LibreTranslate__TimeoutSeconds=${LIBRETRANSLATE_TIMEOUT_SECONDS:-15}
+    # Frontend waits on this (see frontend.depends_on), so transient startup
+    # 502s from the nginx proxy disappear. The runtime image ships no curl/wget;
+    # bash's /dev/tcp opens the socket and probes /health for a 200 instead.
+    healthcheck:
+      # YAML double-quoting: \\r\\n passes literal backslash sequences to bash's
+      # printf, which turns them into real CRLF before sending the probe.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080; printf \"GET /health HTTP/1.0\\r\\n\\r\\n\" >&3; grep -q \" 200 \" <&3'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -131,11 +147,14 @@ services:
     image: dpage/pgadmin4
     container_name: rutasv-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      # A9: credentials from the environment (with dev fallbacks) instead of
+      # hardcoded values.
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
-      - "5050:80"
+      # Loopback-only (A9): pgAdmin is local tooling.
+      - "127.0.0.1:5050:80"
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,7 +168,10 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      # A9: only answer traffic once the API is actually healthy; avoids
+      # transient 502s during backend startup.
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
       interval: 5s
