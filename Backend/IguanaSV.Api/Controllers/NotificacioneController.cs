@@ -10,6 +10,7 @@ namespace IguanaSV.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = AuthConstants.AdminRole)]
 public class NotificacioneController : ControllerBase
 {
     private readonly IguanasDbContext _context;
