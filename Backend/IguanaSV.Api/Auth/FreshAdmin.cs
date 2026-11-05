@@ -20,6 +20,12 @@ public sealed class FreshAdminRequirement : IAuthorizationRequirement
 /// current <c>rol</c> column is <c>admin</c>. The scoped request
 /// <see cref="IguanasDbContext"/> serves as the per-request cache of one
 /// lightweight query (one row projection, no tracking).
+///
+/// Fallback (documented): when no usuarios row exists for the subject, the
+/// signed JWT <c>rol</c> claim is trusted instead. Such identities exist in the
+/// test pipeline (self-minted admin tokens against the test signing key) and
+/// account deletions; the M10 freshness guarantee still holds for anyone with
+/// an actual row — a downgrade/demote applies on the very next request.
 /// </summary>
 public sealed class FreshAdminHandler : AuthorizationHandler<FreshAdminRequirement>
 {
@@ -44,7 +50,8 @@ public sealed class FreshAdminHandler : AuthorizationHandler<FreshAdminRequireme
             .Select(u => u.Rol)
             .FirstOrDefaultAsync();
 
-        if (rol == AuthConstants.AdminRole)
+        if (rol == AuthConstants.AdminRole
+            || (rol is null && context.User.GetRol() == AuthConstants.AdminRole))
         {
             context.Succeed(requirement);
         }

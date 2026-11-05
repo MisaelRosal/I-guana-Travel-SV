@@ -74,12 +74,25 @@ public class ChatController : ControllerBase
         {
             await _context.SaveChangesAsync();
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
+            when (ex.InnerException is Npgsql.PostgresException pg
+                && pg.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)
         {
-            // Lost the race against a concurrent open for the same pair
-            // (unique conversaciones_viajero_usuario_id_anfitrion_id_key).
-            // The next request returns the winner's row (Resena precedent).
-            return Conflict(new { mensaje = "La conversación se está creando en paralelo. Reintentá." });
+            // Lost the open race against a concurrent committed open for the
+            // same pair (unique conversaciones_viajero_usuario_id_anfitrion_id_key).
+            // Idempotent reuse: hand back the winner's row instead of forcing a
+            // retry (same Detach-then-requery pattern as NotificacionSitioService).
+            _context.Entry(conversacion).State = EntityState.Detached;
+            var ganadora = await _context.Conversaciones
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.ViajeroUsuarioId == sub.Value && c.AnfitrionId == anfitrionId);
+
+            if (ganadora is null)
+            {
+                return Conflict(new { mensaje = "La conversación se está creando en paralelo. Reintentá." });
+            }
+
+            return Ok(ProyectarConversacion(ganadora));
         }
 
         return Ok(ProyectarConversacion(conversacion));

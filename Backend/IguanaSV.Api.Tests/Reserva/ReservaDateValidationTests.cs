@@ -13,9 +13,11 @@ namespace IguanaSV.Api.Tests.FechaReserva;
 
 /// <summary>
 /// Booking-path validation slice: (A1) a reservation may not start in the past
-/// (the fake-review vector), and (A4) experience bookings are bound by the
-/// day's horarios (no horario-less days) and their cupos. Drives the real HTTP
-/// pipeline against the shared AuthN Testcontainers collection.
+/// (the fake-review vector), and (A4) experience bookings stay bounded by
+/// capacity — a horario-less day falls back to the publication capacity (the
+/// SPA books experiences at date level, without binding horarios) while a day
+/// with published cupos keeps the slot cap. Drives the real HTTP pipeline
+/// against the shared AuthN Testcontainers collection.
 /// </summary>
 [Collection("AuthN")]
 public sealed class ReservaDateValidationTests
@@ -57,13 +59,14 @@ public sealed class ReservaDateValidationTests
 
     [SkippableFact]
     [Trait("Category", "Reserva")]
-    public async Task ExperienciaBooking_WithoutHorario_OrOverCupos_Returns409()
+    public async Task ExperienciaBooking_HorarioLessFallsBackToCapacity_CuposStill409()
     {
         var user = await RegisterUserAsync();
         var pubId = await SeedPublicationAsync(await SeedHostIdAsync(null), tipo: "experiencia",
             precioPorNoche: 50m, capacidad: 4);
 
-        // Date without a published horario: booking must be refused (A4).
+        // Date without a published horario: still bookable up to the
+        // publication capacity (the SPA books experiences at date level).
         var sinHorario = await AuthedClient(user).PostAsync("/api/Reserva", Json(new
         {
             publicacionId = pubId,
@@ -73,7 +76,7 @@ public sealed class ReservaDateValidationTests
             fechaFin = Iso(10),
             numeroHuespedes = 1,
         }));
-        Assert.Equal(HttpStatusCode.Conflict, sinHorario.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, sinHorario.StatusCode);
 
         // Published horario with cupos = 1: the first guest fits, a second does
         // not (capacity counts the date's active reservations).

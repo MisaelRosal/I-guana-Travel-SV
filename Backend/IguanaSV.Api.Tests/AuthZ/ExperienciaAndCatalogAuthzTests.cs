@@ -177,15 +177,10 @@ public sealed class ExperienciaAndCatalogAuthzTests
         var amenidadDos = await SeedAmenidadAsync();
         var amenidadTres = await SeedAmenidadAsync();
 
-        // The owner attaches/detaches amenities on their own publication.
+        // The owner attaches the amenidad to their own publication.
         var ownerPost = await AuthedClient(owner).PostAsync("/api/PublicacionAmenidad",
             Json(new { publicacionId = ownerSeed.PublicacionId, amenidadId = amenidadUno }));
         Assert.Equal(HttpStatusCode.Created, ownerPost.StatusCode);
-
-        var ownerDelete = await AuthedClient(owner).DeleteAsync(
-            $"/api/PublicacionAmenidad/{ownerSeed.PublicacionId}/{amenidadUno}");
-        Assert.Equal(HttpStatusCode.NoContent, ownerDelete.StatusCode);
-        Assert.False(await PublicacionAmenidadExistsAsync(ownerSeed.PublicacionId, amenidadUno));
 
         // A non-owner is denied on both writes for a foreign publication and
         // the rows must never appear.
@@ -194,9 +189,18 @@ public sealed class ExperienciaAndCatalogAuthzTests
         Assert.Equal(HttpStatusCode.Forbidden, intruderPost.StatusCode);
         Assert.False(await PublicacionAmenidadExistsAsync(ownerSeed.PublicacionId, amenidadDos));
 
+        // The stranger's DELETE must hit the ownership gate (403): the link
+        // the owner created still exists, so it is kept in place until after
+        // this attempt (the controller answers 404 once the row is gone).
         var intruderDelete = await AuthedClient(intruder).DeleteAsync(
             $"/api/PublicacionAmenidad/{ownerSeed.PublicacionId}/{amenidadUno}");
         Assert.Equal(HttpStatusCode.Forbidden, intruderDelete.StatusCode);
+
+        // Only now does the owner detach their own link.
+        var ownerDelete = await AuthedClient(owner).DeleteAsync(
+            $"/api/PublicacionAmenidad/{ownerSeed.PublicacionId}/{amenidadUno}");
+        Assert.Equal(HttpStatusCode.NoContent, ownerDelete.StatusCode);
+        Assert.False(await PublicacionAmenidadExistsAsync(ownerSeed.PublicacionId, amenidadUno));
 
         // Admin override: write on a publication owned by a DB-only host.
         var admin = AuthedClient(AdminSession());

@@ -10,7 +10,10 @@ namespace IguanaSV.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = AuthConstants.AdminRole)]
+// The generic CRUD surface here is admin-only (Role/FreshAdmin on each
+// endpoint), but "mias", "{id}/leer" and "leer-todas" below are the caller's
+// own inbox: a class-level admin gate would lock every regular user out of
+// their bell, so authorization stays per-method.
 public class NotificacioneController : ControllerBase
 {
     private readonly IguanasDbContext _context;

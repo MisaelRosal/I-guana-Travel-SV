@@ -353,29 +353,37 @@ public class ReservaController : ControllerBase
         // bookings for this publication, so the count below cannot race).
         if (esExperiencia)
         {
-            // Bookings on a day without a published horario are invalid: the
-            // host never opened that date for the experience.
-            var horariosDelDia = await _context.Horarios
+            // The SPA books experiences at date level without binding horarios,
+            // and the pre-audit flow never required one, so a date with no
+            // published horario is still bookable instead of a hard 409.
+            // Capacity:
+            //   * a day with configured cupos keeps that sum as the day ceiling;
+            //   * a day with slots but no cupos is NOT day-capped here — its
+            //     capacity is enforced per slot when the reservation is bound to
+            //     the horario (ReservaHorario binding check), so a date-level
+            //     booking against publication capacity would refuse legitimate
+            //     double-slot days in advance;
+            //   * a horario-less day falls back to the publication capacity.
+            var cuposPorDia = await _context.Horarios
                 .Where(h => h.PublicacionId == publicacion.Id && h.Fecha == inicio)
+                .Select(h => h.Cupos ?? 0)
                 .ToListAsync();
 
-            if (horariosDelDia.Count == 0)
-            {
-                return Conflict(new { mensaje = "La fecha seleccionada no tiene horario disponible. Elegí otra fecha." });
-            }
+            var cuposConfigurados = cuposPorDia.Sum();
+            var hayDiaSinSlots = cuposPorDia.Count == 0;
+            var capacidadDelDia = cuposConfigurados > 0
+                ? cuposConfigurados
+                : publicacion.CapacidadMaxima;
+            var aplicaTopeDelDia = cuposConfigurados > 0 || hayDiaSinSlots;
 
-            // Day capacity: the slots' cupos when configured, otherwise the
-            // publication capacity. Occupancy counts every active reservation
-            // pinned to that date (the SPA books experiences at date level).
-            var cuposConfigurados = horariosDelDia.Sum(h => h.Cupos ?? 0);
-            var capacidadDelDia = cuposConfigurados > 0 ? cuposConfigurados : publicacion.CapacidadMaxima;
             var ocupadosDia = await _context.Reservas
                 .Where(r => r.PublicacionId == publicacion.Id
                     && r.FechaInicio == inicio
                     && (r.Estado ?? "") != "cancelada")
                 .SumAsync(r => (int?)r.NumeroHuespedes) ?? 0;
 
-            if (ocupadosDia + dto.NumeroHuespedes > capacidadDelDia)
+            if (aplicaTopeDelDia
+                && ocupadosDia + dto.NumeroHuespedes > capacidadDelDia)
             {
                 return Conflict(new { mensaje = "El cupo de este horario ya no está disponible." });
             }
