@@ -42,10 +42,15 @@ public class DepartamentoController : ControllerBase
         return departamento;
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutDepartamento(int id, CreateDepartamentoDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var departamento = await _context.Departamentos.FindAsync(id);
 
         if (departamento == null)
@@ -70,10 +75,15 @@ public class DepartamentoController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<DepartamentoEntity>> PostDepartamento(CreateDepartamentoDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var departamento = new DepartamentoEntity
         {
             Nombre = dto.Nombre,
@@ -86,10 +96,15 @@ public class DepartamentoController : ControllerBase
         return CreatedAtAction(nameof(GetDepartamento), new { id = departamento.Id }, departamento);
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteDepartamento(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var departamento = await _context.Departamentos.FindAsync(id);
 
         if (departamento == null)

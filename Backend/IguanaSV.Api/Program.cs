@@ -171,17 +171,7 @@ builder.Services
             },
         };
     });
-builder.Services.AddScoped<FreshAdminHandler>();
-builder.Services
-    .AddAuthorization(options =>
-    {
-        // FreshAdmin (M10): admin-gated MUTATION gates re-read usuarios.rol on
-        // every call, so a role upgrade/demote applies immediately instead of
-        // living up to the 60-minute JWT 'rol' claim TTL. Simple role checks
-        // remain for harmless reads.
-        options.AddPolicy("FreshAdmin", policy =>
-            policy.Requirements.Add(new FreshAdminRequirement()));
-    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

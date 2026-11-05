@@ -42,10 +42,15 @@ public class AmenidadeController : ControllerBase
         return amenidade;
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutAmenidade(int id, CreateAmenidadDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var amenidade = await _context.Amenidades.FindAsync(id);
 
         if (amenidade == null)
@@ -71,10 +76,15 @@ public class AmenidadeController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<AmenidadeEntity>> PostAmenidade(CreateAmenidadDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var amenidade = new AmenidadeEntity
         {
             Nombre = dto.Nombre,
@@ -88,10 +98,15 @@ public class AmenidadeController : ControllerBase
         return CreatedAtAction(nameof(GetAmenidade), new { id = amenidade.Id }, amenidade);
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAmenidade(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var amenidade = await _context.Amenidades.FindAsync(id);
 
         if (amenidade == null)

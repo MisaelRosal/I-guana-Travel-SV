@@ -151,9 +151,14 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     public async Task<IActionResult> PutNotificacione(int id, CreateNotificacioneDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var notificacione = await _context.Notificaciones.FindAsync(id);
 
         if (notificacione == null)
@@ -187,9 +192,14 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     public async Task<ActionResult<NotificacioneEntity>> PostNotificacione(CreateNotificacioneDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         if (!await _context.Reservas.AnyAsync(r => r.Id == dto.ReservaId))
         {
             return NotFound($"La reserva con id {dto.ReservaId} no existe.");
@@ -212,9 +222,14 @@ public class NotificacioneController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     public async Task<IActionResult> DeleteNotificacione(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var notificacione = await _context.Notificaciones.FindAsync(id);
 
         if (notificacione == null)

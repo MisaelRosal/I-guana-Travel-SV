@@ -42,10 +42,15 @@ public class MunicipioController : ControllerBase
         return municipio;
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutMunicipio(int id, CreateMunicipioDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var municipio = await _context.Municipios.FindAsync(id);
 
         if (municipio == null)
@@ -76,10 +81,15 @@ public class MunicipioController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<MunicipioEntity>> PostMunicipio(CreateMunicipioDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         if (!await _context.Departamentos.AnyAsync(d => d.Id == dto.DepartamentoId))
         {
             return NotFound($"El departamento con id {dto.DepartamentoId} no existe.");
@@ -98,10 +108,15 @@ public class MunicipioController : ControllerBase
         return CreatedAtAction(nameof(GetMunicipio), new { id = municipio.Id }, municipio);
     }
 
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteMunicipio(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var municipio = await _context.Municipios.FindAsync(id);
 
         if (municipio == null)

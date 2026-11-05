@@ -257,9 +257,14 @@ public class ReporteController : ControllerBase
     }
 
     [HttpPut("{id}/estado")]
-    [Authorize(Policy = "FreshAdmin")]
+    [Authorize]
     public async Task<IActionResult> CambiarEstado(int id, CambiarEstadoDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var sub = User.GetSubjectId();
         if (!sub.HasValue) return Forbid();
 
