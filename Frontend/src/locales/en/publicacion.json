@@ -29,5 +29,19 @@
   },
   "successToast": "You're a host now!",
   "genericError": "Couldn't complete the sign-up.",
-  "uploadError": "Couldn't upload the photo."
+  "uploadError": "Couldn't upload the photo.",
+  "waypoints": {
+    "meeting": "Meeting point",
+    "destination": "Destination",
+    "selectorHint": "Choose a point type to mark it on the map",
+    "meetingOutside": "The meeting point must be inside El Salvador.",
+    "locationOutside": "The location must be inside El Salvador.",
+    "legendMain": "Main location",
+    "clear": "Clear",
+    "clearMeeting": "Clear meeting point",
+    "clearDestination": "Clear destination",
+    "hint": "Optional — click on the map or search for an address",
+    "hintMeeting": "Required — click on the map or search for an address",
+    "errorRange": "The {{label}} coordinates are out of range (lat -90 to 90, lng -180 to 180)."
+  }
 }

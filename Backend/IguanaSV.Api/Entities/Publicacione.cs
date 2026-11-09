@@ -40,6 +40,16 @@ public partial class Publicacione
 
     public decimal? Longitud { get; set; }
 
+    // Optional tour map points (used mainly by tipo = 'experiencia'):
+    // "punto de encuentro" (meeting point) and "destino" (destination).
+    public decimal? PuntoEncuentroLatitud { get; set; }
+
+    public decimal? PuntoEncuentroLongitud { get; set; }
+
+    public decimal? DestinoLatitud { get; set; }
+
+    public decimal? DestinoLongitud { get; set; }
+
     public int? MunicipioId { get; set; }
 
     public string? Estado { get; set; }

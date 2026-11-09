@@ -192,6 +192,10 @@ public class PublicacioneController : ControllerBase
         publicacione.DireccionExacta = dto.DireccionExacta;
         publicacione.Latitud = dto.Latitud;
         publicacione.Longitud = dto.Longitud;
+        publicacione.PuntoEncuentroLatitud = dto.PuntoEncuentroLatitud;
+        publicacione.PuntoEncuentroLongitud = dto.PuntoEncuentroLongitud;
+        publicacione.DestinoLatitud = dto.DestinoLatitud;
+        publicacione.DestinoLongitud = dto.DestinoLongitud;
         if (dto.Tipo != null)
         {
             publicacione.Tipo = dto.Tipo;
@@ -224,6 +228,10 @@ public class PublicacioneController : ControllerBase
         existente.DireccionExacta = publicacione.DireccionExacta;
         existente.Latitud = publicacione.Latitud;
         existente.Longitud = publicacione.Longitud;
+        existente.PuntoEncuentroLatitud = publicacione.PuntoEncuentroLatitud;
+        existente.PuntoEncuentroLongitud = publicacione.PuntoEncuentroLongitud;
+        existente.DestinoLatitud = publicacione.DestinoLatitud;
+        existente.DestinoLongitud = publicacione.DestinoLongitud;
         existente.MunicipioId = publicacione.MunicipioId;
         existente.Estado = publicacione.Estado;
 
@@ -419,6 +427,10 @@ public class PublicacioneController : ControllerBase
             DireccionExacta = dto.DireccionExacta,
             Latitud = dto.Latitud,
             Longitud = dto.Longitud,
+            PuntoEncuentroLatitud = dto.PuntoEncuentroLatitud,
+            PuntoEncuentroLongitud = dto.PuntoEncuentroLongitud,
+            DestinoLatitud = dto.DestinoLatitud,
+            DestinoLongitud = dto.DestinoLongitud,
             MunicipioId = dto.MunicipioId,
             Estado = dto.Estado ?? "activo",
             CreatedAt = DateTime.Now,

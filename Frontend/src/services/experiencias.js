@@ -52,6 +52,10 @@ export function mapearPublicacion(p) {
     direccion: p.direccionExacta ?? '',
     latitud: p.latitud,
     longitud: p.longitud,
+    puntoEncuentroLatitud: p.puntoEncuentroLatitud ?? null,
+    puntoEncuentroLongitud: p.puntoEncuentroLongitud ?? null,
+    destinoLatitud: p.destinoLatitud ?? null,
+    destinoLongitud: p.destinoLongitud ?? null,
     estado: p.estado ?? '',
     imagenes: (p.imagenesPublicacions ?? [])
       .filter(Boolean)

@@ -92,7 +92,12 @@
     "leaveBody": "All form data will be discarded.",
     "stayButton": "Stay",
     "leaveYes": "Yes, leave",
+    "mapSwitchTitle": "Change the listing type?",
+    "mapSwitchBody": "The form already holds data. Switching to {{tipo}} clears the whole form.",
+    "mapSwitchAccept": "Change and clear the form",
+    "mapSwitchCancel": "Don't change",
     "errorLocation": "Please select a location on the map",
+    "meetingRequired": "The meeting point is required for experiences.",
     "errorDates": "Choose at least one available date in the calendar",
     "errorUpdate": "Error updating the listing",
     "errorCreate": "Error creating the listing"

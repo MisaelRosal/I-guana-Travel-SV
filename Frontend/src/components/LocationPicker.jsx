@@ -18,6 +18,19 @@ const markerIcon = new L.Icon({
   shadowSize: [41, 41],
 })
 
+// Optional tour waypoints: dependency-free colored dots via L.divIcon so the
+// meeting point (blue) and destination (red) read apart from the main pin.
+const dotIcon = (color) => L.divIcon({
+  className: '',
+  html: `<span style="display:block;width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.25)"></span>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+})
+
+export const puntoEncuentroIcon = dotIcon('#2563eb')
+export const destinoIcon = dotIcon('#dc2626')
+const puntoDotCls = 'h-2.5 w-2.5 shrink-0 rounded-full'
+
 function MapEventsHandler({ onMarkerMove, disabled }) {
   useMapEvents({
     click(e) {
@@ -136,14 +149,52 @@ export default function LocationPicker({
   longitud,
   departamentoId,
   municipioId,
+  // Waypoints (meeting point / destination) render only for experience forms;
+  // lodging keeps the plain single-location picker.
+  conPuntosTours = false,
+  puntoEncuentro,
+  destino,
   onLocationChange,
+  onPuntoEncuentroChange,
+  onDestinoChange,
   onDepartamentoChange,
   onMunicipioChange,
   disabled = false,
 }) {
   const { t } = useTranslation('experiencia')
+  const { t: tp } = useTranslation('publicacion')
   const defaultPosition = [13.7, -89.2]
   const markerPosition = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
+  const puntoEncuentroPos = puntoEncuentro?.lat && puntoEncuentro?.lng
+    ? [parseFloat(puntoEncuentro.lat), parseFloat(puntoEncuentro.lng)]
+    : null
+  const destinoPos = destino?.lat && destino?.lng
+    ? [parseFloat(destino.lat), parseFloat(destino.lng)]
+    : null
+
+  // Active waypoint selector: null = the main location (current behavior);
+  // 'encuentro' | 'destino' route the next map click / search pick there.
+  // Experience forms start with 'encuentro' preselected: it is the mandatory
+  // point, so the very first click already sets it.
+  const [modo, setModo] = useState(conPuntosTours ? 'encuentro' : null)
+
+  // The modo follows tipo switches within the same modal lifetime (the picker
+  // is not remounted when the tipo radio flips).
+  useEffect(() => {
+    setModo(conPuntosTours ? 'encuentro' : null)
+  }, [conPuntosTours])
+
+  // ALL map picks must land inside El Salvador: the lodging pin AND the
+  // experience meeting point (bounding with a three-band northern ceiling —
+  // Guatemala's Jutiapa strip shares latitude with western SV). The destination
+  // stays unrestricted for international tours.
+  const dentroDeElSalvador = (lat, lng) => {
+    let topeNorte = 14.45
+    if (lng < -89.75) topeNorte = 14.26
+    else if (lng < -89.62) topeNorte = 14.31
+    return lat >= 13.08 && lat <= topeNorte && lng >= -90.18 && lng <= -87.62
+  }
+  const [avisoFuera, setAvisoFuera] = useState(null)
 
   const reverseGeocode = useCallback(async (latlng) => {
     try {
@@ -185,10 +236,33 @@ export default function LocationPicker({
   const handleMarkerMove = useCallback(
     (latlng) => {
       if (disabled) return
-      onLocationChange(String(latlng.lat.toFixed(6)), String(latlng.lng.toFixed(6)))
+      const lat = String(latlng.lat.toFixed(6))
+      const lng = String(latlng.lng.toFixed(6))
+      if (conPuntosTours) {
+        // Experience map: the main lodging pin does not exist here; raw clicks
+        // without an active waypoint chip are ignored on purpose.
+        if (modo === 'encuentro') {
+          if (!dentroDeElSalvador(latlng.lat, latlng.lng)) {
+            setAvisoFuera('waypoints.meetingOutside')
+            return
+          }
+          setAvisoFuera(null)
+          onPuntoEncuentroChange(lat, lng)
+        } else if (modo === 'destino') {
+          onDestinoChange(lat, lng)
+        }
+        return
+      }
+      if (!dentroDeElSalvador(latlng.lat, latlng.lng)) {
+        // Same national bounding applies to the lodging pin itself.
+        setAvisoFuera('waypoints.locationOutside')
+        return
+      }
+      setAvisoFuera(null)
+      onLocationChange(lat, lng)
       reverseGeocode(latlng)
     },
-    [onLocationChange, reverseGeocode, disabled]
+    [conPuntosTours, modo, onLocationChange, onPuntoEncuentroChange, onDestinoChange, reverseGeocode, disabled]
   )
 
   const autoGeocodeKey = `${latitud},${longitud}`
@@ -207,6 +281,47 @@ export default function LocationPicker({
   return (
     <div className="overflow-hidden rounded-[22px] border border-neutral-200">
       <SearchBar onSearch={handleMarkerMove} disabled={disabled} />
+      {avisoFuera && (
+        <p role="alert" className="w-full border-b border-neutral-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">
+          {tp(avisoFuera)}
+        </p>
+      )}
+      {conPuntosTours && (
+      <> {/* Waypoint mode toggles: whichever chip is active receives the next
+          map click / search pick; re-clicking it goes back to the main pick. */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-neutral-100 bg-neutral-50 px-3 py-2">
+        <p className="w-full text-xs font-medium text-cafe">{tp('waypoints.selectorHint')}</p>
+        <button
+          type="button"
+          onClick={() => setModo(modo === 'encuentro' ? null : 'encuentro')}
+          disabled={disabled}
+          aria-pressed={modo === 'encuentro'}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            modo === 'encuentro'
+              ? 'border-blue-600 bg-blue-600/10 text-blue-700'
+              : 'border-neutral-200 bg-white text-neutral-700 hover:border-blue-600/50'
+          }`}
+        >
+          <span className={`${puntoDotCls} bg-blue-600`} />
+          {tp('waypoints.meeting')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setModo(modo === 'destino' ? null : 'destino')}
+          disabled={disabled}
+          aria-pressed={modo === 'destino'}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            modo === 'destino'
+              ? 'border-red-600 bg-red-600/10 text-red-700'
+              : 'border-neutral-200 bg-white text-neutral-700 hover:border-red-600/50'
+          }`}
+        >
+          <span className={`${puntoDotCls} bg-red-600`} />
+          {tp('waypoints.destination')}
+        </button>
+      </div>
+      </>
+      )}
       <MapContainer
         center={markerPosition || defaultPosition}
         zoom={markerPosition ? 14 : 9}
@@ -218,11 +333,57 @@ export default function LocationPicker({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapEventsHandler onMarkerMove={handleMarkerMove} disabled={disabled} />
-        <DraggableMarker position={markerPosition} onMove={handleMarkerMove} disabled={disabled} />
+        <DraggableMarker position={markerPosition} onMove={handleMarkerMove} disabled={disabled || conPuntosTours} />
+        {conPuntosTours && puntoEncuentroPos && <Marker position={puntoEncuentroPos} icon={puntoEncuentroIcon} />}
+        {conPuntosTours && destinoPos && <Marker position={destinoPos} icon={destinoIcon} />}
       </MapContainer>
-      {markerPosition && (
+      {!conPuntosTours && markerPosition && (
         <div className="bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
           {t('location.lat')}: {markerPosition[0]} | {t('location.lng')}: {markerPosition[1]}
+        </div>
+      )}
+      {conPuntosTours && (
+        <div className="grid gap-1 border-t border-neutral-100 bg-neutral-50 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className={`${puntoDotCls} bg-blue-600`} />
+            <span className="font-semibold text-neutral-700">{tp('waypoints.meeting')}</span>
+            {puntoEncuentroPos ? (
+              <>
+                <span className="text-neutral-600">{puntoEncuentroPos[0]}, {puntoEncuentroPos[1]}</span>
+                <button
+                  type="button"
+                  onClick={() => onPuntoEncuentroChange('', '')}
+                  disabled={disabled}
+                  aria-label={tp('waypoints.clearMeeting')}
+                  className="cursor-pointer rounded-full border border-neutral-300 bg-white px-2 py-0.5 font-semibold text-neutral-600 transition-colors hover:border-red-600/50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tp('waypoints.clear')}
+                </button>
+              </>
+            ) : (
+              <span className="text-cafe">{tp('waypoints.hintMeeting')}</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className={`${puntoDotCls} bg-red-600`} />
+            <span className="font-semibold text-neutral-700">{tp('waypoints.destination')}</span>
+            {destinoPos ? (
+              <>
+                <span className="text-neutral-600">{destinoPos[0]}, {destinoPos[1]}</span>
+                <button
+                  type="button"
+                  onClick={() => onDestinoChange('', '')}
+                  disabled={disabled}
+                  aria-label={tp('waypoints.clearDestination')}
+                  className="cursor-pointer rounded-full border border-neutral-300 bg-white px-2 py-0.5 font-semibold text-neutral-600 transition-colors hover:border-red-600/50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tp('waypoints.clear')}
+                </button>
+              </>
+            ) : (
+              <span className="text-cafe">{tp('waypoints.hint')}</span>
+            )}
+          </div>
         </div>
       )}
     </div>

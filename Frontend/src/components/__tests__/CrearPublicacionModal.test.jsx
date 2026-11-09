@@ -266,3 +266,161 @@ describe('ES active: extraction keeps the canonical Spanish modal byte-comparabl
     expect(screen.getAllByText('Seleccionar...')).toHaveLength(3)
   })
 })
+
+// Optional tour waypoints (punto de encuentro / destino): the picker's hidden
+// numeric inputs mirror the existing lat/long channel, so map-picks are
+// simulated by driving those inputs. POST/PUT MUST carry the four camelCase
+// API fields (puntoEncuentroLatitud/Longitud, destinoLatitud/Longitud),
+// sending explicit nulls when a pair is unset or cleared.
+describe('Puntos opcionales: punto de encuentro y destino', () => {
+  async function llenarHospedaje(container) {
+    // The option lists load through async GETs — wait for them before
+    // driving the selects, otherwise the change lands on empty <option>s.
+    await screen.findByText('Carlos Mendoza')
+    await screen.findByText('Playa')
+    const selects = container.querySelectorAll('select')
+    fireEvent.change(selects[0], { target: { value: '1' } }) // anfitrión
+    fireEvent.change(selects[1], { target: { value: '1' } }) // categoría
+    fireEvent.change(selects[2], { target: { value: '1' } }) // departamento
+    fireEvent.change(selects[3], { target: { value: '2' } }) // municipio
+    fireEvent.change(screen.getByPlaceholderText('Ej: Casa frente al mar en El Tunco'), {
+      target: { value: 'Casa con vista' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '120' } })
+    fireEvent.change(screen.getByPlaceholderText('Personas'), { target: { value: '4' } })
+    // Hidden numeric inputs: [0,1] main lat/lng, [2,3] meeting point, [4,5] destination.
+    const inputs = container.querySelectorAll('input[type="number"][step="any"]')
+    expect(inputs).toHaveLength(6)
+    fireEvent.change(inputs[0], { target: { value: '13.5' } })
+    fireEvent.change(inputs[1], { target: { value: '-89.3' } })
+    return inputs
+  }
+
+  it('serializa ambos puntos en el POST cuando están elegidos', async () => {
+    api.post.mockClear()
+    const { container } = renderModal()
+
+    await llenarHospedaje(container)
+    const inputs = container.querySelectorAll('input[type="number"][step="any"]')
+    fireEvent.change(inputs[2], { target: { value: '13.49' } })
+    fireEvent.change(inputs[3], { target: { value: '-89.38' } })
+    fireEvent.change(inputs[4], { target: { value: '14.02' } })
+    fireEvent.change(inputs[5], { target: { value: '-90.1' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Crear publicación' }))
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith('/Publicacione', expect.objectContaining({
+        latitud: 13.5,
+        longitud: -89.3,
+        puntoEncuentroLatitud: 13.49,
+        puntoEncuentroLongitud: -89.38,
+        destinoLatitud: 14.02,
+        destinoLongitud: -90.1,
+      })),
+      { timeout: 3000 },
+    )
+  })
+
+  it('cambiar de tipo con datos en el formulario pide confirmación y aceptar limpia todo el formulario', async () => {
+    const { container } = renderModal()
+
+    await llenarHospedaje(container)
+    const inputs = () => container.querySelectorAll('input[type="number"][step="any"]')
+    fireEvent.change(inputs()[0], { target: { value: '13.5' } })
+    fireEvent.change(inputs()[1], { target: { value: '-89.3' } })
+
+    // Switching to experience asks: the form sections differ per tipo.
+    fireEvent.click(screen.getByRole('radio', { name: 'Experiencia' }))
+    expect(await screen.findByText('¿Cambiar de tipo de publicación?')).toBeInTheDocument()
+    expect(inputs()[0].value).toBe('13.5')
+
+    // Cancel keeps tipo and all data intact.
+    fireEvent.click(screen.getByRole('button', { name: 'No cambiar' }))
+    expect(screen.queryByText('¿Cambiar de tipo de publicación?')).toBeNull()
+    expect(inputs()[0].value).toBe('13.5')
+
+    // Accept wipes the WHOLE form (title included) and switches.
+    fireEvent.click(screen.getByRole('radio', { name: 'Experiencia' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cambiar y limpiar el formulario' }))
+    expect(screen.queryByText('¿Cambiar de tipo de publicación?')).toBeNull()
+    expect(inputs()[0].value).toBe('')
+    expect(inputs()[1].value).toBe('')
+    expect(screen.queryByDisplayValue('Casa con vista')).toBeNull()
+  })
+
+  it('en edición prefiere los puntos guardados y el PUT envía nulls al limpiar', async () => {
+    api.put.mockClear()
+    renderModal({
+      esEdicion: true,
+      pubExistente: {
+        id: 5, titulo: 'Tour de surf', descripcion: '', anfitrionId: 1, categoriaId: 2,
+        precioPorNoche: 25, capacidadMaxima: 8, tipo: 'experiencia',
+        latitud: 13.5, longitud: -89.3,
+        puntoEncuentroLatitud: '13.49', puntoEncuentroLongitud: '-89.38',
+        destinoLatitud: '14.02', destinoLongitud: '-90.1',
+        municipio: { id: 2, departamentoId: 1 },
+        horarios: [{ fecha: '2099-01-05', horaInicio: '10:00', horaFin: '12:00' }],
+        publicacionAmenidads: [],
+      },
+    })
+    await screen.findByRole('heading', { name: 'Editar publicación' })
+
+    // The mandatory meeting point chip is preselected by default.
+    expect(screen.getByRole('button', { name: 'Punto de encuentro' })).toHaveAttribute('aria-pressed', 'true')
+
+    // Prefill: both saved points render their coordinates in the picker rows.
+    expect(screen.getByText('13.49, -89.38')).toBeInTheDocument()
+    expect(screen.getByText('14.02, -90.1')).toBeInTheDocument()
+
+    // The meeting point is MANDATORY for experiences, so the clearing case
+    // exercises the optional DESTINO instead.
+    fireEvent.click(screen.getByRole('button', { name: 'Limpiar destino' }))
+    expect(screen.queryByText('14.02, -90.1')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith('/Publicacione/5', expect.objectContaining({
+        id: 5,
+        latitud: 13.5,
+        longitud: -89.3,
+        puntoEncuentroLatitud: 13.49,
+        puntoEncuentroLongitud: -89.38,
+        destinoLatitud: null,
+        destinoLongitud: null,
+      })),
+      { timeout: 3000 },
+    )
+  })
+
+  it('experiencia sin punto de encuentro bloquea el submit y lo exige', async () => {
+    api.put.mockClear()
+    renderModal({
+      esEdicion: true,
+      pubExistente: {
+        id: 5, titulo: 'Tour de surf', descripcion: '', anfitrionId: 1, categoriaId: 2,
+        precioPorNoche: 25, capacidadMaxima: 8, tipo: 'experiencia',
+        latitud: 13.5, longitud: -89.3,
+        puntoEncuentroLatitud: '13.49', puntoEncuentroLongitud: '-89.38',
+        destinoLatitud: '14.02', destinoLongitud: '-90.1',
+        municipio: { id: 2, departamentoId: 1 },
+        horarios: [{ fecha: '2099-01-05', horaInicio: '10:00', horaFin: '12:00' }],
+        publicacionAmenidads: [],
+      },
+    })
+    await screen.findByRole('heading', { name: 'Editar publicación' })
+
+    // Native required inputs are prefilled; only both waypoint rows can clear.
+    fireEvent.click(screen.getByRole('button', { name: 'Limpiar punto de encuentro' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Limpiar destino' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('El punto de encuentro es obligatorio para experiencias.')).toBeInTheDocument(),
+      { timeout: 3000 },
+    )
+    expect(api.put).not.toHaveBeenCalled()
+  })
+})

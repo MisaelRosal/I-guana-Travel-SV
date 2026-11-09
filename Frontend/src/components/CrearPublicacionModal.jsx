@@ -11,6 +11,7 @@ const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion, anfitrionFijo }) {
   const { t } = useTranslation('experiencia')
+  const { t: tp } = useTranslation('publicacion')
   const locale = useFormatLocale()
   const [categorias, setCategorias] = useState([])
   const [anfitriones, setAnfitriones] = useState([])
@@ -23,6 +24,8 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const [confirmarSalida, setConfirmarSalida] = useState(false)
 
   const [tipo, setTipo] = useState('hospedaje')
+  // Pending tipo switch while a confirmation for in-map data is on screen.
+  const [pendienteTipo, setPendienteTipo] = useState(null)
   const [titulo, setTitulo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [anfitrionId, setAnfitrionId] = useState('')
@@ -38,6 +41,10 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const [municipioId, setMunicipioId] = useState('')
   const [latitud, setLatitud] = useState('')
   const [longitud, setLongitud] = useState('')
+  // Optional tour waypoints, each an independent {lat, lng} string pair or
+  // null (absent). Cleared pairs serialize as nulls so PUT drops them.
+  const [puntoEncuentro, setPuntoEncuentro] = useState(null)
+  const [destino, setDestino] = useState(null)
   const [amenidadIds, setAmenidadIds] = useState([])
   const [archivos, setArchivos] = useState([])
   // M7: object URLs for the new-image previews, one per archivo, revoked when
@@ -93,6 +100,16 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setMunicipioId(municipio?.id != null ? String(municipio.id) : '')
       setLatitud(pubExistente.latitud != null ? String(pubExistente.latitud) : '')
       setLongitud(pubExistente.longitud != null ? String(pubExistente.longitud) : '')
+      setPuntoEncuentro(
+        pubExistente.puntoEncuentroLatitud != null && pubExistente.puntoEncuentroLongitud != null
+          ? { lat: String(pubExistente.puntoEncuentroLatitud), lng: String(pubExistente.puntoEncuentroLongitud) }
+          : null,
+      )
+      setDestino(
+        pubExistente.destinoLatitud != null && pubExistente.destinoLongitud != null
+          ? { lat: String(pubExistente.destinoLatitud), lng: String(pubExistente.destinoLongitud) }
+          : null,
+      )
       setAmenidadIds((pubExistente.publicacionAmenidads || []).map((pa) => pa.amenidadId))
       setArchivos([])
       setImagenesExistentes(
@@ -127,6 +144,8 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setMunicipioId('')
     setLatitud('')
     setLongitud('')
+    setPuntoEncuentro(null)
+    setDestino(null)
     setAmenidadIds([])
     setArchivos([])
     setImagenesExistentes([])
@@ -259,11 +278,43 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     return celdas
   }
 
+  // Optional waypoint: a half-pair drops to null (mirrors the backend
+  // lat⟺lng coherence rule), a full out-of-range pair returns an error.
+  const parValido = (par, maxLat, maxLng) => {
+    if (!par || par.lat === '' || par.lng === '') return null
+    const lat = parseFloat(par.lat)
+    const lng = parseFloat(par.lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -maxLat || lat > maxLat || lng < -maxLng || lng > maxLng) {
+      return { fueraDeRango: true }
+    }
+    return { lat, lng }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
-    if (!latitud || !longitud) {
+    if (tipo === 'experiencia') {
+      // Experiences answer with their waypoints: the MEETING POINT is mandatory
+      // (preselected by default), the destination is optional; no lodging pin.
+      if (!parValido(puntoEncuentro, 90, 180)) {
+        setError(t('modal.meetingRequired'))
+        setEnviando(false)
+        return
+      }
+    } else if (!latitud || !longitud) {
       setError(t('modal.errorLocation'))
+      setEnviando(false)
+      return
+    }
+    const puntoEncuentroSerializado = parValido(puntoEncuentro, 90, 180)
+    const destinoSerializado = parValido(destino, 90, 180)
+    if (puntoEncuentroSerializado?.fueraDeRango) {
+      setError(tp('waypoints.errorRange', { label: tp('waypoints.meeting') }))
+      setEnviando(false)
+      return
+    }
+    if (destinoSerializado?.fueraDeRango) {
+      setError(tp('waypoints.errorRange', { label: tp('waypoints.destination') }))
       setEnviando(false)
       return
     }
@@ -284,6 +335,10 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         capacidadMaxima: parseInt(capacidad),
         latitud: parseFloat(latitud),
         longitud: parseFloat(longitud),
+        puntoEncuentroLatitud: puntoEncuentroSerializado ? puntoEncuentroSerializado.lat : null,
+        puntoEncuentroLongitud: puntoEncuentroSerializado ? puntoEncuentroSerializado.lng : null,
+        destinoLatitud: destinoSerializado ? destinoSerializado.lat : null,
+        destinoLongitud: destinoSerializado ? destinoSerializado.lng : null,
         municipioId: municipioId ? parseInt(municipioId) : null,
         estado: 'activo',
       }
@@ -358,8 +413,59 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   const tieneDatos = () => {
     return titulo || descripcion || anfitrionId || categoriaId || precio || capacidad ||
       habitaciones || camas || banos || horaEntrada || horaSalida || departamentoId || municipioId ||
-      latitud || longitud || amenidadIds.length > 0 || archivos.length > 0 ||
+      latitud || longitud || puntoEncuentro || destino || amenidadIds.length > 0 || archivos.length > 0 ||
       imagenesAEliminar.length > 0 || fechasSeleccionadas.length > 0
+  }
+
+  // Tipo switching: when the form already holds content the change must be
+  // confirmed, then the WHOLE form resets — the two tipos render different
+  // sections (lodging vs experience), so carried-over fields are noise.
+  const cambiarTipo = (nuevo) => {
+    if (esEdicion || nuevo === tipo) return
+    const hayDatosFormulario = Boolean(
+      titulo || descripcion || anfitrionId || categoriaId || precio || capacidad ||
+      habitaciones || camas || banos || horaEntrada || horaSalida || departamentoId || municipioId ||
+      latitud || longitud || puntoEncuentro || destino || amenidadIds.length > 0 || archivos.length > 0 ||
+      imagenesAEliminar.length > 0 || fechasSeleccionadas.length > 0
+    )
+    if (hayDatosFormulario) {
+      setPendienteTipo(nuevo)
+    } else {
+      setTipo(nuevo)
+    }
+  }
+
+  const confirmarCambioTipo = () => {
+    // Full-form wipe — same set the modal uses when opened fresh, then the
+    // pending tipo lands on top.
+    setTitulo('')
+    setDescripcion('')
+    setAnfitrionId('')
+    setCategoriaId('')
+    setPrecio('')
+    setCapacidad('')
+    setHabitaciones('')
+    setCamas('')
+    setBanos('')
+    setHoraEntrada('')
+    setHoraSalida('')
+    setDepartamentoId('')
+    setMunicipioId('')
+    setLatitud('')
+    setLongitud('')
+    setPuntoEncuentro(null)
+    setDestino(null)
+    setAmenidadIds([])
+    setArchivos([])
+    setImagenesExistentes([])
+    setImagenesAEliminar([])
+    setFechasSeleccionadas([])
+    setFechasOriginalesExp([])
+    setHoraInicioExp('08:00')
+    setHoraFinExp('17:00')
+    setError(null)
+    setTipo(pendienteTipo)
+    setPendienteTipo(null)
   }
 
   const handleCerrar = () => {
@@ -423,7 +529,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                   ? 'border-verde-bosque bg-verde-bosque/10 text-verde-bosque'
                   : 'border-neutral-200 bg-white text-neutral-600' + (esEdicion ? '' : ' hover:border-verde-hoja/50')
               }`}>
-                <input type="radio" name="tipo" value="hospedaje" checked={tipo === 'hospedaje'} onChange={(e) => setTipo(e.target.value)} disabled={esEdicion} className="sr-only" />
+                <input type="radio" name="tipo" value="hospedaje" checked={tipo === 'hospedaje'} onChange={() => cambiarTipo('hospedaje')} disabled={esEdicion} className="sr-only" />
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-6 w-6">
                   <path d="M3 21V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v14" />
                   <path d="M13 21V11a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v10" />
@@ -439,7 +545,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                   ? 'border-iguana-hondo bg-iguana-hondo/10 text-iguana-hondo'
                   : 'border-neutral-200 bg-white text-neutral-600' + (esEdicion ? '' : ' hover:border-iguana-hondo/50')
               }`}>
-                <input type="radio" name="tipo" value="experiencia" checked={tipo === 'experiencia'} onChange={(e) => setTipo(e.target.value)} disabled={esEdicion} className="sr-only" />
+                <input type="radio" name="tipo" value="experiencia" checked={tipo === 'experiencia'} onChange={() => cambiarTipo('experiencia')} disabled={esEdicion} className="sr-only" />
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-6 w-6">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 6v6l4 2" />
@@ -507,13 +613,18 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
             <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.locationLegend')}</legend>
             <div className="mb-4">
               <LocationPicker
-                departamentos={departamentos}
-                municipios={allMunicipios}
-                latitud={latitud}
-                longitud={longitud}
-                departamentoId={departamentoId}
-                municipioId={municipioId}
+                  departamentos={departamentos}
+                  municipios={allMunicipios}
+                  latitud={latitud}
+                  longitud={longitud}
+                  departamentoId={departamentoId}
+                  municipioId={municipioId}
+                  conPuntosTours={tipo === 'experiencia'}
+                  puntoEncuentro={puntoEncuentro}
+                  destino={destino}
                 onLocationChange={(lat, lng) => { setLatitud(lat); setLongitud(lng) }}
+                onPuntoEncuentroChange={(lat, lng) => setPuntoEncuentro(lat && lng ? { lat, lng } : null)}
+                onDestinoChange={(lat, lng) => setDestino(lat && lng ? { lat, lng } : null)}
                 onDepartamentoChange={(id) => { setDepartamentoId(id); setMunicipioId('') }}
                 onMunicipioChange={setMunicipioId}
                 disabled={esEdicion && tipo === 'hospedaje'}
@@ -543,6 +654,18 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               </div>
               <div className="hidden">
                 <input type="number" step="any" value={longitud} onChange={(e) => setLongitud(e.target.value)} />
+              </div>
+              <div className="hidden">
+                <input type="number" step="any" value={puntoEncuentro?.lat ?? ''} onChange={(e) => setPuntoEncuentro(e.target.value ? { lat: e.target.value, lng: puntoEncuentro?.lng ?? '' } : null)} />
+              </div>
+              <div className="hidden">
+                <input type="number" step="any" value={puntoEncuentro?.lng ?? ''} onChange={(e) => setPuntoEncuentro(e.target.value ? { lat: puntoEncuentro?.lat ?? '', lng: e.target.value } : null)} />
+              </div>
+              <div className="hidden">
+                <input type="number" step="any" value={destino?.lat ?? ''} onChange={(e) => setDestino(e.target.value ? { lat: e.target.value, lng: destino?.lng ?? '' } : null)} />
+              </div>
+              <div className="hidden">
+                <input type="number" step="any" value={destino?.lng ?? ''} onChange={(e) => setDestino(e.target.value ? { lat: destino?.lat ?? '', lng: e.target.value } : null)} />
               </div>
             </div>
           </fieldset>
@@ -747,6 +870,39 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         </form>
       </div>
 
+      {pendienteTipo && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirmar-tipo-titulo"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+        >
+          <div className="w-full max-w-sm rounded-[22px] bg-crema p-6">
+            <h3 id="confirmar-tipo-titulo" className="mb-2 text-lg font-bold text-verde-bosque">{t('modal.mapSwitchTitle')}</h3>
+            <p className="mb-5 text-sm text-cafe">
+              {t('modal.mapSwitchBody', {
+                tipo: pendienteTipo === 'experiencia' ? t('modal.experience') : t('modal.stay'),
+              })}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendienteTipo(null)}
+                className="cursor-pointer rounded-full border border-cafe-claro bg-white px-4 py-2 text-sm font-semibold text-verde-bosque transition-colors hover:bg-neutral-50"
+              >
+                {t('modal.mapSwitchCancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmarCambioTipo}
+                className="cursor-pointer rounded-full bg-verde-bosque px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque/85"
+              >
+                {t('modal.mapSwitchAccept')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmarSalida && (
         <div
           ref={refConfirmar}

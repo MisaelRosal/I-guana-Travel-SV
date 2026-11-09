@@ -92,7 +92,12 @@
     "leaveBody": "Todos los datos del formulario se eliminarán.",
     "stayButton": "Quedarme",
     "leaveYes": "Sí, salir",
+    "mapSwitchTitle": "¿Cambiar de tipo de publicación?",
+    "mapSwitchBody": "Hay datos cargados en el formulario. Si cambiás a {{tipo}}, se limpiará todo el formulario.",
+    "mapSwitchAccept": "Cambiar y limpiar el formulario",
+    "mapSwitchCancel": "No cambiar",
     "errorLocation": "Por favor seleccioná una ubicación en el mapa",
+    "meetingRequired": "El punto de encuentro es obligatorio para experiencias.",
     "errorDates": "Elige al menos una fecha disponible en el calendario",
     "errorUpdate": "Error al actualizar la publicación",
     "errorCreate": "Error al crear la publicación"

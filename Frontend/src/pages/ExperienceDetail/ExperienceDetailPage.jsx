@@ -26,6 +26,7 @@ import { leerSesionCache } from '../../services/session.js'
 import { scrollBehavior } from '../../utils/motion.js'
 import FormularioReserva from '../../components/FormularioReserva'
 import ChatPanel from '../../components/ChatPanel'
+import { puntoEncuentroIcon, destinoIcon } from '../../components/LocationPicker.jsx'
 import { useModalAccesible } from '../../hooks/useModalAccesible.js'
 import useFavoritos from '../../hooks/useFavoritos.js'
 import Toast from '../../components/Toast.jsx'
@@ -520,16 +521,24 @@ function Horarios({ horarios = [] }) {
   )
 }
 
-function Mapa({ latitud, longitud }) {
+function Mapa({ latitud, longitud, puntoEncuentroLatitud, puntoEncuentroLongitud, destinoLatitud, destinoLongitud }) {
   const { t } = useTranslation('experiencia')
+  const { t: tp } = useTranslation('publicacion')
   const posicion = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
+  const puntoEncuentroPos = puntoEncuentroLatitud && puntoEncuentroLongitud
+    ? [parseFloat(puntoEncuentroLatitud), parseFloat(puntoEncuentroLongitud)]
+    : null
+  const destinoPos = destinoLatitud && destinoLongitud
+    ? [parseFloat(destinoLatitud), parseFloat(destinoLongitud)]
+    : null
+  const hayWaypoints = puntoEncuentroPos || destinoPos
   return (
     <section id="ubicacion" className="mt-8 border-t border-neutral-100 pt-8">
       <h3 className="text-2xl font-bold text-verde-bosque">{t('map.title')}</h3>
       <div className="mt-4 overflow-hidden rounded-[22px] border border-neutral-200">
         <MapContainer
-          center={posicion || [13.7, -89.2]}
-          zoom={posicion ? 14 : 9}
+          center={posicion || puntoEncuentroPos || destinoPos || [13.7, -89.2]}
+          zoom={posicion || puntoEncuentroPos || destinoPos ? 14 : 9}
           style={{ height: '380px', width: '100%' }}
         >
           <TileLayer
@@ -537,8 +546,32 @@ function Mapa({ latitud, longitud }) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {posicion && <Marker position={posicion} icon={markerIcon} />}
+          {puntoEncuentroPos && <Marker position={puntoEncuentroPos} icon={puntoEncuentroIcon} />}
+          {destinoPos && <Marker position={destinoPos} icon={destinoIcon} />}
         </MapContainer>
       </div>
+      {hayWaypoints && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-neutral-700">
+          {posicion && (
+            <span className="flex items-center gap-1.5">
+              <span className="h-3 w-3 shrink-0 rounded-full border border-cafe/40 bg-verde-bosque" />
+              {tp('waypoints.legendMain')}
+            </span>
+          )}
+          {puntoEncuentroPos && (
+            <span className="flex items-center gap-1.5">
+              <span className="h-3 w-3 shrink-0 rounded-full bg-blue-600" />
+              {tp('waypoints.meeting')}
+            </span>
+          )}
+          {destinoPos && (
+            <span className="flex items-center gap-1.5">
+              <span className="h-3 w-3 shrink-0 rounded-full bg-red-600" />
+              {tp('waypoints.destination')}
+            </span>
+          )}
+        </div>
+      )}
     </section>
   )
 }
@@ -1084,7 +1117,14 @@ export default function ExperienceDetailPage() {
 
           <Horarios horarios={experiencia.horarios} />
 
-          <Mapa latitud={experiencia.latitud} longitud={experiencia.longitud} />
+          <Mapa
+            latitud={experiencia.latitud}
+            longitud={experiencia.longitud}
+            puntoEncuentroLatitud={experiencia.puntoEncuentroLatitud}
+            puntoEncuentroLongitud={experiencia.puntoEncuentroLongitud}
+            destinoLatitud={experiencia.destinoLatitud}
+            destinoLongitud={experiencia.destinoLongitud}
+          />
 
           <SeccionResenas data={resenas} />
         </div>

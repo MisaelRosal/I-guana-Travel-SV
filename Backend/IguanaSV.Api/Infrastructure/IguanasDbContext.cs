@@ -538,6 +538,18 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Longitud)
                 .HasPrecision(11, 8)
                 .HasColumnName("longitud");
+            entity.Property(e => e.PuntoEncuentroLatitud)
+                .HasPrecision(10, 8)
+                .HasColumnName("punto_encuentro_latitud");
+            entity.Property(e => e.PuntoEncuentroLongitud)
+                .HasPrecision(11, 8)
+                .HasColumnName("punto_encuentro_longitud");
+            entity.Property(e => e.DestinoLatitud)
+                .HasPrecision(10, 8)
+                .HasColumnName("destino_latitud");
+            entity.Property(e => e.DestinoLongitud)
+                .HasPrecision(11, 8)
+                .HasColumnName("destino_longitud");
             entity.Property(e => e.MunicipioId).HasColumnName("municipio_id");
             entity.Property(e => e.PrecioPorNoche)
                 .HasPrecision(10, 2)

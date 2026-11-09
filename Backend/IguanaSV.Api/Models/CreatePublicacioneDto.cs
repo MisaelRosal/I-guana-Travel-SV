@@ -14,6 +14,10 @@ public class CreatePublicacioneDto
     public string? DireccionExacta { get; set; }
     public decimal? Latitud { get; set; }
     public decimal? Longitud { get; set; }
+    public decimal? PuntoEncuentroLatitud { get; set; }
+    public decimal? PuntoEncuentroLongitud { get; set; }
+    public decimal? DestinoLatitud { get; set; }
+    public decimal? DestinoLongitud { get; set; }
     public string? Tipo { get; set; }
     public int? MunicipioId { get; set; }
     public string? Estado { get; set; }

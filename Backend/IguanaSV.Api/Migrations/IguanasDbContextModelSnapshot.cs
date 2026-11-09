@@ -761,6 +761,16 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("descripcion_en");
 
+                    b.Property<decimal?>("DestinoLatitud")
+                        .HasPrecision(10, 8)
+                        .HasColumnType("numeric(10,8)")
+                        .HasColumnName("destino_latitud");
+
+                    b.Property<decimal?>("DestinoLongitud")
+                        .HasPrecision(11, 8)
+                        .HasColumnType("numeric(11,8)")
+                        .HasColumnName("destino_longitud");
+
                     b.Property<string>("DireccionExacta")
                         .HasColumnType("text")
                         .HasColumnName("direccion_exacta");
@@ -796,6 +806,16 @@ namespace IguanaSV.Api.Migrations
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("precio_por_noche");
+
+                    b.Property<decimal?>("PuntoEncuentroLatitud")
+                        .HasPrecision(10, 8)
+                        .HasColumnType("numeric(10,8)")
+                        .HasColumnName("punto_encuentro_latitud");
+
+                    b.Property<decimal?>("PuntoEncuentroLongitud")
+                        .HasPrecision(11, 8)
+                        .HasColumnType("numeric(11,8)")
+                        .HasColumnName("punto_encuentro_longitud");
 
                     b.Property<string>("Tipo")
                         .IsRequired()

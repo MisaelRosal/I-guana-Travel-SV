@@ -71,7 +71,7 @@ public sealed class M3ExclusionMigrationTests
             var history = await ScalarAsync<long>(db, """
                 SELECT count(*) FROM "__EFMigrationsHistory";
                 """);
-            Assert.Equal(20, history); // shipped migrations + reviews + translations + availability manager (AddHorarioCupos) + saved publications (AddPublicacionesFavoritas) + AddUsuarioDestinoToResena + host reschedule + chat migrations + guest reports (AddReportesHuesped) + AddPropositoVerificacion + in-site notifications (AddNotificacionesSitioUsuario)
+            Assert.Equal(21, history); // shipped migrations + reviews + translations + availability manager (AddHorarioCupos) + saved publications (AddPublicacionesFavoritas) + AddUsuarioDestinoToResena + host reschedule + chat migrations + guest reports (AddReportesHuesped) + AddPropositoVerificacion + in-site notifications (AddNotificacionesSitioUsuario) + optional map points (AddPuntosTour)
         }
 
         // Roll back M3 (one step, to M2). The constraint and hygiene index must

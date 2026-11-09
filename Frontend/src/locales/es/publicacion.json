@@ -29,5 +29,19 @@
   },
   "successToast": "¡Ya eres anfitrión!",
   "genericError": "No se pudo completar el registro.",
-  "uploadError": "No se pudo subir la foto."
+  "uploadError": "No se pudo subir la foto.",
+  "waypoints": {
+      "meeting": "Punto de encuentro",
+    "destination": "Destino",
+      "selectorHint": "Elige un tipo de punto para marcarlo en el mapa",
+    "meetingOutside": "El punto de encuentro debe estar dentro de El Salvador.",
+    "locationOutside": "La ubicación debe estar dentro de El Salvador.",
+    "legendMain": "Ubicación principal",
+    "clear": "Limpiar",
+    "clearMeeting": "Limpiar punto de encuentro",
+    "clearDestination": "Limpiar destino",
+    "hint": "Opcional — hacé click en el mapa o buscá una dirección",
+    "hintMeeting": "Obligatorio — hacé click en el mapa o buscá una dirección",
+    "errorRange": "Las coordenadas del {{label}} están fuera de rango (lat -90 a 90, lng -180 a 180)."
+  }
 }
