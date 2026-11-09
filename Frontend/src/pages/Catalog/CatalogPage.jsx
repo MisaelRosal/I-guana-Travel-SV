@@ -257,6 +257,39 @@ export default function CatalogPage() {
     return hayFiltros ? experiencias : aleatorias(experiencias, 6)
   }, [experiencias, hayFiltros, orden, resumenes])
 
+  // Horizontal carousel: the listing is a scroll-snap track where every card
+  // is a snap point (mobile 1 card per page, tablet 2, desktop 4). Each arrow
+  // only lights up when there is real overflow in its direction; they stay
+  // mounted and just fade (opacity-0 + pointer-events-none) so the transition
+  // is smooth and the element keeps a stable position.
+  const carruselRef = useRef(null)
+  const [pagina, setPagina] = useState({ previa: false, siguiente: false })
+
+  const medir = () => {
+    const el = carruselRef.current
+    if (!el) return
+    setPagina({
+      previa: el.scrollLeft > 0,
+      siguiente: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    })
+  }
+
+  useEffect(() => {
+    medir()
+    window.addEventListener('resize', medir)
+    return () => window.removeEventListener('resize', medir)
+  }, [visibles])
+
+  // The "dash": one press scrolls a full viewport with the browser's smooth
+  // scrolling (scrollBy + behavior:'smooth'). Inside a snap track this is
+  // enough — no hand-rolled translateX carousel — and each button naturally
+  // animates the correct direction because the offset sign comes from it.
+  const desplazar = (direccion) => {
+    const el = carruselRef.current
+    if (!el) return
+    el.scrollBy({ left: direccion * el.clientWidth, behavior: 'smooth' })
+  }
+
   const handleBuscar = (e) => {
     e.preventDefault()
   }
@@ -471,17 +504,72 @@ export default function CatalogPage() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {visibles.map((e) => (
-              <ExperienceCard
-                key={e.id}
-                experiencia={e}
-                proximaFecha={e.proximaFecha}
-                resena={resumenes[e.id]}
-                guardado={guardado(e.id)}
-                onToggleGuardado={alternar}
-              />
-            ))}
+          <div className="relative">
+            {/* Scroll-snap track: native touch drag still works on mobile;
+              the arrows below are only an extra pointer/keyboard affordance.
+              py-4 leaves room for the hover lift without a vertical
+              scrollbar; no horizontal padding so scrollBy(page) by clientWidth
+              lands exactly on each page of snap points. */}
+            <div
+              ref={carruselRef}
+              role="list"
+              aria-label={t('carousel.label')}
+              onScroll={medir}
+              className="flex snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {visibles.map((e) => (
+                <div
+                  key={e.id}
+                  role="listitem"
+                  className="w-full flex-none snap-start sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)]"
+                >
+                  <ExperienceCard
+                    experiencia={e}
+                    proximaFecha={e.proximaFecha}
+                    resena={resumenes[e.id]}
+                    guardado={guardado(e.id)}
+                    onToggleGuardado={alternar}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Translucent circular arrows, vertically centered over the
+              edges; hidden state fades via opacity, never unmounts. */}
+            <button
+              type="button"
+              onClick={() => desplazar(-1)}
+              aria-label={t('carousel.prev')}
+              tabIndex={pagina.previa ? 0 : -1}
+              className={`absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/80 text-verde-bosque shadow-md backdrop-blur-sm transition-opacity duration-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 ${
+                pagina.previa ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+            >
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+              >
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => desplazar(1)}
+              aria-label={t('carousel.next')}
+              tabIndex={pagina.siguiente ? 0 : -1}
+              className={`absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/80 text-verde-bosque shadow-md backdrop-blur-sm transition-opacity duration-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 ${
+                pagina.siguiente ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+            >
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+              >
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
           </div>
         )}
       </section>

@@ -9,7 +9,9 @@ services:
     ports:
       # Loopback-only (A9): the database and object store are dev/ops tooling,
       # never public surface; the app reaches them through the compose network.
-      - "127.0.0.1:5432:5432"
+      # Host-port 5433: a native Windows PostgreSQL service occupies 5432 on the
+      # developer machine; the app reaches the DB via the compose network.
+      - "127.0.0.1:5433:5432"
     # No initdb.d mount: EF migrations are the single schema source and the
     # `migrator` service applies them, then loads database/seed.sql.
     volumes:

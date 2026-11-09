@@ -31,6 +31,11 @@
     "experiences": "Experiences",
     "stays": "Stays"
   },
+  "carousel": {
+    "label": "Catalog results",
+    "prev": "Previous page",
+    "next": "Next page"
+  },
   "status": {
     "loading": "Loading listings…",
     "error": "Listings could not be loaded.",

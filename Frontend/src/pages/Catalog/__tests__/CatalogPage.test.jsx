@@ -481,3 +481,61 @@ describe('save toggle (Fase 2): the heart on every catalog card', () => {
     expect(guardarPublicacion).not.toHaveBeenCalled()
   })
 })
+
+// Horizontal carousel pagination: the listing is a scroll-snap track paged by
+// translucent arrows. jsdom has no layout engine, so overflow is faked with
+// getters on the scroll container and the "dash" is asserted through the
+// scrollBy contract ({ left: >0, behavior: 'smooth' }) instead of pixel math.
+describe('carousel pagination: arrows page through the snap track', () => {
+  const lote = (n) =>
+    Array.from({ length: n }, (_, i) => ({
+      ...fixtures.experiencia,
+      id: 100 + i,
+      titulo: `Tour ${i + 1}`,
+    }))
+
+  beforeEach(() => {
+    fixtures.proximas = []
+    getExperiencias.mockImplementation(async () => lote(10))
+  })
+
+  afterEach(() => {
+    getExperiencias.mockImplementation(async () => [])
+  })
+
+  it('hides prev at the start, dashes right on click and reveals prev after scrolling', async () => {
+    renderCatalog()
+
+    const carrusel = await screen.findByRole('list', { name: 'Resultados del catálogo' })
+    // Fake the layout jsdom cannot compute: 3 pages of 800px, idle at the start.
+    Object.defineProperty(carrusel, 'clientWidth', { value: 800, configurable: true })
+    Object.defineProperty(carrusel, 'scrollWidth', { value: 2400, configurable: true })
+    Object.defineProperty(carrusel, 'scrollLeft', { value: 0, writable: true, configurable: true })
+    // The measurement effect already ran with jsdom's zero layout; replay it.
+    fireEvent.scroll(carrusel)
+
+    const prev = screen.getByRole('button', { name: 'Página anterior' })
+    const next = screen.getByRole('button', { name: 'Siguiente página' })
+
+    // At the start: prev is faded out (still mounted) and stops receiving
+    // keyboard focus; next is live because overflow exists to the right.
+    expect(prev).toHaveClass('opacity-0', 'pointer-events-none')
+    expect(prev).toHaveAttribute('tabindex', '-1')
+    expect(next).not.toHaveClass('opacity-0')
+
+    // The "dash": one press animates exactly one viewport to the right.
+    const scrollBy = vi.fn()
+    carrusel.scrollBy = scrollBy
+    fireEvent.click(next)
+    expect(scrollBy).toHaveBeenCalledOnce()
+    const [{ left, behavior }] = scrollBy.mock.calls[0]
+    expect(left).toBeGreaterThan(0)
+    expect(behavior).toBe('smooth')
+
+    // Simulate the snap landing one viewport further: prev fades back in.
+    carrusel.scrollLeft = 800
+    fireEvent.scroll(carrusel)
+    expect(prev).not.toHaveClass('opacity-0')
+    expect(prev).toHaveAttribute('tabindex', '0')
+  })
+})

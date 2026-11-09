@@ -31,6 +31,11 @@
     "experiences": "Experiencias",
     "stays": "Hospedaje"
   },
+  "carousel": {
+    "label": "Resultados del catálogo",
+    "prev": "Página anterior",
+    "next": "Siguiente página"
+  },
   "status": {
     "loading": "Cargando publicaciones…",
     "error": "No se pudieron cargar las publicaciones.",
