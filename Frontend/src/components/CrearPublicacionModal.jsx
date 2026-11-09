@@ -440,7 +440,9 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     // pending tipo lands on top.
     setTitulo('')
     setDescripcion('')
-    setAnfitrionId('')
+    // The host belongs to the caller's session (not to either form section):
+    // wiping it here would leave anfitrionId empty and the serializer would
+    // send a non-number the API cannot bind (Int32).
     setCategoriaId('')
     setPrecio('')
     setCapacidad('')

@@ -22,6 +22,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddControllers(options =>
 {
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+    // Validation 400s speak the { mensaje } shape (see the filter's doc).
+    options.Filters.Add<ValidationMessageFilter>(-2000);
 }).AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;

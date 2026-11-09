@@ -347,6 +347,10 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
     expect(inputs()[0].value).toBe('')
     expect(inputs()[1].value).toBe('')
     expect(screen.queryByDisplayValue('Casa con vista')).toBeNull()
+    // The host belongs to the session: the wipe never clears it (otherwise
+    // the serializer sends a non-number and the API 400s on Int32 binding).
+    expect(screen.getByDisplayValue('Carlos Mendoza')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Experiencia' })).toBeChecked()
   })
 
   it('en edición prefiere los puntos guardados y el PUT envía nulls al limpiar', async () => {
