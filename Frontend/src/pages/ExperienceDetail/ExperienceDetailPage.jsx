@@ -954,7 +954,9 @@ export default function ExperienceDetailPage() {
         if (activo) setExperiencia(data)
       })
       .catch((e) => {
-        if (activo) setError(e.message)
+        // A 404 means the publication no longer exists: render the friendly
+        // not-found state (page.notFound) instead of the raw API message.
+        if (activo) setError(e?.status === 404 ? null : e.message)
       })
       .finally(() => {
         if (activo) setCargando(false)

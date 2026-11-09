@@ -267,6 +267,19 @@ describe('EN active: detail chrome comes from the experiencia namespace', () => 
     expect(await screen.findByText('No images')).toBeInTheDocument()
   })
 
+  it('shows the not-found state when the detail request answers 404', async () => {
+    getExperienciaById.mockRejectedValueOnce(
+      Object.assign(new Error('Error 404: Not Found'), { status: 404 }),
+    )
+    renderDetail()
+    const textoEs = 'No se encontró la experiencia.'
+    const textoEn = 'Experience not found.'
+    const found = await screen.findByText((content, el) =>
+      (content.includes(textoEs) || content.includes(textoEn)) && el?.className?.includes('text-cafe'),
+    )
+    expect(found).toBeInTheDocument()
+  })
+
   it('localizes the booking calendar dialog steps', async () => {
     await openLoaded(fixtures.experiencia)
 
