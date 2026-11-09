@@ -482,11 +482,10 @@ describe('save toggle (Fase 2): the heart on every catalog card', () => {
   })
 })
 
-// Horizontal carousel pagination: the listing is a scroll-snap track paged by
-// translucent arrows. jsdom has no layout engine, so overflow is faked with
-// getters on the scroll container and the "dash" is asserted through the
-// scrollBy contract ({ left: >0, behavior: 'smooth' }) instead of pixel math.
-describe('carousel pagination: arrows page through the snap track', () => {
+// Classic grid pagination: the listing is a 6-card grid (2 rows x 3 columns
+// on desktop) with a Prev/pages/Next strip below. jsdom only needs the
+// component state here — no layout faking like the former scroll-snap track.
+describe('grid pagination: 6 cards per page behind a numbered strip', () => {
   const lote = (n) =>
     Array.from({ length: n }, (_, i) => ({
       ...fixtures.experiencia,
@@ -496,46 +495,90 @@ describe('carousel pagination: arrows page through the snap track', () => {
 
   beforeEach(() => {
     fixtures.proximas = []
-    getExperiencias.mockImplementation(async () => lote(10))
+    getExperiencias.mockImplementation(async () => lote(13))
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     getExperiencias.mockImplementation(async () => [])
   })
 
-  it('hides prev at the start, dashes right on click and reveals prev after scrolling', async () => {
-    renderCatalog()
+  // Without filters the catalog caps the listing at 6 random cards, so the
+  // paginated fixture runs behind a filter kept in the URL (deep-linkable).
+  const renderPaginado = () => renderCatalogAt(['/?categoria=Caf%C3%A9'])
 
-    const carrusel = await screen.findByRole('list', { name: 'Resultados del catálogo' })
-    // Fake the layout jsdom cannot compute: 3 pages of 800px, idle at the start.
-    Object.defineProperty(carrusel, 'clientWidth', { value: 800, configurable: true })
-    Object.defineProperty(carrusel, 'scrollWidth', { value: 2400, configurable: true })
-    Object.defineProperty(carrusel, 'scrollLeft', { value: 0, writable: true, configurable: true })
-    // The measurement effect already ran with jsdom's zero layout; replay it.
-    fireEvent.scroll(carrusel)
+  it('shows 6 cards plus numbered buttons 1/2/3 with boundary arrows', async () => {
+    renderPaginado()
 
-    const prev = screen.getByRole('button', { name: 'Página anterior' })
-    const next = screen.getByRole('button', { name: 'Siguiente página' })
+    const lista = await screen.findByRole('list', { name: 'Resultados del catálogo' })
+    expect(lista).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(6)
+    expect(screen.getByText('Tour 1')).toBeInTheDocument()
+    expect(screen.getByText('Tour 6')).toBeInTheDocument()
+    expect(screen.queryByText('Tour 7')).toBeNull()
 
-    // At the start: prev is faded out (still mounted) and stops receiving
-    // keyboard focus; next is live because overflow exists to the right.
-    expect(prev).toHaveClass('opacity-0', 'pointer-events-none')
-    expect(prev).toHaveAttribute('tabindex', '-1')
-    expect(next).not.toHaveClass('opacity-0')
+    // 13 items -> 3 pages; every number is a button and the strip states the
+    // current position through its accessible name (Página 1 de 3).
+    for (const n of [1, 2, 3]) {
+      expect(screen.getByRole('button', { name: `Página ${n}` })).toBeInTheDocument()
+    }
+    expect(screen.getByRole('navigation', { name: 'Página 1 de 3' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: 'Página anterior' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Siguiente página' })).toBeEnabled()
+  })
 
-    // The "dash": one press animates exactly one viewport to the right.
-    const scrollBy = vi.fn()
-    carrusel.scrollBy = scrollBy
-    fireEvent.click(next)
-    expect(scrollBy).toHaveBeenCalledOnce()
-    const [{ left, behavior }] = scrollBy.mock.calls[0]
-    expect(left).toBeGreaterThan(0)
-    expect(behavior).toBe('smooth')
+  it('switches instantly to the next batch and disables Next on the last page', async () => {
+    renderPaginado()
 
-    // Simulate the snap landing one viewport further: prev fades back in.
-    carrusel.scrollLeft = 800
-    fireEvent.scroll(carrusel)
-    expect(prev).not.toHaveClass('opacity-0')
-    expect(prev).toHaveAttribute('tabindex', '0')
+    await screen.findByText('Tour 1')
+    fireEvent.click(screen.getByRole('button', { name: 'Página 2' }))
+
+    // Page 2 = items 7-12, rendered immediately on click.
+    expect(screen.getAllByRole('listitem')).toHaveLength(6)
+    expect(screen.getByText('Tour 7')).toBeInTheDocument()
+    expect(screen.getByText('Tour 12')).toBeInTheDocument()
+    expect(screen.queryByText('Tour 6')).toBeNull()
+    expect(screen.queryByText('Tour 13')).toBeNull()
+
+    // Next past the end lands on the last page: a lone 13th card and Next
+    // disabled there, while Prev is live again.
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente página' }))
+    expect(screen.getByText('Tour 13')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.queryByText('Tour 12')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Siguiente página' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Página anterior' })).toBeEnabled()
+  })
+
+  it('resets to page 1 when a filter or the search changes', async () => {
+    renderPaginado()
+
+    // Data settles with real timers; fake timers are only needed for the
+    // debounce window below (same pattern as the debounced-search suite).
+    await screen.findByText('Tour 1')
+    vi.useFakeTimers()
+
+    // Move to page 2 first so a reset is actually observable.
+    fireEvent.click(screen.getByRole('button', { name: 'Página 2' }))
+    expect(screen.getByText('Tour 7')).toBeInTheDocument()
+
+    // Typed search: the debounce window passes, the refetch fires and the
+    // pagination snaps back to page 1 (same state the fetch effect watches).
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'ap' } })
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(screen.getByText('Tour 1')).toBeInTheDocument()
+    expect(screen.queryByText('Tour 7')).toBeNull()
+
+    // A filter change resets too, with no debounce wait.
+    fireEvent.click(screen.getByRole('button', { name: 'Página 2' }))
+    expect(screen.getByText('Tour 7')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Orden'))
+    fireEvent.click(screen.getByRole('option', { name: 'Mejor valorados' }))
+    expect(screen.getByText('Tour 1')).toBeInTheDocument()
+    expect(screen.queryByText('Tour 7')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page')
   })
 })

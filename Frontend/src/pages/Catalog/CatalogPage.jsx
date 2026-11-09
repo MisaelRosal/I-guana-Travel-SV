@@ -14,6 +14,9 @@ import useFavoritos from '../../hooks/useFavoritos.js'
 // sección las interpola desde el recurso (AD-3), nunca por concatenación.
 const PROXIMAS_LIMITE = 3
 
+// Paginación clásica: 2 filas x 3 columnas = 6 tarjetas por página.
+const POR_PAGINA = 6
+
 // Filtro desplegable con la estetica del sitio: pastilla redondeada con borde
 // cafe, panel de opciones estilo tarjeta (hover crema, seleccion verde-bosque
 // con tilde). Cierra con Escape o clic fuera. Sustituye al <select> nativo.
@@ -110,13 +113,17 @@ function FiltroDesplegable({ etiqueta, placeholder, valor, opciones, onChange })
   )
 }
 
-function aleatorias(lista, cantidad) {
-  const copia = [...lista]
-  for (let i = copia.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copia[i], copia[j]] = [copia[j], copia[i]]
-  }
-  return copia.slice(0, cantidad)
+// Números para la barra de paginación: todos cuando hay 7 páginas o menos;
+// si no, el patrón compacto 1 … p-1 p p+1 … N, con "…" cubriendo cada hueco
+// mayor a una página consecutiva.
+function numerosDePagina(actual, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const marcados = [...new Set([1, actual - 1, actual, actual + 1, total])]
+    .filter((n) => n >= 1 && n <= total)
+    .sort((a, b) => a - b)
+  return marcados.flatMap((n, i) =>
+    i > 0 && n - marcados[i - 1] > 1 ? ['…', n] : [n],
+  )
 }
 
 export default function CatalogPage() {
@@ -254,41 +261,25 @@ export default function CatalogPage() {
         return rb - ra
       })
     }
-    return hayFiltros ? experiencias : aleatorias(experiencias, 6)
-  }, [experiencias, hayFiltros, orden, resumenes])
+    // Full catalog, always: with classic pagination the unfiltered view needs
+    // every publication (6 per page), not the old 6-card random teaser.
+    return experiencias
+  }, [experiencias, orden, resumenes])
 
-  // Horizontal carousel: the listing is a scroll-snap track where every card
-  // is a snap point (mobile 1 card per page, tablet 2, desktop 4). Each arrow
-  // only lights up when there is real overflow in its direction; they stay
-  // mounted and just fade (opacity-0 + pointer-events-none) so the transition
-  // is smooth and the element keeps a stable position.
-  const carruselRef = useRef(null)
-  const [pagina, setPagina] = useState({ previa: false, siguiente: false })
-
-  const medir = () => {
-    const el = carruselRef.current
-    if (!el) return
-    setPagina({
-      previa: el.scrollLeft > 0,
-      siguiente: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
-    })
-  }
+  // Classic pagination: the visible slice is a page of the full result set.
+  // Every filter/search/sort change (the same state the fetch effect watches,
+  // plus `orden` which reorders client-side) snaps the strip back to page 1;
+  // a shrinking dataset clamps the current page to the new last page.
+  const [paginaActual, setPaginaActual] = useState(1)
+  const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA))
 
   useEffect(() => {
-    medir()
-    window.addEventListener('resize', medir)
-    return () => window.removeEventListener('resize', medir)
-  }, [visibles])
+    setPaginaActual(1)
+  }, [busquedaAplazada, categoria, zona, tipo, precioMax, orden, contentLocale, reintento])
 
-  // The "dash": one press scrolls a full viewport with the browser's smooth
-  // scrolling (scrollBy + behavior:'smooth'). Inside a snap track this is
-  // enough — no hand-rolled translateX carousel — and each button naturally
-  // animates the correct direction because the offset sign comes from it.
-  const desplazar = (direccion) => {
-    const el = carruselRef.current
-    if (!el) return
-    el.scrollBy({ left: direccion * el.clientWidth, behavior: 'smooth' })
-  }
+  useEffect(() => {
+    if (paginaActual > totalPaginas) setPaginaActual(totalPaginas)
+  }, [paginaActual, totalPaginas])
 
   const handleBuscar = (e) => {
     e.preventDefault()
@@ -504,72 +495,90 @@ export default function CatalogPage() {
             </p>
           </div>
         ) : (
-          <div className="relative">
-            {/* Scroll-snap track: native touch drag still works on mobile;
-              the arrows below are only an extra pointer/keyboard affordance.
-              py-4 leaves room for the hover lift without a vertical
-              scrollbar; no horizontal padding so scrollBy(page) by clientWidth
-              lands exactly on each page of snap points. */}
+          <div>
+            {/* Paginated grid: one page of 6 cards (2 rows x 3 columns on
+              desktop). Same list/listitem semantics as before. */}
             <div
-              ref={carruselRef}
               role="list"
-              aria-label={t('carousel.label')}
-              onScroll={medir}
-              className="flex snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              aria-label={t('pagination.label')}
+              className="grid grid-cols-1 gap-6 py-4 sm:grid-cols-2 lg:grid-cols-3"
             >
-              {visibles.map((e) => (
-                <div
-                  key={e.id}
-                  role="listitem"
-                  className="w-full flex-none snap-start sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)]"
-                >
-                  <ExperienceCard
-                    experiencia={e}
-                    proximaFecha={e.proximaFecha}
-                    resena={resumenes[e.id]}
-                    guardado={guardado(e.id)}
-                    onToggleGuardado={alternar}
-                  />
-                </div>
-              ))}
+              {visibles
+                .slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
+                .map((e) => (
+                  <div key={e.id} role="listitem">
+                    <ExperienceCard
+                      experiencia={e}
+                      proximaFecha={e.proximaFecha}
+                      resena={resumenes[e.id]}
+                      guardado={guardado(e.id)}
+                      onToggleGuardado={alternar}
+                    />
+                  </div>
+                ))}
             </div>
 
-            {/* Translucent circular arrows, vertically centered over the
-              edges; hidden state fades via opacity, never unmounts. */}
-            <button
-              type="button"
-              onClick={() => desplazar(-1)}
-              aria-label={t('carousel.prev')}
-              tabIndex={pagina.previa ? 0 : -1}
-              className={`absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/80 text-verde-bosque shadow-md backdrop-blur-sm transition-opacity duration-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 ${
-                pagina.previa ? 'opacity-100' : 'pointer-events-none opacity-0'
-              }`}
-            >
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+            {totalPaginas > 1 && (
+              <nav
+                aria-label={t('pagination.pageOf', { current: paginaActual, total: totalPaginas })}
+                className="mt-8 flex flex-wrap items-center justify-center gap-2"
               >
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => desplazar(1)}
-              aria-label={t('carousel.next')}
-              tabIndex={pagina.siguiente ? 0 : -1}
-              className={`absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/80 text-verde-bosque shadow-md backdrop-blur-sm transition-opacity duration-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 ${
-                pagina.siguiente ? 'opacity-100' : 'pointer-events-none opacity-0'
-              }`}
-            >
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                  disabled={paginaActual === 1}
+                  aria-label={t('pagination.previous')}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-verde-bosque text-verde-bosque transition-colors hover:bg-verde-bosque hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-verde-bosque"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  >
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
+
+                {numerosDePagina(paginaActual, totalPaginas).map((n, i) =>
+                  n === '…' ? (
+                    <span key={`puntos-${i}`} aria-hidden="true" className="px-1 text-cafe">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setPaginaActual(n)}
+                      aria-label={t('pagination.page', { page: n })}
+                      aria-current={n === paginaActual ? 'page' : undefined}
+                      className={`flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-full border-2 border-verde-bosque px-1 text-sm transition-colors ${
+                        n === paginaActual
+                          ? 'bg-verde-bosque font-bold text-white'
+                          : 'text-verde-bosque hover:bg-verde-bosque/10'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ),
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+                  disabled={paginaActual === totalPaginas}
+                  aria-label={t('pagination.next')}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-verde-bosque text-verde-bosque transition-colors hover:bg-verde-bosque hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-verde-bosque"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  >
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+              </nav>
+            )}
           </div>
         )}
       </section>

@@ -31,9 +31,11 @@
     "experiences": "Experiences",
     "stays": "Stays"
   },
-  "carousel": {
+  "pagination": {
     "label": "Catalog results",
-    "prev": "Previous page",
+    "page": "Page {{page}}",
+    "pageOf": "Page {{current}} of {{total}}",
+    "previous": "Previous page",
     "next": "Next page"
   },
   "status": {
