@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
@@ -22,41 +22,111 @@ function iniciales(nombre, apellido) {
   return ((n.charAt(0) || '') + (a.charAt(0) || '')).toUpperCase()
 }
 
-// F0 (i18n-es-en): ES/EN language pill (AD-5), rendered in both the desktop
-// and the mobile nav. Reuses the nav-link styling classes; accessible names
-// come from the `header` namespace. The handler is just changeLanguage —
-// persistence and cross-tab sync are handled by the single listeners in
-// src/i18n/config.js, so the toggle never writes storage or reloads itself.
+// F0 (i18n-es-en): ES/EN language dropdown, rendered in both the desktop and
+// the mobile nav. The trigger shows the CURRENT language's flag + name; picking
+// an option calls changeLanguage. Persistence and cross-tab sync stay in
+// src/i18n/config.js — this component never writes storage or reloads itself.
+// Flags are hand-drawn SVGs: Windows has no regional-indicator emoji, so 🇸🇻/🇺🇸
+// would render as bare "SV"/"US" letters.
+function BanderaIdioma({ lng }) {
+  if (lng === 'es') {
+    return (
+      <svg viewBox="0 0 21 14" className="h-3.5 w-5 shrink-0 rounded-[3px] shadow-sm" aria-hidden="true">
+        <rect width="21" height="14" fill="#ffffff" />
+        <rect width="21" height="4.7" fill="#143ca6" />
+        <rect y="9.3" width="21" height="4.7" fill="#143ca6" />
+        {/* Simplified emblem dot so the coat of arms reads at this size. */}
+        <circle cx="10.5" cy="7" r="1.4" fill="#e8b34b" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 21 14" className="h-3.5 w-5 shrink-0 rounded-[3px] shadow-sm" aria-hidden="true">
+      {[0, 2, 4, 6, 8, 10, 12].map((y) => (
+        <rect key={y} y={y} width="21" height="2" fill="#b22234" />
+      ))}
+      {[1, 3, 5, 7, 9, 11, 13].map((y) => (
+        <rect key={y} y={y * (14 / 14)} width="21" height="2" fill="#ffffff" />
+      ))}
+      <rect width="9" height="7.5" fill="#3c3b6e" />
+      {[0.9, 2.7, 4.5, 6.3].map((y) =>
+        [1.2, 3, 4.8, 6.6].map((x) => (
+          <circle key={`${x}-${y}`} cx={x} cy={y} r="0.35" fill="#ffffff" />
+        )),
+      )}
+    </svg>
+  )
+}
+
 function ToggleIdioma() {
   const { t, i18n } = useTranslation('header')
   const activo = i18n.language === 'en' ? 'en' : 'es'
-  // `after:*` expands the tap target to 44x44 without growing the visible pill.
-  const clasePill = (lng) =>
-    `relative cursor-pointer text-sm px-3 py-2 rounded-full transition-colors after:absolute after:-inset-y-1 after:-inset-x-0.5 after:content-[''] ${
-      lng === activo
-        ? 'bg-white/15 text-white'
-        : 'text-crema/85 hover:text-white hover:bg-white/10'
-    }`
+  const [abierto, setAbierto] = useState(false)
+  const refDesplegable = useRef(null)
+
+  // Close on outside click and Escape (the dropdown, not a native select, so
+  // the hand-drawn flags can carry meaning).
+  useEffect(() => {
+    if (!abierto) return
+    const onClick = (e) => { if (!refDesplegable.current?.contains(e.target)) setAbierto(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setAbierto(false) }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [abierto])
+
+  const opciones = [
+    { lng: 'es', nombre: t('langToggle.spanish'), aria: t('langToggle.switchToEs') },
+    { lng: 'en', nombre: t('langToggle.english'), aria: t('langToggle.switchToEn') },
+  ]
+
   return (
-    <div role="group" aria-label={t('langToggle.group')} className="flex items-center gap-1">
+    <div ref={refDesplegable} role="group" aria-label={t('langToggle.group')} className="relative">
       <button
         type="button"
-        onClick={() => { i18n.changeLanguage('es') }}
-        aria-pressed={activo === 'es'}
-        aria-label={t('langToggle.switchToEs')}
-        className={clasePill('es')}
+        onClick={() => setAbierto((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={abierto}
+        aria-label={t('langToggle.group')}
+        className="relative flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-white/10"
       >
-        ES
+        <BanderaIdioma lng={activo} />
+        <span>{activo === 'en' ? t('langToggle.english') : t('langToggle.spanish')}</span>
+        <svg viewBox="0 0 12 12" className={`h-3 w-3 transition-transform ${abierto ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path d="M2.5 4.5 6 8l3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
-      <button
-        type="button"
-        onClick={() => { i18n.changeLanguage('en') }}
-        aria-pressed={activo === 'en'}
-        aria-label={t('langToggle.switchToEn')}
-        className={clasePill('en')}
-      >
-        EN
-      </button>
+      {abierto && (
+        <ul
+          role="listbox"
+          aria-label={t('langToggle.group')}
+          className="absolute right-0 top-full z-[60] mt-2 w-44 overflow-hidden rounded-[22px] border border-neutral-200 bg-white shadow-xl"
+        >
+          {opciones.map((o) => (
+            <li key={o.lng} className="border-b border-neutral-100 last:border-0">
+              <button
+                type="button"
+                role="option"
+                aria-selected={o.lng === activo}
+                onClick={() => { i18n.changeLanguage(o.lng); setAbierto(false) }}
+                aria-label={o.aria}
+                className="flex w-full cursor-pointer items-center gap-2.5 px-4 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-verde-hoja/10 aria-selected:bg-verde-hoja/15"
+              >
+                <BanderaIdioma lng={o.lng} />
+                <span className="flex-1 font-medium">{o.nombre}</span>
+                {o.lng === activo && (
+                  <svg viewBox="0 0 12 12" className="h-3 w-3 text-verde-bosque" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M2 6.5 5 9l5-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -312,6 +382,10 @@ export default function Header() {
         <nav
           id="menu-movil"
           aria-label={t('mobileMenu.label')}
+          // Part of the mobile-menu region: clicks inside the menu body must
+          // not be treated as outside-clicks (they used to self-close the
+          // menu, making its language dropdown unusable).
+          data-menu-movil
           className="md:hidden border-t border-white/10 bg-verde-bosque px-4 pb-4 pt-3"
         >
           <div className="flex flex-col gap-1">

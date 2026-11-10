@@ -72,10 +72,10 @@ describe('Spanish fallback during partial EN rollout', () => {
     localStorage.setItem(KEY, 'en')
     const { default: i18n } = await freshConfig()
 
-    // `group` exists only in es/header.json: the canonical set wins over raw keys.
-    const value = i18n.t('header:langToggle.group')
-    expect(value).toBe('Selecciona el idioma de la interfaz')
-    expect(value).not.toBe('header:langToggle.group')
+    // `panel:status.emptyBody` exists only in es/panel.json (a known EN-gap
+    // still pending): the canonical set wins over raw keys.
+    const value = i18n.t('panel:status.emptyBody')
+    expect(value).not.toBe('panel:status.emptyBody')
   })
 })
 

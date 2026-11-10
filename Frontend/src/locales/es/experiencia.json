@@ -99,6 +99,13 @@
     "errorLocation": "Por favor seleccioná una ubicación en el mapa",
     "meetingRequired": "El punto de encuentro es obligatorio para experiencias.",
     "errorDates": "Elige al menos una fecha disponible en el calendario",
+    "requiredDescription": "La descripción es obligatoria.",
+    "requiredRooms": "Indica al menos 1 habitación.",
+    "requiredBeds": "Indica al menos 1 cama.",
+    "requiredBaths": "Indica al menos 1 baño.",
+    "requiredTimes": "Elige la hora de inicio y la hora de fin.",
+    "requiredImages": "Agregá al menos una imagen a la publicación.",
+    "timeOrder": "La hora de fin debe ser posterior a la hora de inicio.",
     "errorUpdate": "Error al actualizar la publicación",
     "errorCreate": "Error al crear la publicación"
   },

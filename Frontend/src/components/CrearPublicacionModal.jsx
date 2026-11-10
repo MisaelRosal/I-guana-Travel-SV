@@ -74,7 +74,17 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   }, [departamentoId, allMunicipios])
 
   useEffect(() => {
-    const urls = archivos.map((a) => URL.createObjectURL(a))
+    // jsdom cannot create object URLs for its synthetic Files — tolerate that
+    // so tests can still drive the mandatory image flow (browsers never fail).
+    const urls = archivos
+      .map((a) => {
+        try {
+          return URL.createObjectURL(a)
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
     setPreviews(urls)
     return () => { urls.forEach((url) => URL.revokeObjectURL(url)) }
   }, [archivos])
@@ -323,6 +333,59 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setEnviando(false)
       return
     }
+    // Server-of-truth mirror: a programmatic submit skips native constraint
+    // validation, so re-check every rule `required` can express in HTML.
+    if (!descripcion.trim()) {
+      setError(t('modal.requiredDescription'))
+      setEnviando(false)
+      return
+    }
+    if (tipo === 'hospedaje') {
+      if (!habitaciones || parseInt(habitaciones) < 1) {
+        setError(t('modal.requiredRooms'))
+        setEnviando(false)
+        return
+      }
+      if (!camas || parseInt(camas) < 1) {
+        setError(t('modal.requiredBeds'))
+        setEnviando(false)
+        return
+      }
+      if (!banos || parseInt(banos) < 1) {
+        setError(t('modal.requiredBaths'))
+        setEnviando(false)
+        return
+      }
+      // No order rule: a check-out hour earlier than check-in is legitimate.
+      if (!horaEntrada || !horaSalida) {
+        setError(t('modal.requiredTimes'))
+        setEnviando(false)
+        return
+      }
+    } else {
+      if (!horaInicioExp || !horaFinExp) {
+        setError(t('modal.requiredTimes'))
+        setEnviando(false)
+        return
+      }
+      if (horaFinExp <= horaInicioExp) {
+        setError(t('modal.timeOrder'))
+        setEnviando(false)
+        return
+      }
+    }
+    // Images are mandatory: at least one NEW file for a fresh publication, and
+    // at least one surviving image (existing minus marked-for-delete plus new)
+    // for an edit.
+    const imagenesQueQuedan =
+      archivos.length + (esEdicion
+        ? imagenesExistentes.filter((img) => !imagenesAEliminar.includes(img.id)).length
+        : 0)
+    if (imagenesQueQuedan < 1) {
+      setError(t('modal.requiredImages'))
+      setEnviando(false)
+      return
+    }
     setEnviando(true)
     try {
       const publicacion = {
@@ -515,7 +578,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-6">
           {error && (
-            <div className="mb-4 rounded-[22px] border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            <div role="alert" className="mb-4 rounded-[22px] border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
               {error}
             </div>
           )}
@@ -569,8 +632,8 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
                 <input required value={titulo} onChange={(e) => setTitulo(e.target.value)} className={inputCls} placeholder={tipo === 'hospedaje' ? t('modal.titlePhStay') : t('modal.titlePhExp')} />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls}>{t('modal.description')}</label>
-                <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} className={inputCls + ' h-20 resize-none'} placeholder={tipo === 'hospedaje' ? t('modal.descPhStay') : t('modal.descPhExp')} />
+                <label className={labelCls}>{t('modal.description')} *</label>
+                <textarea required value={descripcion} onChange={(e) => setDescripcion(e.target.value)} className={inputCls + ' h-20 resize-none'} placeholder={tipo === 'hospedaje' ? t('modal.descPhStay') : t('modal.descPhExp')} />
               </div>
               <div>
                 <label className={labelCls}>{t('modal.host')} *</label>
@@ -678,26 +741,26 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               <legend className="mb-3 text-lg font-bold text-verde-bosque">{t('modal.stayDetailsLegend')}</legend>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
-                  <label className={labelCls}>{t('modal.rooms')}</label>
-                  <input type="number" min="0" value={habitaciones} onChange={(e) => setHabitaciones(e.target.value)} className={inputCls} placeholder="0" />
+                  <label className={labelCls}>{t('modal.rooms')} *</label>
+                  <input required type="number" min="1" value={habitaciones} onChange={(e) => setHabitaciones(e.target.value)} className={inputCls} placeholder="0" />
                 </div>
                 <div>
-                  <label className={labelCls}>{t('modal.beds')}</label>
-                  <input type="number" min="0" value={camas} onChange={(e) => setCamas(e.target.value)} className={inputCls} placeholder="0" />
+                  <label className={labelCls}>{t('modal.beds')} *</label>
+                  <input required type="number" min="1" value={camas} onChange={(e) => setCamas(e.target.value)} className={inputCls} placeholder="0" />
                 </div>
                 <div>
-                  <label className={labelCls}>{t('modal.baths')}</label>
-                  <input type="number" min="0" value={banos} onChange={(e) => setBanos(e.target.value)} className={inputCls} placeholder="0" />
+                  <label className={labelCls}>{t('modal.baths')} *</label>
+                  <input required type="number" min="1" value={banos} onChange={(e) => setBanos(e.target.value)} className={inputCls} placeholder="0" />
                 </div>
               </div>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelCls}>{t('modal.checkInTime')}</label>
-                  <input type="time" value={horaEntrada} onChange={(e) => setHoraEntrada(e.target.value)} className={inputCls} />
+                  <label className={labelCls}>{t('modal.checkInTime')} *</label>
+                  <input required type="time" value={horaEntrada} onChange={(e) => setHoraEntrada(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>{t('modal.checkOutTime')}</label>
-                  <input type="time" value={horaSalida} onChange={(e) => setHoraSalida(e.target.value)} className={inputCls} />
+                  <label className={labelCls}>{t('modal.checkOutTime')} *</label>
+                  <input required type="time" value={horaSalida} onChange={(e) => setHoraSalida(e.target.value)} className={inputCls} />
                 </div>
               </div>
             </fieldset>
@@ -813,12 +876,12 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelCls}>{t('modal.startTime')}</label>
-                  <input type="time" value={horaInicioExp} onChange={(e) => setHoraInicioExp(e.target.value)} className={inputCls} />
+                  <label className={labelCls}>{t('modal.startTime')} *</label>
+                  <input required type="time" value={horaInicioExp} onChange={(e) => setHoraInicioExp(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>{t('modal.endTime')}</label>
-                  <input type="time" value={horaFinExp} onChange={(e) => setHoraFinExp(e.target.value)} className={inputCls} />
+                  <label className={labelCls}>{t('modal.endTime')} *</label>
+                  <input required type="time" value={horaFinExp} onChange={(e) => setHoraFinExp(e.target.value)} className={inputCls} />
                 </div>
               </div>
 

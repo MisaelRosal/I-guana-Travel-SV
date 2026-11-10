@@ -51,28 +51,25 @@ describe('ES/EN toggle pill in the Header (desktop)', () => {
   it('shows both languages with localized aria-labels and switches to EN without a reload', async () => {
     render(<App />)
 
-    // ES active: aria-labels come from the Spanish (canonical) header resource.
-    const enButton = screen.getByRole('button', { name: 'Cambiar a inglés' })
-    expect(screen.getByRole('button', { name: 'Cambiar a español' })).toBeInTheDocument()
-
-    fireEvent.click(enButton)
+    // ES active: the trigger carries the group label; the options carry the
+    // localized per-language aria labels (dropdown, not the old two pills).
+    const trigger = screen.getByRole('button', { name: 'Selecciona el idioma de la interfaz' })
+    expect(trigger).toBeInTheDocument()
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: 'Cambiar a inglés' }))
 
     // Same document, no reload: localized chrome re-renders in English.
     await waitFor(() => {
       expect(i18n.language).toBe('en')
-      expect(screen.getByRole('button', { name: 'Switch to Spanish' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Switch to English' })).toHaveAttribute('aria-pressed', 'true')
+      expect(document.documentElement).toHaveAttribute('lang', 'en')
     })
-
-    // <html lang> tracks the active language.
-    expect(document.documentElement).toHaveAttribute('lang', 'en')
 
     // Preference persisted to localStorage under the iguana_* convention.
     expect(localStorage.getItem(KEY)).toBe('en')
 
-    // The toggle group label lives in the header ns and is EN-absent:
-    // Spanish fallback, never a raw key, while the rest of the page is intact.
-    expect(screen.getByRole('group', { name: 'Selecciona el idioma de la interfaz' })).toBeInTheDocument()
+    // The group label now exists in the EN overlay too (dropdown UI): the
+    // trigger re-renders in full English.
+    expect(screen.getByRole('group', { name: 'Choose the interface language' })).toBeInTheDocument()
 
     // F1 landed the catalog pilot content: page chrome now localizes through
     // resources too, so under EN the hero renders the English catalog resource.
@@ -114,7 +111,8 @@ describe('ES/EN toggle pill in the Header (desktop)', () => {
 
     const spy = vi.spyOn(Storage.prototype, 'setItem')
     try {
-      fireEvent.click(screen.getByRole('button', { name: 'Cambiar a inglés' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Selecciona el idioma de la interfaz' }))
+      fireEvent.click(screen.getByRole('option', { name: 'Cambiar a inglés' }))
       await waitFor(() => expect(localStorage.getItem(KEY)).toBe('en'))
       const localeWrites = spy.mock.calls.filter(([key]) => key === KEY)
       expect(localeWrites).toHaveLength(1)
@@ -129,7 +127,9 @@ describe('ES/EN toggle pill in the Header (desktop)', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('button', { name: 'Switch to English' })).toHaveAttribute('aria-pressed', 'true')
+    // The dropdown trigger re-renders fully in EN (group label is now part of
+    // the EN overlay).
+    expect(await screen.findByRole('group', { name: 'Choose the interface language' })).toBeInTheDocument()
     expect(document.documentElement).toHaveAttribute('lang', 'en')
   })
 })
@@ -144,7 +144,7 @@ describe('cross-tab synchronization via storage events', () => {
     await waitFor(() => {
       expect(i18n.language).toBe('en')
       expect(document.documentElement).toHaveAttribute('lang', 'en')
-      expect(screen.getByRole('button', { name: 'Switch to English' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('group', { name: 'Choose the interface language' })).toBeInTheDocument()
     })
   })
 
@@ -173,8 +173,8 @@ describe('cross-tab synchronization via storage events', () => {
     // Header.jsx / Footer.jsx listen to the same `storage` event to
     // re-read the auth cache: the user name must survive the locale switch.
     expect(screen.getByText('Ana Test')).toBeInTheDocument()
-    // The pill and the auth control coexist in the new locale.
-    expect(screen.getByRole('button', { name: 'Switch to Spanish' })).toBeInTheDocument()
+    // The dropdown and the auth control coexist in the new locale.
+    expect(screen.getByRole('group', { name: 'Choose the interface language' })).toBeInTheDocument()
   })
 
   it('a locale change from another tab does not reset open Header UI state', async () => {
@@ -217,17 +217,33 @@ describe('cross-tab synchronization via storage events', () => {
 })
 
 describe('ES/EN toggle pill in the Header (mobile)', () => {
-  it('renders the same pill inside the mobile menu', async () => {
+  it('renders the same dropdown inside the mobile menu', async () => {
     render(<App />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Abrir menú' }))
 
-    // Desktop nav and mobile nav each expose the control: exactly two EN buttons.
-    const enButtons = await screen.findAllByRole('button', { name: 'Cambiar a inglés' })
-    expect(enButtons).toHaveLength(2)
+    // Scope every query to the mobile nav (aria-label from mobileMenu.label):
+    // the desktop nav exposes an identical dropdown and must not interfere.
+    const menuMovil = await screen.findByRole('navigation', { name: 'Menú móvil' })
+    const mobile = within(menuMovil)
 
-    fireEvent.click(enButtons[1])
-    await waitFor(() => expect(i18n.language).toBe('en'))
-    expect(document.documentElement).toHaveAttribute('lang', 'en')
+    // The mobile menu carries its own dropdown trigger.
+    const trigger = mobile.getByRole('button', { name: 'Selecciona el idioma de la interfaz' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    // Clicking the trigger opens the listbox INSIDE the mobile menu without
+    // closing the menu itself (regression: the menu used to self-close on
+    // inside clicks, so the dropdown could never be used on mobile).
+    fireEvent.click(trigger)
+    const opcion = await mobile.findByRole('option', { name: 'Cambiar a inglés' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    // Selecting EN re-renders everything under the persisted choice.
+    fireEvent.click(opcion)
+    await waitFor(() => {
+      expect(i18n.language).toBe('en')
+      expect(document.documentElement).toHaveAttribute('lang', 'en')
+    })
+    expect(localStorage.getItem(KEY)).toBe('en')
   })
 })

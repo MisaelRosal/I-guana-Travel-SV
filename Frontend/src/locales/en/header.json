@@ -1,5 +1,8 @@
 {
   "langToggle": {
+    "group": "Choose the interface language",
+    "spanish": "Spanish",
+    "english": "English",
     "switchToEs": "Switch to Spanish",
     "switchToEn": "Switch to English"
   },

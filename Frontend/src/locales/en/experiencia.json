@@ -99,6 +99,13 @@
     "errorLocation": "Please select a location on the map",
     "meetingRequired": "The meeting point is required for experiences.",
     "errorDates": "Choose at least one available date in the calendar",
+    "requiredDescription": "Description is required.",
+    "requiredRooms": "Enter at least 1 room.",
+    "requiredBeds": "Enter at least 1 bed.",
+    "requiredBaths": "Enter at least 1 bath.",
+    "requiredTimes": "Pick both the start and the end time.",
+    "requiredImages": "Add at least one image to the listing.",
+    "timeOrder": "The end time must be after the start time.",
     "errorUpdate": "Error updating the listing",
     "errorCreate": "Error creating the listing"
   },

@@ -121,8 +121,8 @@ describe('EN active: modal chrome comes from the experiencia + common namespaces
     expect(screen.getByRole('button', { name: 'Next month' })).toBeInTheDocument()
     expect(screen.getByText('Selected dates (0)')).toBeInTheDocument()
     expect(screen.getByText("You haven't picked any dates yet")).toBeInTheDocument()
-    expect(screen.getByText('Start time')).toBeInTheDocument()
-    expect(screen.getByText('End time')).toBeInTheDocument()
+    expect(screen.getByText('Start time *')).toBeInTheDocument()
+    expect(screen.getByText('End time *')).toBeInTheDocument()
   })
 
   it('guards dirty exits through the localized confirmation layer', async () => {
@@ -174,7 +174,7 @@ describe('ES active: extraction keeps the canonical Spanish modal byte-comparabl
     expect(screen.getByText('Información básica')).toBeInTheDocument()
     expect(screen.getByText('Título *')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Ej: Casa frente al mar en El Tunco')).toBeInTheDocument()
-    expect(screen.getByText('Descripción')).toBeInTheDocument()
+    expect(screen.getByText('Descripción *')).toBeInTheDocument()
     expect(screen.getByText('Anfitrión *')).toBeInTheDocument()
     expect(screen.getByText('Categoría *')).toBeInTheDocument()
     expect(screen.getByText('Precio por noche (USD) *')).toBeInTheDocument()
@@ -224,8 +224,9 @@ describe('ES active: extraction keeps the canonical Spanish modal byte-comparabl
     const { container } = renderModal({
       esEdicion: true,
       pubExistente: {
-        id: 5, titulo: 'Casa', descripcion: '', anfitrionId: 1, categoriaId: 1,
+        id: 5, titulo: 'Casa', descripcion: 'Cerca de la playa', anfitrionId: 1, categoriaId: 1,
         precioPorNoche: 120, capacidadMaxima: 4, tipo: 'hospedaje',
+        habitaciones: 2, camas: 3, banos: 1, horaEntrada: '14:00', horaSalida: '11:00',
         latitud: 13.5, longitud: -89.3,
         municipio: { id: 2, departamentoId: 1 },
         horarios: [], publicacionAmenidads: [],
@@ -272,8 +273,9 @@ describe('ES active: extraction keeps the canonical Spanish modal byte-comparabl
 // simulated by driving those inputs. POST/PUT MUST carry the four camelCase
 // API fields (puntoEncuentroLatitud/Longitud, destinoLatitud/Longitud),
 // sending explicit nulls when a pair is unset or cleared.
-describe('Puntos opcionales: punto de encuentro y destino', () => {
-  async function llenarHospedaje(container) {
+// Mandatory-field helper: fills every required field; `sin` skips a field to
+// exercise the new mandatory rules in the "Campos obligatorios" describe.
+async function llenarHospedaje(container, { sin } = {}) {
     // The option lists load through async GETs — wait for them before
     // driving the selects, otherwise the change lands on empty <option>s.
     await screen.findByText('Carlos Mendoza')
@@ -286,8 +288,23 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
     fireEvent.change(screen.getByPlaceholderText('Ej: Casa frente al mar en El Tunco'), {
       target: { value: 'Casa con vista' },
     })
+    if (!sin?.includes('descripcion')) {
+      fireEvent.change(screen.getByPlaceholderText('Describe el alojamiento...'), {
+        target: { value: 'Casa cómoda frente a la playa' },
+      })
+    }
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '120' } })
     fireEvent.change(screen.getByPlaceholderText('Personas'), { target: { value: '4' } })
+    // Rooms/beds/baths share the "0" placeholder and render in that DOM order
+    // (capacity uses the "Personas" placeholder, so it is not matched here).
+    const numericos = container.querySelectorAll('input[type="number"][placeholder="0"]')
+    const valores = { habitaciones: '2', camas: '3', banos: '1' }
+    Object.entries(valores).forEach(([campo, valor], i) => {
+      if (!sin?.includes(campo)) fireEvent.change(numericos[i], { target: { value: valor } })
+    })
+    const tiempos = container.querySelectorAll('input[type="time"]')
+    fireEvent.change(tiempos[0], { target: { value: '14:00' } })
+    fireEvent.change(tiempos[1], { target: { value: '11:00' } })
     // Hidden numeric inputs: [0,1] main lat/lng, [2,3] meeting point, [4,5] destination.
     const inputs = container.querySelectorAll('input[type="number"][step="any"]')
     expect(inputs).toHaveLength(6)
@@ -296,11 +313,37 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
     return inputs
   }
 
+  // Images are mandatory now: attaches one fake file via the upload input so
+  // submit-flavored tests satisfy the image requirement. The uploader fetches
+  // /api/Imagenes/upload directly (bypassing the api helper), so stub that
+  // call and back-restore the previous global.
+  const subirImagen = (container) => {
+    const input = container.querySelector('input[type="file"]')
+    // Real bytes: jsdom's URL.createObjectURL reads the blob's internal buffer,
+    // so an empty string body would crash the preview effect.
+    const file = new (window.File || File)([new Uint8Array([1, 2, 3, 4])], 'foto.png', { type: 'image/png' })
+    const prevFetch = window.fetch
+    window.fetch = vi.fn(async (url) => {
+      if (String(url).includes('/api/Imagenes/upload')) {
+        return { ok: true, json: async () => ({ url: 'http://localhost:9000/rutasv/subida.png' }) }
+      }
+      return prevFetch ? prevFetch(url) : { ok: false, json: async () => ({}) }
+    })
+    fireEvent.change(input, { target: { files: [file] } })
+  }
+
+// Optional tour waypoints (punto de encuentro / destino): the picker's hidden
+// numeric inputs mirror the existing lat/long channel, so map-picks are
+// simulated by driving those inputs. POST/PUT MUST carry the four camelCase
+// API fields (puntoEncuentroLatitud/Longitud, destinoLatitud/Longitud),
+// sending explicit nulls when a pair is unset or cleared.
+describe('Puntos opcionales: punto de encuentro y destino', () => {
   it('serializa ambos puntos en el POST cuando están elegidos', async () => {
     api.post.mockClear()
     const { container } = renderModal()
 
     await llenarHospedaje(container)
+    subirImagen(container)
     const inputs = container.querySelectorAll('input[type="number"][step="any"]')
     fireEvent.change(inputs[2], { target: { value: '13.49' } })
     fireEvent.change(inputs[3], { target: { value: '-89.38' } })
@@ -355,10 +398,10 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
 
   it('en edición prefiere los puntos guardados y el PUT envía nulls al limpiar', async () => {
     api.put.mockClear()
-    renderModal({
+    const { container } = renderModal({
       esEdicion: true,
       pubExistente: {
-        id: 5, titulo: 'Tour de surf', descripcion: '', anfitrionId: 1, categoriaId: 2,
+        id: 5, titulo: 'Tour de surf', descripcion: 'Clases para principiantes', anfitrionId: 1, categoriaId: 2,
         precioPorNoche: 25, capacidadMaxima: 8, tipo: 'experiencia',
         latitud: 13.5, longitud: -89.3,
         puntoEncuentroLatitud: '13.49', puntoEncuentroLongitud: '-89.38',
@@ -369,6 +412,8 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
       },
     })
     await screen.findByRole('heading', { name: 'Editar publicación' })
+
+    subirImagen(container)
 
     // The mandatory meeting point chip is preselected by default.
     expect(screen.getByRole('button', { name: 'Punto de encuentro' })).toHaveAttribute('aria-pressed', 'true')
@@ -415,7 +460,11 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
     })
     await screen.findByRole('heading', { name: 'Editar publicación' })
 
-    // Native required inputs are prefilled; only both waypoint rows can clear.
+    // Everything native-required passes; only the waypoint pair is missing so
+    // the meeting-point CLIENT check is the rule under test.
+    fireEvent.change(screen.getByPlaceholderText('Describe la experiencia...'), {
+      target: { value: 'Clases para principiantes' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Limpiar punto de encuentro' }))
     fireEvent.click(screen.getByRole('button', { name: 'Limpiar destino' }))
 
@@ -425,6 +474,57 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
       expect(screen.getByText('El punto de encuentro es obligatorio para experiencias.')).toBeInTheDocument(),
       { timeout: 3000 },
     )
+    expect(api.put).not.toHaveBeenCalled()
+  })
+})
+
+// All form fields are mandatory now (Destino stays optional by design).
+// jsdom 30 runs native constraint validation and swallows submit clicks on
+// invalid forms, so fireEvent.submit dispatches submit directly to reach the
+// client mirror of the native `required` rules.
+describe('Campos obligatorios: bloqueo del submit sin API call', () => {
+  it('hospedaje sin descripción muestra el error y no llama a la API', async () => {
+    api.post.mockClear()
+    const { container } = renderModal()
+
+    await llenarHospedaje(container, { sin: ['descripcion'] })
+    fireEvent.submit(container.querySelector('form'))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('La descripción es obligatoria.')
+    expect(api.post).not.toHaveBeenCalled()
+  })
+
+  it('hospedaje sin camas muestra el error y no llama a la API', async () => {
+    api.post.mockClear()
+    const { container } = renderModal()
+
+    await llenarHospedaje(container, { sin: ['camas'] })
+    fireEvent.submit(container.querySelector('form'))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Indica al menos 1 cama.')
+    expect(api.post).not.toHaveBeenCalled()
+  })
+
+  it('experiencia sin descripción muestra el error y no llama a la API', async () => {
+    api.put.mockClear()
+    const { container } = renderModal({
+      esEdicion: true,
+      pubExistente: {
+        id: 5, titulo: 'Tour de surf', descripcion: '', anfitrionId: 1, categoriaId: 2,
+        precioPorNoche: 25, capacidadMaxima: 8, tipo: 'experiencia',
+        latitud: 13.5, longitud: -89.3,
+        puntoEncuentroLatitud: '13.49', puntoEncuentroLongitud: '-89.38',
+        destinoLatitud: '14.02', destinoLongitud: '-90.1',
+        municipio: { id: 2, departamentoId: 1 },
+        horarios: [{ fecha: '2099-01-05', horaInicio: '10:00', horaFin: '12:00' }],
+        publicacionAmenidads: [],
+      },
+    })
+    await screen.findByRole('heading', { name: 'Editar publicación' })
+
+    fireEvent.submit(container.querySelector('form'))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('La descripción es obligatoria.')
     expect(api.put).not.toHaveBeenCalled()
   })
 })
