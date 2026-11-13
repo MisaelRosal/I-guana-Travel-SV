@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
@@ -22,7 +22,12 @@ import { guardarPublicacion } from '../../../services/favoritos.js'
 // resources the Spanish UI MUST stay byte-comparable (es is canonical).
 
 const fixtures = vi.hoisted(() => ({
-  categorias: ['Café'],
+  // Each category carries the backend `tipo` ('experiencia'|'hospedaje') so the
+  // dropdown can be scoped to the selected listing type.
+  categorias: [
+    { id: 1, nombre: 'Café', tipo: 'experiencia' },
+    { id: 2, nombre: 'Cabaña', tipo: 'hospedaje' },
+  ],
   departamentos: [{ id: 1, nombre: 'San Salvador' }],
   // DB-owned fields (services map them verbatim from the API): stored Spanish
   // content that MUST NEVER be translated.
@@ -403,6 +408,127 @@ describe('filters live in the URL (deep-linkable catalog)', () => {
     fireEvent.click(clearButton)
     expect(screen.getByTestId('url').textContent).toBe('/')
     expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).not.toBeInTheDocument()
+  })
+})
+
+// The reported hospedaje filtering bug: the category dropdown used to show the
+// SAME list for every tipo. A user under Hospedajes picking an experience
+// category got an always-empty result set, which reads as "hospedaje filtering
+// has no options". The dropdown options must follow the selected tipo (both
+// sets under Todo), and a categoria that stops being valid when the tipo
+// changes must be dropped from the URL.
+describe('category dropdown is scoped by the selected tipo', () => {
+  // Only the upcoming fixtures are silenced; results drive the assertions.
+  beforeEach(() => {
+    fixtures.proximas = []
+  })
+
+  afterEach(() => {
+    getExperiencias.mockImplementation(async () => [])
+  })
+
+  const hospedaje = {
+    ...fixtures.experiencia,
+    id: 55,
+    titulo: 'Cabaña frente al lago',
+    tipo: 'hospedaje',
+    categoria: 'Cabaña',
+  }
+
+  // Emulates the real service filtering (service owns it; UI drives it via URL).
+  const mockResultados = async () => {
+    getExperiencias.mockImplementation(async ({ tipo, categoria } = {}) => {
+      let resultados = [fixtures.experiencia, hospedaje]
+      if (tipo) resultados = resultados.filter((e) => e.tipo === tipo)
+      if (categoria) resultados = resultados.filter((e) => e.categoria === categoria)
+      return resultados
+    })
+  }
+
+  it('shows ALL categories from both tipos when no tipo is selected', async () => {
+    await mockResultados()
+    renderCatalogAt(['/'])
+
+    await screen.findByRole('heading', { level: 1 })
+    fireEvent.click(screen.getByText('Categoría'))
+
+    const listbox = await screen.findByRole('listbox')
+    expect(screen.getByRole('option', { name: 'Café' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Cabaña' })).toBeInTheDocument()
+    expect(listbox).toBeInTheDocument()
+  })
+
+  it('shows experience categories only when tipo=experiencia is selected', async () => {
+    await mockResultados()
+    renderCatalogAt(['/?tipo=experiencia'])
+
+    await screen.findByRole('heading', { level: 1 })
+    fireEvent.click(screen.getByText('Categoría'))
+
+    await screen.findByRole('listbox')
+    expect(screen.getByRole('option', { name: 'Café' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Cabaña' })).toBeNull()
+  })
+
+  it('shows lodging categories only when tipo=hospedaje is selected', async () => {
+    await mockResultados()
+    renderCatalogAt(['/?tipo=hospedaje'])
+
+    await screen.findByRole('heading', { level: 1 })
+    fireEvent.click(screen.getByText('Categoría'))
+
+    await screen.findByRole('listbox')
+    expect(screen.getByRole('option', { name: 'Cabaña' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Café' })).toBeNull()
+  })
+
+  it('switching tipo clears a categoria incompatible with the new tipo', async () => {
+    await mockResultados()
+    // Café is an experience category valid only while tipo=experiencia.
+    renderCatalogAt(['/?tipo=experiencia&categoria=Caf%C3%A9'])
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(getExperiencias).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tipo: 'experiencia', categoria: 'Café' }),
+    )
+
+    // NOTE: the ES label for this segment is the singular "Hospedaje"
+    // (locale catalog.type.stays).
+    fireEvent.click(screen.getByRole('button', { name: 'Hospedaje' }))
+
+    // The stale categoria param is dropped in place, the tipo is kept.
+    await waitFor(() => expect(screen.getByTestId('url').textContent).toBe('/?tipo=hospedaje'))
+    expect(getExperiencias).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tipo: 'hospedaje', categoria: '' }),
+    )
+  })
+
+  it('the user-visible hospedaje flow yields lodging-only results', async () => {
+    await mockResultados()
+    renderCatalogAt(['/'])
+
+    await screen.findByRole('heading', { level: 1 })
+
+    // 1. Pick Hospedaje in the segmented control.
+    fireEvent.click(screen.getByRole('button', { name: 'Hospedaje' }))
+    expect(await screen.findByText('Cabaña frente al lago')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.queryByText('Ruta del café en Apan')).toBeNull()
+
+    // 2. The dropdown now offers lodging categories only.
+    fireEvent.click(screen.getByText('Categoría'))
+    const cabanaOption = await screen.findByRole('option', { name: 'Cabaña' })
+    expect(screen.queryByRole('option', { name: 'Café' })).toBeNull()
+    fireEvent.click(cabanaOption)
+
+    // 3. Stays + lodging category: still the lodging result set (URL keeps both).
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.getByText('Cabaña frente al lago')).toBeInTheDocument()
+    expect(screen.queryByText('Ruta del café en Apan')).toBeNull()
+    expect(getExperiencias).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tipo: 'hospedaje', categoria: 'Cabaña' }),
+    )
+    expect(screen.getByTestId('url').textContent).toBe('/?tipo=hospedaje&categoria=Caba%C3%B1a')
   })
 })
 

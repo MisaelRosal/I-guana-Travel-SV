@@ -253,6 +253,23 @@ export default function CatalogPage() {
   }, [experiencias, proximasExperiencias])
 
   const hayFiltros = Boolean(busqueda || categoria || zona || tipo || precioMax || orden)
+  // La lista de categorias del desplegable sigue al tipo elegido: sin tipo se
+  // muestran las de ambos tipos, y con tipo solo las del tipo correspondiente.
+  const opcionesCategoria = useMemo(() => categorias
+    .filter((c) => !tipo || c.tipo === tipo)
+    .map((c) => ({ valor: c.nombre, etiqueta: c.nombre })),
+  [categorias, tipo])
+
+  // Una categoria elegida bajo otro tipo ya no aplica (produciría siempre un
+  // resultado vacío): se borra el parámetro de la URL con el mismo estilo de
+  // actualizarFiltro. Se espera a que la lista cargue para no invalidar un
+  // enlace profundo mientras aún está vacía; sin tipo todas las categorías valen.
+  useEffect(() => {
+    if (!categoria || !tipo || categorias.length === 0) return undefined
+    const sigueValida = categorias.some((c) => c.nombre === categoria && c.tipo === tipo)
+    if (!sigueValida) actualizarFiltro('categoria', '')
+  }, [categoria, tipo, categorias])
+
   const visibles = useMemo(() => {
     if (orden === 'valoradas') {
       return [...experiencias].sort((a, b) => {
@@ -428,7 +445,7 @@ export default function CatalogPage() {
               etiqueta={t('filters.categoryLabel')}
               placeholder={t('filters.categoryPlaceholder')}
               valor={categoria}
-              opciones={categorias.map((c) => ({ valor: c, etiqueta: c }))}
+              opciones={opcionesCategoria}
               onChange={(valor) => actualizarFiltro('categoria', valor)}
             />
             <FiltroDesplegable

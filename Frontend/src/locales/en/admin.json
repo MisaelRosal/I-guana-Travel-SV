@@ -12,7 +12,8 @@
   "tabs": {
     "hosts": "Hosts",
     "listings": "Listings",
-    "reviews": "Reviews"
+    "reviews": "Reviews",
+    "reports": "Reports"
   },
   "chip": {
     "verified": "Verified",

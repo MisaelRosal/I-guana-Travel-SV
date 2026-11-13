@@ -12,7 +12,8 @@
   "tabs": {
     "hosts": "Anfitriones",
     "listings": "Publicaciones",
-    "reviews": "Reseñas"
+    "reviews": "Reseñas",
+    "reports": "Reportes"
   },
   "chip": {
     "verified": "Verificado",

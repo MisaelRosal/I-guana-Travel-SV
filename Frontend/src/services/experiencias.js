@@ -145,7 +145,9 @@ export async function getDepartamentos() {
 
 export async function getCategorias() {
   const categorias = await api.get('/Categoria')
-  return categorias.map((c) => c.nombre)
+  // Each category comes with its own tipo ('experiencia'|'hospedaje'); keep the
+  // whole triple so consumers (catalog dropdown) can scope options by tipo.
+  return categorias.map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo }))
 }
 
 export async function getProximasExperiencias(limite = 3, locale) {
