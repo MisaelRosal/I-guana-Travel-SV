@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: rutasv-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -28,8 +29,11 @@ services:
     # stack uses the anonymously pullable Bitnami mirror. Same server, envs and
     # ports; data lives at /bitnami/minio/data and the entrypoint serves the API
     # on 9000 and the console on 9001 by default.
-    image: bitnamilegacy/minio:latest
+    # Pinned to the digest of the locally verified image: a floating :latest on an
+    # unofficial mirror could swap contents between runs.
+    image: bitnamilegacy/minio:latest@sha256:451fe6858cb770cc9d0e77ba811ce287420f781c7c1b806a386f6896471a349c
     container_name: rutasv-minio
+    restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -126,6 +130,9 @@ services:
       - Translation__LibreTranslate__Enabled=${LIBRETRANSLATE_ENABLED:-true}
       - Translation__LibreTranslate__BaseUrl=http://libretranslate:5000
       - Translation__LibreTranslate__TimeoutSeconds=${LIBRETRANSLATE_TIMEOUT_SECONDS:-15}
+      # N3: the /api route is proxied by the nginx container, so trust its
+      # X-Forwarded-For/Proto to restore per-client rate-limit partitions.
+      - Forwarded__Enabled=true
     # Frontend waits on this (see frontend.depends_on), so transient startup
     # 502s from the nginx proxy disappear. The runtime image ships no curl/wget;
     # bash's /dev/tcp opens the socket and probes /health for a 200 instead.
@@ -148,6 +155,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     container_name: rutasv-pgadmin
+    restart: unless-stopped
     environment:
       # A9: credentials from the environment (with dev fallbacks) instead of
       # hardcoded values.

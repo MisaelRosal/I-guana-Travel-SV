@@ -109,6 +109,27 @@
     "updated": "Response posted successfully.",
     "error": "The response could not be posted."
   },
+  "reports": {
+    "title": "Report guest",
+    "typeLabel": "Type",
+    "tipo": {
+      "dano": "Property damage",
+      "perjuicio": "Damage / breach of agreement",
+      "otro": "Other"
+    },
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Describe what happened...",
+    "descriptionRequired": "Add a description of the damage or breach.",
+    "evidenciasLabel": "Evidence (photos)",
+    "filesSelected_one": "{{count}} file selected",
+    "filesSelected_other": "{{count}} files selected",
+    "submit": "Send report",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "sendError": "The report could not be sent.",
+    "sentToast": "Report sent successfully",
+    "reportGuestButton": "Report guest"
+  },
   "dashboard": {
     "tab": "Dashboard",
     "period": {

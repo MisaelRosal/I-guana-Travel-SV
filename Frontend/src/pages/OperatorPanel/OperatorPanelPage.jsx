@@ -589,7 +589,7 @@ export default function OperatorPanelPage() {
                                   onClick={() => setReservaReportarHuesped(r)}
                                   className="cursor-pointer rounded-full border border-red-400 px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
                                 >
-                                  Reportar huésped
+                                  {t('reports.reportGuestButton')}
                                 </button>
                               )}
                             </div>
@@ -629,7 +629,7 @@ export default function OperatorPanelPage() {
           onCerrar={() => setReservaReportarHuesped(null)}
           onExito={() => {
             setReservaReportarHuesped(null)
-            setMensaje('Reporte enviado correctamente')
+            setMensaje(t('reports.sentToast'))
             getMisReportes().then((rr) => setMisReportes(Array.isArray(rr) ? rr : [])).catch(() => {})
           }}
         />

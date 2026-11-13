@@ -6,12 +6,17 @@ using IguanaSV.Api.Infrastructure;
 using IguanaSV.Api.Middleware;
 using IguanaSV.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.Net;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+// System.Net and HttpOverrides both declare an IPNetwork type (the System.Net
+// one is the modern replacement); alias the legacy one KnownNetworks expects.
+using IPNetwork = Microsoft.AspNetCore.HttpOverrides.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +36,16 @@ builder.Services.AddControllers(options =>
 builder.Services.AddDbContext<IguanasDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddSingleton<IMinioStorageService, MinioStorageService>();
+
+// N3: behind the compose nginx proxy every client shares the proxy's IP, so the
+// rate limiter below (partitioned by RemoteIpAddress) would throttle the whole
+// site as a single 10/min bucket. ForwardedHeaders middleware rewrites
+// RemoteIpAddress from X-Forwarded-For — but ONLY when the last hop is inside
+// the trusted networks configured here. A direct client whose IP is not trusted
+// has its XFF header ignored, so spoofing cannot bypass the limit.
+// Default is false so direct/dev exposure stays honest (no proxy in front);
+// the compose deployment enables it with Forwarded__Enabled=true.
+var forwardedHeadersEnabled = builder.Configuration.GetValue("Forwarded:Enabled", false);
 
 // NOTE (A5): the integration-test fixture (AuthApiFixture) sets this flag to
 // false; every request of a Testcontainers suite shares one remote IP, so the
@@ -208,6 +223,28 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// N3: must run BEFORE anything reads RemoteIpAddress (rate limiter, auth logs).
+if (forwardedHeadersEnabled)
+{
+    var forwardedOptions = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    };
+    // Restrict trust to the private docker ranges (compose default bridge is
+    // 172.16.0.0/12) and loopback (local nginx / direct dev). Anything else
+    // presenting X-Forwarded-For is ignored by the middleware.
+    // KnownNetworks is typed with Microsoft.AspNetCore.HttpOverrides.IPNetwork
+    // (the legacy type in this ASP.NET Core version), not System.Net.IPNetwork.
+    forwardedOptions.KnownNetworks.Clear();
+    forwardedOptions.KnownProxies.Clear();
+    forwardedOptions.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+    forwardedOptions.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+    forwardedOptions.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("192.168.0.0"), 16));
+    forwardedOptions.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("127.0.0.0"), 8));
+    forwardedOptions.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("::1"), 128));
+    app.UseForwardedHeaders(forwardedOptions);
+}
 
 app.UseCors("AllowFrontend");
 

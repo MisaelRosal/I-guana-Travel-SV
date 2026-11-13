@@ -105,6 +105,7 @@
     "requiredBaths": "Enter at least 1 bath.",
     "requiredTimes": "Pick both the start and the end time.",
     "requiredImages": "Add at least one image to the listing.",
+    "uploadError": "The images could not be uploaded. Please try again.",
     "timeOrder": "The end time must be after the start time.",
     "errorUpdate": "Error updating the listing",
     "errorCreate": "Error creating the listing"

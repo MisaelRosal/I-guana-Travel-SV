@@ -110,6 +110,27 @@
     "updated": "Respuesta publicada correctamente.",
     "error": "No se pudo publicar la respuesta."
   },
+  "reports": {
+    "title": "Reportar huésped",
+    "typeLabel": "Tipo",
+    "tipo": {
+      "dano": "Daño a la propiedad",
+      "perjuicio": "Perjuicio / incumplimiento",
+      "otro": "Otro"
+    },
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Describe lo ocurrido...",
+    "descriptionRequired": "Agregá una descripción del daño o perjuicio.",
+    "evidenciasLabel": "Evidencias (fotos)",
+    "filesSelected_one": "{{count}} archivo seleccionado",
+    "filesSelected_other": "{{count}} archivos seleccionados",
+    "submit": "Enviar reporte",
+    "sending": "Enviando…",
+    "cancel": "Cancelar",
+    "sendError": "No se pudo enviar el reporte.",
+    "sentToast": "Reporte enviado correctamente",
+    "reportGuestButton": "Reportar huésped"
+  },
   "dashboard": {
     "tab": "Dashboard",
     "period": {

@@ -181,39 +181,50 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
     setImagenesAEliminar((prev) => (prev.includes(id) ? prev : [...prev, id]))
   }
 
+  // Localized upload failure; flagged so the submit catch can show the real
+  // cause instead of the generic create/update error.
+  const errorSubida = () => {
+    const err = new Error(t('modal.uploadError'))
+    err.esErrorSubida = true
+    return err
+  }
+
   const subirArchivos = async () => {
     const urls = []
     for (const archivo of archivos) {
       const formData = new FormData()
       formData.append('file', archivo)
-      const res = await fetch('/api/Imagenes/upload', {
-        method: 'POST',
-        // Direct fetch bypasses the api() helper, so attach the session cookie
-        // and the CSRF header here (multipart body => no manual Content-Type).
-        credentials: 'include',
-        headers: { 'X-CSRF-Token': readCsrfToken() },
-        body: formData,
-      })
-      if (res.ok) {
-        const data = await res.json()
-        if (Array.isArray(data)) {
-          data.forEach((item) => { if (item.url) urls.push(item.url) })
-        } else if (data.url) {
-          urls.push(data.url)
-        }
+      let res
+      try {
+        res = await fetch('/api/Imagenes/upload', {
+          method: 'POST',
+          // Direct fetch bypasses the api() helper, so attach the session cookie
+          // and the CSRF header here (multipart body => no manual Content-Type).
+          credentials: 'include',
+          headers: { 'X-CSRF-Token': readCsrfToken() },
+          body: formData,
+        })
+      } catch {
+        throw errorSubida()
+      }
+      // Fail fast: a silently skipped upload would save the listing with
+      // fewer (or zero) images.
+      if (!res.ok) throw errorSubida()
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        data.forEach((item) => { if (item.url) urls.push(item.url) })
+      } else if (data.url) {
+        urls.push(data.url)
       }
     }
     return urls
   }
 
-  // Edit-mode image reconciliation: delete the removed ones, upload the new
-  // files, then normalize order so the first image stays principal.
+  // Edit-mode image reconciliation: upload the NEW files first (a failed
+  // upload must never leave the listing imageless, so deletions only run once
+  // uploads succeeded), then delete the removed ones, then normalize order so
+  // the first image stays principal.
   const sincronizarImagenes = async (publicacionId) => {
-    const restantes = imagenesExistentes.filter((img) => !imagenesAEliminar.includes(img.id))
-    for (const id of imagenesAEliminar) {
-      await api.delete(`/ImagenesPublicacion/${id}`)
-    }
-
     const creadas = []
     if (archivos.length > 0) {
       const urls = await subirArchivos()
@@ -226,6 +237,11 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         })
         creadas.push({ id: res.id, url })
       }
+    }
+
+    const restantes = imagenesExistentes.filter((img) => !imagenesAEliminar.includes(img.id))
+    for (const id of imagenesAEliminar) {
+      await api.delete(`/ImagenesPublicacion/${id}`)
     }
 
     const finales = [...restantes, ...creadas]
@@ -449,25 +465,31 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
         await sincronizarImagenes(pubExistente.id)
       } else {
+        // Upload BEFORE creating: a failed upload aborts here and no
+        // publication is created imageless.
+        const urls = await subirArchivos()
         const res = await api.post('/Publicacione', publicacion)
         const pubId = res.id
 
-        if (archivos.length > 0) {
-          const urls = await subirArchivos()
-          for (let i = 0; i < urls.length; i++) {
-            await api.post('/ImagenesPublicacion', {
-              publicacionId: pubId,
-              url: urls[i],
-              esPrincipal: i === 0,
-              orden: i,
-            })
-          }
+        for (let i = 0; i < urls.length; i++) {
+          await api.post('/ImagenesPublicacion', {
+            publicacionId: pubId,
+            url: urls[i],
+            esPrincipal: i === 0,
+            orden: i,
+          })
         }
       }
 
       onCreada()
     } catch (err) {
-      setError(esEdicion ? t('modal.errorUpdate') : err.message || t('modal.errorCreate'))
+      // Upload failures carry their own localized message; any other failure
+      // degrades to the generic create/update error.
+      setError(
+        err.esErrorSubida
+          ? err.message
+          : (esEdicion ? t('modal.errorUpdate') : err.message || t('modal.errorCreate')),
+      )
     } finally {
       setEnviando(false)
     }

@@ -528,3 +528,65 @@ describe('Campos obligatorios: bloqueo del submit sin API call', () => {
     expect(api.put).not.toHaveBeenCalled()
   })
 })
+
+// N1 (silent image-upload failure): a failed /api/Imagenes/upload response
+// must abort the flow with a visible error BEFORE the publication is created
+// (create) or any existing image is deleted (edit).
+describe('Fallo de subida de imágenes: aborta sin crear ni borrar', () => {
+  const subirImagenFallando = (container) => {
+    const input = container.querySelector('input[type="file"]')
+    const file = new (window.File || File)([new Uint8Array([1, 2, 3, 4])], 'foto.png', { type: 'image/png' })
+    const prevFetch = window.fetch
+    window.fetch = vi.fn(async () => ({ ok: false, status: 500, json: async () => ({ mensaje: 'boom' }) }))
+    fireEvent.change(input, { target: { files: [file] } })
+    return () => { window.fetch = prevFetch }
+  }
+
+  it('creación con subida fallida muestra el error y no llama POST /Publicacione', async () => {
+    api.post.mockClear()
+    const { container } = renderModal()
+
+    await llenarHospedaje(container)
+    const restaurarFetch = subirImagenFallando(container)
+
+    fireEvent.submit(container.querySelector('form'))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('No se pudieron subir las imágenes. Intentá de nuevo.'),
+      { timeout: 3000 },
+    )
+    expect(api.post).not.toHaveBeenCalled()
+    restaurarFetch()
+  })
+
+  it('edición con imagen existente y subida fallida NO borra las imágenes existentes', async () => {
+    api.delete.mockClear()
+    api.put.mockClear()
+    const { container } = renderModal({
+      esEdicion: true,
+      pubExistente: {
+        id: 5, titulo: 'Casa', descripcion: 'Cerca de la playa', anfitrionId: 1, categoriaId: 1,
+        precioPorNoche: 120, capacidadMaxima: 4, tipo: 'hospedaje',
+        habitaciones: 2, camas: 3, banos: 1, horaEntrada: '14:00', horaSalida: '11:00',
+        latitud: 13.5, longitud: -89.3,
+        municipio: { id: 2, departamentoId: 1 },
+        horarios: [], publicacionAmenidads: [],
+        imagenesPublicacions: [
+          { id: 10, url: 'https://cdn.local/1.jpg', esPrincipal: true, orden: 0 },
+        ],
+      },
+    })
+    await screen.findByRole('heading', { name: 'Editar publicación' })
+
+    const restaurarFetch = subirImagenFallando(container)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('No se pudieron subir las imágenes. Intentá de nuevo.'),
+      { timeout: 3000 },
+    )
+    expect(api.delete).not.toHaveBeenCalled()
+    restaurarFetch()
+  })
+})

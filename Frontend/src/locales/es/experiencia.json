@@ -105,6 +105,7 @@
     "requiredBaths": "Indica al menos 1 baño.",
     "requiredTimes": "Elige la hora de inicio y la hora de fin.",
     "requiredImages": "Agregá al menos una imagen a la publicación.",
+    "uploadError": "No se pudieron subir las imágenes. Intentá de nuevo.",
     "timeOrder": "La hora de fin debe ser posterior a la hora de inicio.",
     "errorUpdate": "Error al actualizar la publicación",
     "errorCreate": "Error al crear la publicación"
