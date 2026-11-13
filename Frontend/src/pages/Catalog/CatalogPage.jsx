@@ -238,19 +238,31 @@ export default function CatalogPage() {
       .catch(() => setProximasExperiencias([]))
   }, [contentLocale])
 
-  // Batch de promedios: una sola llamada con los ids visibles (catálogo + próximas).
+  // Batch de promedios: una sola llamada con los ids visibles. Paginación
+  // clásica: solo los ids de la página actual (más la tira de próximas, que
+  // siempre se ve) — el payload deja de escalar con el tamaño del catálogo.
+  // "Valoradas" sigue necesitando TODOS los resúmenes: el orden client-side
+  // clasifica la lista completa. Derivado solo de estados estables
+  // (experiencias/proximas/paginaActual/orden, nunca de `visibles`, que
+  // depende de `resumenes`: eso causaría un bucle infinito de fetch).
+  const [paginaActual, setPaginaActual] = useState(1)
+  const idsResumen = useMemo(() => {
+    const base = orden === 'valoradas'
+      ? experiencias
+      : experiencias.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
+    return [...new Set([...base, ...proximasExperiencias].map((e) => e.id))]
+  }, [experiencias, proximasExperiencias, paginaActual, orden])
   useEffect(() => {
-    const ids = [...new Set([...experiencias, ...proximasExperiencias].map((e) => e.id))]
-    if (ids.length === 0) {
+    if (idsResumen.length === 0) {
       setResumenes({})
       return undefined
     }
     let activo = true
-    getResumenResenas(ids)
+    getResumenResenas(idsResumen)
       .then((data) => { if (activo) setResumenes(data || {}) })
       .catch(() => { if (activo) setResumenes({}) })
     return () => { activo = false }
-  }, [experiencias, proximasExperiencias])
+  }, [idsResumen])
 
   const hayFiltros = Boolean(busqueda || categoria || zona || tipo || precioMax || orden)
   // La lista de categorias del desplegable sigue al tipo elegido: sin tipo se
@@ -287,7 +299,6 @@ export default function CatalogPage() {
   // Every filter/search/sort change (the same state the fetch effect watches,
   // plus `orden` which reorders client-side) snaps the strip back to page 1;
   // a shrinking dataset clamps the current page to the new last page.
-  const [paginaActual, setPaginaActual] = useState(1)
   const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA))
 
   useEffect(() => {

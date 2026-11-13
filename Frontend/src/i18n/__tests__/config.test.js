@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 //   * a stored `iguana_locale` MUST be restored BEFORE first paint, so the
 //     module-scope init must read localStorage at evaluation time;
 //   * first visit with no entry (or a foreign value) MUST default to `es`;
-//   * a key missing from the EN overlay MUST fall back to the Spanish
-//     resource — raw keys MUST never surface;
+//   * a fabricated nonexistent key returns the key string itself (documented
+//     i18next behavior for missing keys — no crash, no resource lookup);
 //   * the active UI language MUST map to BCP 47 tags via FORMAT_LOCALES
 //     (es -> es-SV, en -> en-US).
 
@@ -60,7 +60,7 @@ describe('initial language selection (readStoredLocale + module-scope init)', ()
   })
 })
 
-describe('Spanish fallback during partial EN rollout', () => {
+describe('EN overlay parity and missing-key contract', () => {
   it('renders English for keys present in the EN overlay', async () => {
     localStorage.setItem(KEY, 'en')
     const { default: i18n } = await freshConfig()
@@ -68,14 +68,17 @@ describe('Spanish fallback during partial EN rollout', () => {
     expect(i18n.t('header:langToggle.switchToEn')).toBe('Switch to English')
   })
 
-  it('falls back to the Spanish text (never the raw key) for EN-missing keys', async () => {
+  // M-5 audit closed the last known EN gaps (panel.status.emptyBody,
+  // auth.login.noAccount, reservas.gate.body), so the old "ES-only key" case
+  // no longer exists. A fabricated key now pins i18next's documented
+  // missing-key behavior: the key string itself is returned (i18next strips
+  // the namespace prefix when formatting the missing value).
+  it('returns the raw key string for a nonexistent key (documented i18next behavior)', async () => {
     localStorage.setItem(KEY, 'en')
     const { default: i18n } = await freshConfig()
 
-    // `panel:status.emptyBody` exists only in es/panel.json (a known EN-gap
-    // still pending): the canonical set wins over raw keys.
-    const value = i18n.t('panel:status.emptyBody')
-    expect(value).not.toBe('panel:status.emptyBody')
+    expect(i18n.t('panel:zzz.nonexistent.key')).toBe('zzz.nonexistent.key')
+    expect(i18n.t('zzz:nonexistent.key')).toBe('nonexistent.key')
   })
 })
 

@@ -18,9 +18,9 @@ import OperatorPanelPage from '../OperatorPanelPage.jsx'
 //     the raw `estado` DB value render verbatim — F2b audit: this chip has no
 //     frontend mapping today, so it MUST stay a passthrough (payload and UI
 //     both untouched);
-//   * "Overlay subset": `panel.status.emptyBody` is deliberately ABSENT from
-//     en/panel.json and resolves through fallbackLng 'es' (precedent:
-//     `reservas.gate.body`, `login.noAccount`);
+//   * "Overlay subset": EN parity is complete for the keys this page reads
+//     (M-5 audit closed the `panel.status.emptyBody` gap; precedent keys
+//     `reservas.gate.body`, `login.noAccount` also landed);
 //   * plural policy (plan item 1): the always-plural capacity cell gains
 //     correct `_one/_other` forms — "1 personas" becomes "1 persona" in ES,
 //     a documented AD-3 correction.
@@ -162,15 +162,14 @@ describe('EN active: operator panel chrome comes from the panel namespace', () =
     expect(screen.queryByRole('status')).toBeNull()
   })
 
-  it('renders the empty state in EN and falls back to Spanish for the omitted overlay body', async () => {
+  it('renders the empty state fully in EN', async () => {
     fixtures.publicaciones = fixtures.empty
     renderPanel()
 
     expect(await screen.findByText('No listings yet')).toBeInTheDocument()
-    // `status.emptyBody` exists only in es/panel.json — fallbackLng 'es'.
-    expect(
-      screen.getByText('Usa el botón «Crear publicación» para agregar la primera.'),
-    ).toBeInTheDocument()
+    // M-5: the last EN gap (`status.emptyBody`) landed, so the body is the
+    // English resource now.
+    expect(screen.getByText('Use the "Create listing" button to add the first one.')).toBeInTheDocument()
     expect(screen.queryByText(/panel:/)).toBeNull()
   })
 

@@ -22,22 +22,6 @@
     "emptyBody": "Cuando hagas una reserva, la vas a poder ver aquí.",
     "exploreCta": "Explorar experiencias"
   },
-  "card": {
-    "dateLabel": "Fecha",
-    "peopleLabel": "Personas",
-    "totalLabel": "Total",
-    "persons_one": "{{count}} persona",
-    "persons_other": "{{count}} personas",
-    "noteCancelled": "Esta reserva ya fue cancelada.",
-    "noteShortConfirmed": "Pagaste: falta menos de un día, ya no se puede editar ni cancelar.",
-    "noteGraceExpired": "La hora para pagar venció. Esta reserva se cancelará automáticamente.",
-    "noteBlockedSoon": "Falta un día o menos para tu entrada. Por eso esta reserva ya no se puede editar ni eliminar.",
-    "noteRescheduled": "El anfitrión cambió la fecha de esta experiencia y tu reserva se movió con ella. Podés cancelarla sin restricciones si no te sirve.",
-    "noteRescheduledFrom": "El anfitrión movió esta reserva del {{date}} a la nueva fecha. Podés cancelarla sin restricciones si no te sirve.",
-    "pay": "Pagar",
-    "edit": "Editar",
-    "delete": "Eliminar"
-  },
   "sections": {
     "upcoming": "Futuras reservas",
     "cancelled": "Reservas canceladas",

@@ -12,10 +12,9 @@ import ExperienceDetailPage from '../../ExperienceDetail/ExperienceDetailPage.js
 // Specs (openspec/changes/i18n-es-en/specs/localized-ui-content/spec.md):
 //   * "Localized text nodes": with EN active, headings, labels, placeholders
 //     and buttons MUST come from the English resources;
-//   * "Overlay subset": a key missing from the EN overlay falls back to the
-//     canonical Spanish, never renders a raw key and never crashes. The
-//     `login.noAccount` key is deliberately ABSENT from en/auth.json (same
-//     partial-rollout precedent as `header:langToggle.group` from F0);
+//   * "Overlay subset": raw keys never surface and a missing resource never
+//     crashes. M-5 closed the last EN gap (`login.noAccount` landed in
+//     en/auth.json), so EN parity is complete for the keys this page reads;
 //   * "User and DB content passthrough": backend `mensaje` values (e.g.
 //     "No autorizado") render verbatim in any locale. The frontend-owned
 //     required-credentials message (AuthPage.jsx:20) IS extracted; the API
@@ -192,13 +191,13 @@ describe('EN active: auth chrome comes from the auth namespace', () => {
     expect(screen.queryByText(/auth:/)).toBeNull()
   })
 
-  it('falls back to canonical Spanish for the key missing from the EN overlay, without crashing', async () => {
+  it('renders the EN register cross-link copy without crashing', async () => {
     renderAuthPage()
 
-    // `login.noAccount` exists only in es/auth.json — the overlay-subset
-    // scenario resolves it through fallbackLng: 'es'.
+    // M-5: `login.noAccount` used to be ES-only; the key landed in en/auth.json,
+    // so the cross-link intro now renders the EN resource (never a raw key).
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Sign in')
-    expect(screen.getByText('No tienes cuenta,')).toBeInTheDocument()
+    expect(screen.getByText("Don't have an account,")).toBeInTheDocument()
     // No crash, no raw key anywhere on the page.
     expect(screen.queryByText(/auth:/)).toBeNull()
   })

@@ -77,11 +77,17 @@ function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar, on
   return (
     <article className="flex flex-col overflow-hidden rounded-[22px] border border-cafe-claro bg-white sm:flex-row">
       {/* Same fallback idiom as ExperienceCard: an empty image URL would
-          render the browser's broken-image glyph. */}
+          render the browser's broken-image glyph, and a dead hosted URL
+          swaps to the local logo (onError cleared on loop guard). */}
       <img
         src={reserva.experienciaImagen || '/logo.png'}
         alt={reserva.experienciaTitulo}
         loading="lazy"
+        onError={(e) => {
+          const img = e.currentTarget
+          if (img.src.endsWith('/logo.png')) img.onerror = null
+          else img.src = '/logo.png'
+        }}
         className="h-40 w-full object-cover sm:h-auto sm:w-52 sm:shrink-0"
       />
       <div className="flex flex-1 flex-col p-5">

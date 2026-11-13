@@ -17,9 +17,9 @@ import { getMisReservas, pagarReserva } from '../../../services/reservas.js'
 //     transformed;
 //   * "Enum, unit, and badge labels localized": `cupos` resolves through
 //     i18next `_one/_other` + `count` (AD-3);
-//   * "Overlay subset": `reservas.gate.body` is deliberately ABSENT from
-//     en/reservas.json (same partial-rollout precedent as `login.noAccount`
-//     from F2a) — it falls back to canonical Spanish, never a raw key;
+//   * "Overlay subset": raw keys never surface; M-5 closed the last EN gap
+//     (`reservas.gate.body` landed in en/reservas.json), so EN parity is
+//     complete for the keys this page reads;
 //   * "Resource-driven interpolation": person counts and capacity sentences
 //     come from templates, never JSX concatenation.
 // The ES block is the extraction approval test: Spanish is canonical, so the
@@ -118,13 +118,13 @@ describe('EN active: reservations chrome comes from the reservas namespace', () 
     expect(screen.queryByText('Pendiente')).toBeNull()
   })
 
-  it('renders the logged-out gate in EN and falls back to Spanish only for the omitted overlay key', async () => {
+  it('renders the logged-out gate fully in EN', async () => {
     sessionStorage.removeItem('iguana_usuario')
     renderReservations()
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('My bookings')
-    // `gate.body` exists only in es/reservas.json — fallbackLng 'es' resolves it.
-    expect(screen.getByText('Debes iniciar sesión para ver tus reservas.')).toBeInTheDocument()
+    // M-5: `gate.body` used to be ES-only; the key landed in en/reservas.json.
+    expect(screen.getByText('You must sign in to see your bookings.')).toBeInTheDocument()
     // F5 approval: /login is locale-invariant; the converted site must not drift.
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login')
     // Partial-rollout guarantee: raw keys never surface.

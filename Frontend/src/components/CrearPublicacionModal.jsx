@@ -356,6 +356,44 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       setEnviando(false)
       return
     }
+    // LOW audit: the native `required`s only guard real user submits — a
+    // programmatic one skips them, so mirror each rule here before the
+    // serializer can send NaNs or 0-valued numbers.
+    if (!titulo.trim()) {
+      setError(t('modal.requiredTitle'))
+      setEnviando(false)
+      return
+    }
+    if (!(parseInt(anfitrionId) > 0)) {
+      setError(t('modal.requiredHost'))
+      setEnviando(false)
+      return
+    }
+    if (!(parseInt(categoriaId) > 0)) {
+      setError(t('modal.requiredCategory'))
+      setEnviando(false)
+      return
+    }
+    if (!(parseFloat(precio) > 0)) {
+      setError(t('modal.requiredPrice'))
+      setEnviando(false)
+      return
+    }
+    if (!(parseInt(capacidad) > 0)) {
+      setError(t('modal.requiredCapacity'))
+      setEnviando(false)
+      return
+    }
+    if (!departamentoId) {
+      setError(t('modal.requiredDepartment'))
+      setEnviando(false)
+      return
+    }
+    if (!municipioId) {
+      setError(t('modal.requiredMunicipality'))
+      setEnviando(false)
+      return
+    }
     if (tipo === 'hospedaje') {
       if (!habitaciones || parseInt(habitaciones) < 1) {
         setError(t('modal.requiredRooms'))
@@ -496,10 +534,13 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   }
 
   const tieneDatos = () => {
+    // Experience times default to 08:00/17:00, so only a CHANGED value means
+    // the user entered data (LOW audit: a times-only edit must still warn).
     return titulo || descripcion || anfitrionId || categoriaId || precio || capacidad ||
       habitaciones || camas || banos || horaEntrada || horaSalida || departamentoId || municipioId ||
       latitud || longitud || puntoEncuentro || destino || amenidadIds.length > 0 || archivos.length > 0 ||
-      imagenesAEliminar.length > 0 || fechasSeleccionadas.length > 0
+      imagenesAEliminar.length > 0 || fechasSeleccionadas.length > 0 ||
+      horaInicioExp !== '08:00' || horaFinExp !== '17:00'
   }
 
   // Tipo switching: when the form already holds content the change must be
@@ -507,13 +548,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
   // sections (lodging vs experience), so carried-over fields are noise.
   const cambiarTipo = (nuevo) => {
     if (esEdicion || nuevo === tipo) return
-    const hayDatosFormulario = Boolean(
-      titulo || descripcion || anfitrionId || categoriaId || precio || capacidad ||
-      habitaciones || camas || banos || horaEntrada || horaSalida || departamentoId || municipioId ||
-      latitud || longitud || puntoEncuentro || destino || amenidadIds.length > 0 || archivos.length > 0 ||
-      imagenesAEliminar.length > 0 || fechasSeleccionadas.length > 0
-    )
-    if (hayDatosFormulario) {
+    if (tieneDatos()) {
       setPendienteTipo(nuevo)
     } else {
       setTipo(nuevo)
@@ -570,6 +605,12 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
   const refModal = useModalAccesible(handleCerrar, abierto)
   const refConfirmar = useModalAccesible(() => setConfirmarSalida(false), confirmarSalida)
+  // M-4: the tipo-switch confirmation is its own stacked dialog. Its hook is
+  // activated while pendienteTipo is open and its keydown listener lives on
+  // this inner container, where Escape stops propagation before reaching the
+  // outer modal's handler — so the leave-confirmation can no longer stack on
+  // top of it (the hook must therefore attach INSIDE refModal, as here).
+  const refConfirmarTipo = useModalAccesible(() => setPendienteTipo(null), pendienteTipo !== null)
 
   if (!abierto) return null
 
@@ -959,6 +1000,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
 
       {pendienteTipo && (
         <div
+          ref={refConfirmarTipo}
           role="dialog"
           aria-modal="true"
           aria-labelledby="confirmar-tipo-titulo"

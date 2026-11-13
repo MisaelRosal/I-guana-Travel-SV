@@ -53,6 +53,13 @@ export default function ExperienceCard({
             src={(experiencia.imagenes && experiencia.imagenes[0]) || '/logo.png'}
             alt={experiencia.titulo}
             loading="lazy"
+            // Dead hosted URL -> swap to the local logo once; if the logo
+            // itself fails, clear the handler to avoid an onError loop.
+            onError={(e) => {
+              const img = e.currentTarget
+              if (img.src.endsWith('/logo.png')) img.onerror = null
+              else img.src = '/logo.png'
+            }}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
           <span className="absolute top-3 left-3 rounded-full bg-verde-bosque/90 px-3 py-1 text-xs font-semibold text-white">

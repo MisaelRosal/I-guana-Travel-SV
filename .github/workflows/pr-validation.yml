@@ -56,6 +56,13 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      # Supply-chain guard: only production deps matter here; the dev-only
+      # noise (Vitest, ESLint, etc.) is deliberately excluded. Hard failure
+      # (no continue-on-error) so a high-severity prod vulnerability blocks
+      # the PR; revisit only if the audit turns noisier than useful.
+      - name: Auditoría de dependencias (npm audit)
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Compilar
         run: npm run build
 

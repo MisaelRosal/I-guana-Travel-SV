@@ -140,7 +140,12 @@ public class ReservaHorarioController : ControllerBase
             .Select(rh => (int?)rh.Reserva!.NumeroHuespedes)
             .SumAsync()) ?? 0;
 
-        if (ocupados + reserva.NumeroHuespedes > publicacion.CapacidadMaxima)
+        // Binding ceiling: the horario's own cupos when configured (>0), falling
+        // back to the publication capacity. Comparing against the publication
+        // alone let a cupos=2 slot accept more guests than it holds.
+        var capacidadSlot = horario.Cupos is > 0 ? horario.Cupos.Value : publicacion.CapacidadMaxima;
+
+        if (ocupados + reserva.NumeroHuespedes > capacidadSlot)
         {
             // Slot full: refuse the link (and therefore the seat demand) with a 409.
             await tx.RollbackAsync();

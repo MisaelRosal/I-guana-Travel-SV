@@ -1,18 +1,25 @@
+import { lazy } from 'react'
 import i18n from './config.js'
-import CatalogPage from '../pages/Catalog/CatalogPage.jsx'
-import ExperienceDetailPage from '../pages/ExperienceDetail/ExperienceDetailPage.jsx'
-import AuthPage from '../pages/Auth/AuthPage.jsx'
-import RegisterPage from '../pages/Auth/RegisterPage.jsx'
-import PasswordResetPage from '../pages/Auth/PasswordResetPage.jsx'
-import ReservationsPage from '../pages/Reservations/ReservationsPage.jsx'
-import OperatorPanelPage from '../pages/OperatorPanel/OperatorPanelPage.jsx'
-import SerAnfitrionPage from '../pages/SerAnfitrion/SerAnfitrionPage.jsx'
-import AdminPanelPage from '../pages/Admin/AdminPanelPage.jsx'
-import MiPerfilPage from '../pages/MiPerfil/MiPerfilPage.jsx'
-import MiCuentaPage from '../pages/MiCuenta/MiCuentaPage.jsx'
-import PerfilAnfitrionPage from '../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx'
-import ChatPage from '../pages/Chat/ChatPage.jsx'
 import ProtectedRoute from '../components/ProtectedRoute.jsx'
+
+// M-6 route-level code splitting: the PAGE COMPONENTS are lazy; the route
+// table (keys, es/en paths and element structure) stays byte-identical so
+// localePath(), the AD-1 alias contract and the table test keep working.
+// React.lazy defers each screen's module to its first navigation; App.jsx
+// wraps the rendered route elements in a shared <Suspense> fallback.
+const CatalogPage = lazy(() => import('../pages/Catalog/CatalogPage.jsx'))
+const ExperienceDetailPage = lazy(() => import('../pages/ExperienceDetail/ExperienceDetailPage.jsx'))
+const AuthPage = lazy(() => import('../pages/Auth/AuthPage.jsx'))
+const RegisterPage = lazy(() => import('../pages/Auth/RegisterPage.jsx'))
+const PasswordResetPage = lazy(() => import('../pages/Auth/PasswordResetPage.jsx'))
+const ReservationsPage = lazy(() => import('../pages/Reservations/ReservationsPage.jsx'))
+const OperatorPanelPage = lazy(() => import('../pages/OperatorPanel/OperatorPanelPage.jsx'))
+const SerAnfitrionPage = lazy(() => import('../pages/SerAnfitrion/SerAnfitrionPage.jsx'))
+const AdminPanelPage = lazy(() => import('../pages/Admin/AdminPanelPage.jsx'))
+const MiPerfilPage = lazy(() => import('../pages/MiPerfil/MiPerfilPage.jsx'))
+const MiCuentaPage = lazy(() => import('../pages/MiCuenta/MiCuentaPage.jsx'))
+const PerfilAnfitrionPage = lazy(() => import('../pages/PerfilAnfitrion/PerfilAnfitrionPage.jsx'))
+const ChatPage = lazy(() => import('../pages/Chat/ChatPage.jsx'))
 
 // F5 (i18n-es-en) task 6.2 — localized route table (AD-1: ALIAS, never
 // redirect). Every screen owns one pair of URL forms; both are registered as

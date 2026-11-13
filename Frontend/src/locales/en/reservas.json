@@ -2,6 +2,7 @@
   "heading": "My bookings",
   "subtitle": "Here you'll find all your bookings.",
   "gate": {
+    "body": "You must sign in to see your bookings.",
     "cta": "Sign in"
   },
   "chip": {
@@ -20,22 +21,6 @@
     "emptyTitle": "No bookings yet",
     "emptyBody": "Once you make a booking, you'll see it here.",
     "exploreCta": "Explore experiences"
-  },
-  "card": {
-    "dateLabel": "Date",
-    "peopleLabel": "People",
-    "totalLabel": "Total",
-    "persons_one": "{{count}} person",
-    "persons_other": "{{count}} people",
-    "noteCancelled": "This booking has already been cancelled.",
-    "noteShortConfirmed": "Paid: less than a day left, editing and cancelling are no longer available.",
-    "noteGraceExpired": "The payment hour expired. This booking will be cancelled automatically.",
-    "noteBlockedSoon": "Your start date is a day away or earlier, so this booking can no longer be edited or deleted.",
-    "noteRescheduled": "The host changed this experience's date and your booking moved with it. You can cancel without restrictions if it no longer works for you.",
-    "noteRescheduledFrom": "The host moved this booking from {{date}} to the new date. You can cancel without restrictions if it no longer works for you.",
-    "pay": "Pay",
-    "edit": "Edit",
-    "delete": "Delete"
   },
   "sections": {
     "upcoming": "Upcoming bookings",

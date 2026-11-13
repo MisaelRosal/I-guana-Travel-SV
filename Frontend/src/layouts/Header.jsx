@@ -260,14 +260,8 @@ export default function Header() {
               key={link.to}
               to={link.to}
               className={claseNavLink}
-              aria-label={link.badge ? `${link.label} — ${t('chat:badge.aria', { count: link.badge })}` : undefined}
             >
               {link.label}
-              {link.badge > 0 && (
-                <span aria-hidden="true" className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-iguana-hondo px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
-                  {link.badge}
-                </span>
-              )}
             </NavLink>
           ))}
           <ToggleIdioma />

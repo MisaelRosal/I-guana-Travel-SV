@@ -250,6 +250,41 @@ public class ReservaController : ControllerBase
             return Conflict(OverlapConflict());
         }
 
+        // Experience day-cap (mirrors PostReserva): an edit can move the date and
+        // the guest count, so the same day ceiling applies here. The row being
+        // edited is EXCLUDED from the day occupancy (r.Id != id) so its current
+        // guests do not double-count against their own new value.
+        if (esExperiencia)
+        {
+            // Same rules as POST: a day with configured cupos keeps that sum as
+            // the ceiling; a day with slots but no cupos is per-slot governed;
+            // a horario-less day falls back to the publication capacity.
+            var cuposPorDia = await _context.Horarios
+                .Where(h => h.PublicacionId == publicacion.Id && h.Fecha == inicio)
+                .Select(h => h.Cupos ?? 0)
+                .ToListAsync();
+
+            var cuposConfigurados = cuposPorDia.Sum();
+            var hayDiaSinSlots = cuposPorDia.Count == 0;
+            var capacidadDelDia = cuposConfigurados > 0
+                ? cuposConfigurados
+                : publicacion.CapacidadMaxima;
+            var aplicaTopeDelDia = cuposConfigurados > 0 || hayDiaSinSlots;
+
+            var ocupadosDia = await _context.Reservas
+                .Where(r => r.Id != id
+                    && r.PublicacionId == publicacion.Id
+                    && r.FechaInicio == inicio
+                    && (r.Estado ?? "") != "cancelada")
+                .SumAsync(r => (int?)r.NumeroHuespedes) ?? 0;
+
+            if (aplicaTopeDelDia
+                && ocupadosDia + dto.NumeroHuespedes > capacidadDelDia)
+            {
+                return Conflict(new { mensaje = "El cupo de este horario ya no está disponible." });
+            }
+        }
+
         existente.FechaInicio = inicio;
         existente.FechaFin = fin;
         existente.NumeroHuespedes = dto.NumeroHuespedes;

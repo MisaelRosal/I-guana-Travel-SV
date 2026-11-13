@@ -69,21 +69,32 @@ function SearchBar({ onSearch, disabled }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
+  // Nominatim race guard: only the newest search may write results — a new
+  // search aborts the previous in-flight request.
+  const busquedaActivaRef = useRef(null)
 
   const handleSearch = async () => {
     if (!query.trim()) return
+    busquedaActivaRef.current?.abort()
+    const controller = new AbortController()
+    busquedaActivaRef.current = controller
     setSearching(true)
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', El Salvador')}&format=json&limit=5&addressdetails=1`,
-        { headers: { 'Accept-Language': 'es' } }
+        { headers: { 'Accept-Language': 'es' }, signal: controller.signal }
       )
       const data = await res.json()
+      // A superseded request (aborted predecessor) must not paint its results.
+      if (controller.signal.aborted) return
       setResults(data)
     } catch (err) {
-      console.error('Error buscando:', err)
+      if (err?.name !== 'AbortError') console.error('Error buscando:', err)
     } finally {
-      setSearching(false)
+      if (busquedaActivaRef.current === controller) {
+        busquedaActivaRef.current = null
+        setSearching(false)
+      }
     }
   }
 

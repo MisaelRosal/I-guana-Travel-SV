@@ -6,7 +6,8 @@
     "loading": "Loading listings…",
     "error": "The listings could not be loaded.",
     "retry": "Retry",
-    "emptyTitle": "No listings yet"
+    "emptyTitle": "No listings yet",
+    "emptyBody": "Use the \"Create listing\" button to add the first one."
   },
   "verification": {
     "pendingTitle": "Verification pending",

@@ -153,12 +153,18 @@ public class AnfitrioneController : ControllerBase
     }
 
     // Spec: "Host verification is admin-only". Anonymous callers hit the
-    // [Authorize] challenge (401); authenticated non-admins hit the role check
-    // (403) before the handler ever runs.
+    // [Authorize] challenge (401); authenticated non-admins and demoted
+    // admins (stale JWT role claim) hit the fresh-role check (403) before
+    // the handler ever runs.
     [HttpPut("{id}/verificacion")]
-    [Authorize(Roles = AuthConstants.AdminRole)]
+    [Authorize]
     public async Task<IActionResult> PutVerificacion(int id, [FromBody] bool verificado)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var anfitrione = await _context.Anfitriones.FindAsync(id);
 
         if (anfitrione == null)

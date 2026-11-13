@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { I18nextProvider } from 'react-i18next'
 import i18n from './i18n/config.js'
 import { ROUTE_PAIRS } from './i18n/routes.jsx'
 import RootLayout from './layouts/RootLayout.jsx'
 import NotFoundPage from './pages/NotFound/NotFoundPage.jsx'
+import LoadingIguana from './components/LoadingIguana.jsx'
 import './css/app.css'
 
 function App() {
@@ -30,13 +31,20 @@ function App() {
             {/* F5 (AD-1): each screen is registered under its Spanish path and
                 its English alias pointing at the SAME element — alias-only,
                 never a <Navigate>. Identical forms (login/panel/admin/root)
-                are registered once. */}
+                are registered once. M-6: the (lazy) page element gets a shared
+                Suspense fallback INSIDE the layout route, so the header/footer
+                chrome stays put while the screen chunk loads. */}
             {ROUTE_PAIRS.flatMap((pair) => {
               const forms = pair.es === pair.en ? [pair.es] : [pair.es, pair.en]
+              const page = (
+                <Suspense fallback={<LoadingIguana />}>
+                  {pair.element}
+                </Suspense>
+              )
               return forms.map((path) =>
                 path === '/'
-                  ? <Route key={pair.key} index element={pair.element} />
-                  : <Route key={`${pair.key}:${path}`} path={path} element={pair.element} />,
+                  ? <Route key={pair.key} index element={page} />
+                  : <Route key={`${pair.key}:${path}`} path={path} element={page} />,
               )
             })}
             {/* A7: catch-all under the same layout so header/footer stay put. */}
