@@ -42,7 +42,9 @@ function fechaBloqueada(iso) {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const diasRestantes = Math.round((objetivo - hoy) / 86400000)
-  return diasRestantes <= 1
+  // Only upcoming arrivals inside the 24h window are "blocked"; a stay whose
+  // start already passed must not show the "1 day or less" notice.
+  return diasRestantes >= 0 && diasRestantes <= 1
 }
 
 function TarjetaReserva({ reserva, onEditar, onEliminar, onPagar, onCancelar, onResenar }) {

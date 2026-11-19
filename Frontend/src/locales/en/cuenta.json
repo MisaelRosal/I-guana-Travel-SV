@@ -35,5 +35,11 @@
     "loadError": "We couldn't load your saved listings. Please try again.",
     "count_one": "1 saved publication",
     "count_other": "{{count}} saved publications"
+  },
+  "reviewsFromHosts": {
+    "title": "Reviews received from hosts",
+    "subtitle": "Ratings and comments hosts have left for you.",
+    "empty": "You haven't received any reviews from hosts yet.",
+    "by": "By {{name}}"
   }
 }

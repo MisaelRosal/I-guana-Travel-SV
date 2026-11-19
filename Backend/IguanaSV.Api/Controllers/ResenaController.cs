@@ -92,7 +92,7 @@ public class ResenaController : ControllerBase
         }
 
         var reserva = await _context.Reservas
-            .Include(r => r.Resena)
+            .Include(r => r.Resenas)
             .Include(r => r.Publicacion)
                 .ThenInclude(p => p!.Anfitrion)
             .FirstOrDefaultAsync(r => r.Id == dto.ReservaId);
@@ -120,7 +120,9 @@ public class ResenaController : ControllerBase
             return BadRequest(new { mensaje = "Podés dejar tu reseña a partir del día de llegada." });
         }
 
-        if (reserva.Resena != null)
+        // Only the guest's own review of the publication blocks a second one;
+        // a host->guest rating on the same reservation must not.
+        if (reserva.Resenas.Any(r => r.UsuarioDestinoId == null))
         {
             return Conflict(new { mensaje = "Ya dejaste una reseña para esta reserva." });
         }
@@ -198,7 +200,7 @@ public class ResenaController : ControllerBase
         }
 
         var reserva = await _context.Reservas
-            .Include(r => r.Resena)
+            .Include(r => r.Resenas)
             .Include(r => r.Publicacion)
                 .ThenInclude(p => p!.Anfitrion)
             .Include(r => r.Usuario) // Guest user for email notification
@@ -232,7 +234,7 @@ public class ResenaController : ControllerBase
             return BadRequest(new { mensaje = "El plazo para calificar al huésped venció (14 días después del inicio de la reserva)." });
         }
 
-        if (reserva.Resena != null && reserva.Resena.UsuarioDestinoId.HasValue)
+        if (reserva.Resenas.Any(r => r.UsuarioDestinoId != null))
         {
             return Conflict(new { mensaje = "Ya calificaste a este huésped para esta reserva." });
         }
@@ -301,8 +303,10 @@ public class ResenaController : ControllerBase
             return BadRequest(new { mensaje = "contentLocale debe ser 'es' o 'en'." });
         }
 
+        // Only guest->publication reviews are public. Host->guest ratings share
+        // the table (UsuarioDestinoId != null) and must never reach this view.
         var resumen = await _context.Resenas
-            .Where(r => r.PublicacionId == publicacionId)
+            .Where(r => r.PublicacionId == publicacionId && r.UsuarioDestinoId == null)
             .GroupBy(r => 1)
             .Select(g => new ResumenResenasDto
             {
@@ -313,7 +317,7 @@ public class ResenaController : ControllerBase
 
         var resenas = await _context.Resenas
             .AsNoTracking()
-            .Where(r => r.PublicacionId == publicacionId)
+            .Where(r => r.PublicacionId == publicacionId && r.UsuarioDestinoId == null)
             .OrderByDescending(r => r.CreadoEn)
             .Select(r => new
             {
@@ -357,7 +361,7 @@ public class ResenaController : ControllerBase
 
         var agrupadas = await _context.Resenas
             .AsNoTracking()
-            .Where(r => ids.Contains(r.PublicacionId))
+            .Where(r => ids.Contains(r.PublicacionId) && r.UsuarioDestinoId == null)
             .GroupBy(r => r.PublicacionId)
             .Select(g => new { g.Key, Promedio = g.Average(r => (double)r.Calificacion), Total = g.Count() })
             .ToListAsync();
@@ -375,7 +379,7 @@ public class ResenaController : ControllerBase
     {
         var resumen = await _context.Resenas
             .AsNoTracking()
-            .Where(r => r.Publicacion!.AnfitrionId == anfitrionId)
+            .Where(r => r.Publicacion!.AnfitrionId == anfitrionId && r.UsuarioDestinoId == null)
             .GroupBy(r => 1)
             .Select(g => new ResumenResenasDto
             {
@@ -405,7 +409,9 @@ public class ResenaController : ControllerBase
             return Forbid();
         }
 
-        IQueryable<Resena> query = _context.Resenas.AsNoTracking();
+        IQueryable<Resena> query = _context.Resenas
+            .AsNoTracking()
+            .Where(r => r.UsuarioDestinoId == null);
         if (!User.IsInRole(AuthConstants.AdminRole))
         {
             query = query.Where(r => r.Publicacion!.Anfitrion!.UsuarioId == sub.Value);

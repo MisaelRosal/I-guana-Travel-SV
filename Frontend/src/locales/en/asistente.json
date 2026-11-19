@@ -1,0 +1,15 @@
+{
+  "burbuja": {
+    "abrir": "Open the travel assistant",
+    "cerrar": "Close the assistant"
+  },
+  "titulo": "I-Guana Assistant",
+  "subtitulo": "Stays and experiences in El Salvador",
+  "saludo": "Hi! I'm the I-Guana assistant. Ask me about stays or experiences in El Salvador.",
+  "placeholder": "Type your question…",
+  "enviar": "Send",
+  "pensando": "Thinking…",
+  "error": "I couldn't answer right now. Try again in a few seconds.",
+  "sinRespuesta": "I don't have an answer for that.",
+  "aviso": "Answers come from the published catalog."
+}

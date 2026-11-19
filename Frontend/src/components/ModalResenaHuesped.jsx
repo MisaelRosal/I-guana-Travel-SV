@@ -63,7 +63,9 @@ export default function ModalResenaHuesped({ reserva, onCerrar, onExito }) {
         </div>
 
         <div className="mb-5 rounded-[22px] bg-crema p-4">
-          <p className="text-xs font-semibold text-cafe">{t('card.categoryLabel', { categoria: reserva.experienciaCategoria })}</p>
+          {reserva.experienciaCategoria ? (
+            <p className="text-xs font-semibold text-cafe">{t('card.categoryLabel', { categoria: reserva.experienciaCategoria })}</p>
+          ) : null}
           <p className="mt-0.5 text-sm font-bold text-verde-bosque">{reserva.experienciaTitulo}</p>
           <p className="mt-0.5 text-xs text-cafe">
             {formatDateDMY(reserva.fechaInicio, locale)}

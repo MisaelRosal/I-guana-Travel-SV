@@ -459,7 +459,10 @@ export default function Header() {
         </nav>
       )}
     </header>
-    {usuario && <MessageLauncher unreadCount={noLeidos} />}
+    {/* The assistant bubble is off for delivery (ASISTENTE_ENABLED=false). The
+        messages bubble stays mounted for visitors too: the inbox already shows
+        a sign-in prompt, and the unread poll only runs with a session. */}
+    <MessageLauncher unreadCount={noLeidos} />
     </>
   )
 }

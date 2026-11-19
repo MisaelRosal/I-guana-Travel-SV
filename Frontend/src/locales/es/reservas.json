@@ -20,6 +20,7 @@
     "retry": "Reintentar",
     "emptyTitle": "Todavía no tienes reservas",
     "emptyBody": "Cuando hagas una reserva, la vas a poder ver aquí.",
+    "emptyBodyHost": "Cuando tus huéspedes reserven, vas a poder ver sus reservas aquí.",
     "exploreCta": "Explorar experiencias"
   },
   "sections": {
@@ -132,6 +133,7 @@
     "peopleLabel": "Personas",
     "totalLabel": "Total",
     "categoryLabel": "Categoría: {{categoria}}",
+    "category": "Categoría",
     "persons_one": "{{count}} persona",
     "persons_other": "{{count}} personas",
     "noteCancelled": "Esta reserva ya fue cancelada.",

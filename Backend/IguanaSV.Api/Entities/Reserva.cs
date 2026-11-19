@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace IguanaSV.Api.Entities;
 
@@ -62,7 +64,21 @@ public partial class Reserva
 
     public virtual Publicacione? Publicacion { get; set; }
 
-    public virtual Resena? Resena { get; set; }
+    // A reservation holds up to two independent reviews: the guest's review of
+    // the publication (UsuarioDestinoId == null) and the host's review of the
+    // guest (UsuarioDestinoId != null). Both live in the same table, so the
+    // navigation is a collection and the two JSON shapes below keep the old
+    // "resena" contract while exposing the guest rating separately.
+    [JsonIgnore]
+    public virtual ICollection<Resena> Resenas { get; set; } = new List<Resena>();
+
+    /// <summary>Guest -> publication review (what the public review list shows).</summary>
+    [NotMapped]
+    public Resena? Resena => Resenas?.FirstOrDefault(r => r.UsuarioDestinoId == null);
+
+    /// <summary>Host -> guest review (guest reputation, never shown publicly).</summary>
+    [NotMapped]
+    public Resena? ResenaHuesped => Resenas?.FirstOrDefault(r => r.UsuarioDestinoId != null);
 
     public virtual Usuario? Usuario { get; set; }
 

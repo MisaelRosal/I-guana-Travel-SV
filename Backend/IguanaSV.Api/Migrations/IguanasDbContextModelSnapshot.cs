@@ -1047,8 +1047,13 @@ namespace IguanaSV.Api.Migrations
 
                     b.HasIndex(new[] { "UsuarioId" }, "idx_resenas_usuario");
 
-                    b.HasIndex(new[] { "ReservaId" }, "resenas_reserva_id_key")
-                        .IsUnique();
+                    b.HasIndex(new[] { "ReservaId" }, "resenas_reserva_huesped_key")
+                        .IsUnique()
+                        .HasFilter("\"UsuarioDestinoId\" IS NOT NULL");
+
+                    b.HasIndex(new[] { "ReservaId" }, "resenas_reserva_publica_key")
+                        .IsUnique()
+                        .HasFilter("\"UsuarioDestinoId\" IS NULL");
 
                     b.ToTable("resenas", null, t =>
                         {
@@ -1614,8 +1619,8 @@ namespace IguanaSV.Api.Migrations
                         .HasConstraintName("resenas_publicacion_id_fkey");
 
                     b.HasOne("IguanaSV.Api.Entities.Reserva", "Reserva")
-                        .WithOne("Resena")
-                        .HasForeignKey("IguanaSV.Api.Entities.Resena", "ReservaId")
+                        .WithMany("Resenas")
+                        .HasForeignKey("ReservaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("resenas_reserva_id_fkey");
@@ -1752,7 +1757,7 @@ namespace IguanaSV.Api.Migrations
                 {
                     b.Navigation("Notificaciones");
 
-                    b.Navigation("Resena");
+                    b.Navigation("Resenas");
 
                     b.Navigation("ReservaHorarios");
                 });

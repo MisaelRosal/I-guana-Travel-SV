@@ -20,6 +20,7 @@
     "retry": "Retry",
     "emptyTitle": "No bookings yet",
     "emptyBody": "Once you make a booking, you'll see it here.",
+    "emptyBodyHost": "When your guests book, you'll see their reservations here.",
     "exploreCta": "Explore experiences"
   },
   "sections": {
@@ -132,6 +133,7 @@
     "peopleLabel": "People",
     "totalLabel": "Total",
     "categoryLabel": "Category: {{categoria}}",
+    "category": "Category",
     "persons_one": "{{count}} person",
     "persons_other": "{{count}} people",
     "noteCancelled": "This booking has already been cancelled.",

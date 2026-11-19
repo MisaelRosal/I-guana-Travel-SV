@@ -271,9 +271,22 @@ export default function LocationPicker({
       }
       setAvisoFuera(null)
       onLocationChange(lat, lng)
-      reverseGeocode(latlng)
+      // An explicit department+municipality choice wins: the map only
+      // auto-fills them while the user has not picked both, so a click never
+      // silently replaces a selection made in the dropdowns.
+      if (!(departamentoId && municipioId)) reverseGeocode(latlng)
     },
-    [conPuntosTours, modo, onLocationChange, onPuntoEncuentroChange, onDestinoChange, reverseGeocode, disabled]
+    [
+      conPuntosTours,
+      modo,
+      onLocationChange,
+      onPuntoEncuentroChange,
+      onDestinoChange,
+      reverseGeocode,
+      disabled,
+      departamentoId,
+      municipioId,
+    ]
   )
 
   const autoGeocodeKey = `${latitud},${longitud}`

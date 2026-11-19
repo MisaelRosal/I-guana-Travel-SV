@@ -131,8 +131,9 @@ public sealed class SchemaMigrationsIntegrationTests
             // chat AddChatConversaciones, guest reports AddReportesHuesped, password
             // reset AddPropositoVerificacion, and in-site notifications
             // AddNotificacionesSitioUsuario, plus the optional tour map points
-            // AddPuntosTour = twenty-one at head.
-            Assert.Equal(21, applied);
+            // AddPuntosTour, plus the split review uniqueness
+            // PermiteResenaPublicacionYHuesped = twenty-two at head.
+            Assert.Equal(22, applied);
 
             // Drift columns + ownership column now exist from migrations alone.
             var hasColumns = await db.ScalarAsync<long>("""

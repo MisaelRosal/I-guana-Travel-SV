@@ -304,6 +304,7 @@ export default function AdminPanelPage() {
                               disabled={!!confirmando}
                               className="relative cursor-pointer rounded-full p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
                               title={t('action.deleteProfileTitle')}
+                              aria-label={t('action.deleteProfileTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
                                 <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6" />
@@ -392,6 +393,7 @@ export default function AdminPanelPage() {
                               onClick={() => { setPubEditando(p); setModalAbierto(true) }}
                               className="relative cursor-pointer rounded-full p-1.5 text-cafe transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-cafe/10 hover:text-verde-bosque"
                               title={t('action.editListingTitle')}
+                              aria-label={t('action.editListingTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                                 <path d="M12 20h9" />
@@ -404,6 +406,7 @@ export default function AdminPanelPage() {
                               disabled={!!confirmandoPub}
                               className="relative cursor-pointer rounded-full p-1.5 text-red-500 transition-colors after:absolute after:-inset-y-2 after:-inset-x-0.5 after:content-[''] hover:bg-red-50 hover:text-red-700"
                               title={t('action.deleteListingTitle')}
+                              aria-label={t('action.deleteListingTitle')}
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
                                 <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6" />

@@ -163,9 +163,12 @@ export default function OperatorPanelPage() {
   }
 
   const handleExitoResenaHuesped = (resena) => {
+    // The API response has no reservaId; the open modal holds the reservation
+    // being rated, so the row flips to "sent" without a reload.
+    const reservaId = reservaResenarHuesped?.id
     setReservasAnfitrion((prev) =>
       prev.map((r) =>
-        r.id === resena.reservaId ? { ...r, resena } : r
+        r.id === reservaId ? { ...r, calificacionHuesped: resena.calificacion } : r
       )
     )
     setReservaResenarHuesped(null)
@@ -524,7 +527,7 @@ export default function OperatorPanelPage() {
           ) : reservasAnfitrion.length === 0 ? (
             <div className="rounded-[22px] border border-cafe-claro/40 bg-white px-6 py-14 text-center">
               <p className="text-lg font-semibold text-verde-bosque">{tr('status.emptyTitle')}</p>
-              <p className="mt-1 text-sm text-cafe">{tr('status.emptyBody')}</p>
+              <p className="mt-1 text-sm text-cafe">{tr('status.emptyBodyHost')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -532,7 +535,7 @@ export default function OperatorPanelPage() {
                 <thead className="bg-verde-bosque text-white">
                   <tr>
                     <th className="px-4 py-3 font-semibold">{tr('card.dateLabel')}</th>
-                    <th className="px-4 py-3 font-semibold">{tr('card.categoryLabel', { categoria: '—' })}</th>
+                    <th className="px-4 py-3 font-semibold">{tr('card.category')}</th>
                     <th className="px-4 py-3 font-semibold">{tr('card.peopleLabel')}</th>
                     <th className="px-4 py-3 font-semibold">{tr('card.totalLabel')}</th>
                     <th className="px-4 py-3 font-semibold">{tr('tabs.reservationStatus')}</th>
@@ -542,7 +545,24 @@ export default function OperatorPanelPage() {
                 <tbody className="divide-y divide-cafe-claro/30">
                   {reservasAnfitrion.map((r) => {
                     const completada = r.estado === 'completada'
-                    const yaCalifico = r.resena && r.resena.usuarioDestinoId != null
+                    // The agenda now reports the host->guest rating explicitly,
+                    // so the row stops offering "Calificar huésped" once it was
+                    // submitted (previously it never did, because the old
+                    // single-review shape was never returned here).
+                    const calificacionHuesped = r.calificacionHuesped ?? null
+                    const yaCalifico = calificacionHuesped != null
+                    // Mirror the server window: from arrival day until 14 days
+                    // after it. Outside that window the API answers 400.
+                    const diasDesdeInicio = (() => {
+                      if (!r.fechaInicio) return null
+                      const [anio, mes, dia] = r.fechaInicio.split('-').map(Number)
+                      const inicio = new Date(anio, mes - 1, dia)
+                      const hoy = new Date()
+                      hoy.setHours(0, 0, 0, 0)
+                      return Math.round((hoy - inicio) / 86400000)
+                    })()
+                    const ventanaCalificacion =
+                      diasDesdeInicio != null && diasDesdeInicio >= 0 && diasDesdeInicio <= 14
                     return (
                       <tr key={r.id} className="transition-colors hover:bg-crema">
                         <td className="px-4 py-3">
@@ -567,7 +587,12 @@ export default function OperatorPanelPage() {
                         <td className="px-4 py-3">
                           {completada ? (
                             <div className="flex flex-wrap items-center gap-2">
-                              {!yaCalifico ? (
+                              {yaCalifico ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber/10 px-3 py-1.5 text-xs font-semibold text-verde-bosque">
+                                  <Estrellas valor={calificacionHuesped} className="h-3.5 w-3.5" />
+                                  {tr('reviews.sent', { rating: calificacionHuesped })}
+                                </span>
+                              ) : ventanaCalificacion ? (
                                 <button
                                   type="button"
                                   onClick={() => setReservaResenarHuesped(r)}
@@ -575,12 +600,7 @@ export default function OperatorPanelPage() {
                                 >
                                   {tr('reviews.rateGuest')}
                                 </button>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-amber/10 px-3 py-1.5 text-xs font-semibold text-verde-bosque">
-                                  <Estrellas valor={r.resena.calificacion} className="h-3.5 w-3.5" />
-                                  {tr('reviews.sent', { rating: r.resena.calificacion })}
-                                </span>
-                              )}
+                              ) : null}
                               {misReportes.some((rep) => rep.reservaId === r.id) ? (
                                 <span className="rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">Reportado</span>
                               ) : (

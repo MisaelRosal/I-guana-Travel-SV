@@ -130,9 +130,17 @@ services:
       - Translation__LibreTranslate__Enabled=${LIBRETRANSLATE_ENABLED:-true}
       - Translation__LibreTranslate__BaseUrl=http://libretranslate:5000
       - Translation__LibreTranslate__TimeoutSeconds=${LIBRETRANSLATE_TIMEOUT_SECONDS:-15}
+      # AI assistant: Ollama runs on the host (CPU inference, ~2.5 GB model), not
+      # in a container, so the backend reaches it through the host gateway.
+      # ASISTENTE_ENABLED=false turns the feature off without a rebuild.
+      - Asistente__Enabled=${ASISTENTE_ENABLED:-false}
+      - Asistente__BaseUrl=${ASISTENTE_BASE_URL:-http://host.docker.internal:11434/}
+      - Asistente__Model=${ASISTENTE_MODEL:-qwen2.5:3b}
       # N3: the /api route is proxied by the nginx container, so trust its
       # X-Forwarded-For/Proto to restore per-client rate-limit partitions.
       - Forwarded__Enabled=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Frontend waits on this (see frontend.depends_on), so transient startup
     # 502s from the nginx proxy disappear. The runtime image ships no curl/wget;
     # bash's /dev/tcp opens the socket and probes /health for a 200 instead.

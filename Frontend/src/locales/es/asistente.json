@@ -1,0 +1,15 @@
+{
+  "burbuja": {
+    "abrir": "Abrir el asistente de viajes",
+    "cerrar": "Cerrar el asistente"
+  },
+  "titulo": "Asistente I-Guana",
+  "subtitulo": "Alojamientos y experiencias en El Salvador",
+  "saludo": "¡Hola! Soy el asistente de I-Guana. Preguntame por alojamientos o experiencias en El Salvador.",
+  "placeholder": "Escribí tu consulta…",
+  "enviar": "Enviar",
+  "pensando": "Pensando…",
+  "error": "No pude responder ahora. Probá de nuevo en unos segundos.",
+  "sinRespuesta": "No tengo una respuesta para eso.",
+  "aviso": "Las respuestas salen del catálogo publicado."
+}

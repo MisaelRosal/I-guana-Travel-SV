@@ -143,12 +143,14 @@ describe('Header unread chat badge', () => {
     expect(screen.getByRole('button', { name: 'Abrir mensajes — 2 mensajes sin leer' })).toBeInTheDocument()
   })
 
-  it('hides the floating launcher when signed out', async () => {
+  it('keeps the floating launcher reachable but does not poll chat when signed out', async () => {
     mocks.session = null
     renderHeader()
     await act(async () => {})
 
-    expect(screen.queryByRole('button', { name: /Abrir mensajes/ })).not.toBeInTheDocument()
+    // The bubble stays visible so a visitor can reach the inbox's sign-in
+    // prompt; what must never happen without a session is the unread poll.
+    expect(screen.getByRole('button', { name: /Abrir mensajes/ })).toBeInTheDocument()
     expect(mocks.getNoLeidos).not.toHaveBeenCalled()
   })
 

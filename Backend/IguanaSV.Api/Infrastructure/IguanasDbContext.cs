@@ -720,7 +720,16 @@ public class IguanasDbContext : DbContext
 
             entity.HasIndex(e => e.PublicacionId, "idx_resenas_publicacion");
 
-            entity.HasIndex(e => e.ReservaId, "resenas_reserva_id_key").IsUnique();
+            // One review of each kind per reservation: the guest's public review
+            // and the host's private rating of the guest. Two partial unique
+            // indexes replace the old single unique reserva_id constraint.
+            entity.HasIndex(e => e.ReservaId, "resenas_reserva_publica_key")
+                .IsUnique()
+                .HasFilter("\"UsuarioDestinoId\" IS NULL");
+
+            entity.HasIndex(e => e.ReservaId, "resenas_reserva_huesped_key")
+                .IsUnique()
+                .HasFilter("\"UsuarioDestinoId\" IS NOT NULL");
 
             entity.HasIndex(e => e.UsuarioId, "idx_resenas_usuario");
 
@@ -748,8 +757,8 @@ public class IguanasDbContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("actualizado_en");
 
-            entity.HasOne(d => d.Reserva).WithOne(p => p.Resena)
-                .HasForeignKey<Resena>(d => d.ReservaId)
+            entity.HasOne(d => d.Reserva).WithMany(p => p.Resenas)
+                .HasForeignKey(d => d.ReservaId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("resenas_reserva_id_fkey");
 

@@ -65,6 +65,12 @@ if (rateLimitEnabled)
         options.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+
+        // The assistant is anonymous and CPU-bound; a tighter per-IP window keeps
+        // one browser from monopolizing the single local model.
+        options.AddPolicy("asistente", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 12, Window = TimeSpan.FromMinutes(1) }));
     });
 }
 
@@ -91,6 +97,25 @@ builder.Services.AddSingleton<IPublicationTranslationService>(services =>
     services.GetRequiredService<LibreTranslateTranslationService>());
 builder.Services.AddSingleton<IContentTranslationService>(services =>
     services.GetRequiredService<LibreTranslateTranslationService>());
+
+// --- AI travel assistant (Fase 1): local Ollama over an injected catalog ---
+// Optional like the translator: with Asistente:Enabled false, or when Ollama is
+// not reachable, the chat endpoint answers 503 and every other feature works.
+builder.Services.Configure<AsistenteOptions>(builder.Configuration.GetSection(AsistenteOptions.SectionName));
+builder.Services.AddHttpClient(OllamaAsistenteService.HttpClientName, (services, client) =>
+{
+    var options = services.GetRequiredService<IOptions<AsistenteOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 5, 120));
+
+    var baseUri = Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var configuredUri)
+        ? configuredUri
+        : new Uri("http://localhost:11434/");
+    var uriBuilder = new UriBuilder(baseUri);
+    uriBuilder.Path = uriBuilder.Path.TrimEnd('/') + "/";
+    client.BaseAddress = uriBuilder.Uri;
+});
+// Scoped: the catalog is read through the request DbContext.
+builder.Services.AddScoped<IAsistenteService, OllamaAsistenteService>();
 
 // --- Email saliente + verificación de correo (design: notificaciones) ---
 // Registration is held until the emailed code is entered while

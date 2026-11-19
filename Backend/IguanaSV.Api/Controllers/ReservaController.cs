@@ -45,7 +45,7 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
-            .Include(r => r.Resena)
+            .Include(r => r.Resenas)
             .AsQueryable();
 
         if (!User.IsInRole(AuthConstants.AdminRole))
@@ -74,7 +74,7 @@ public class ReservaController : ControllerBase
                 .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
-            .Include(r => r.Resena)
+            .Include(r => r.Resenas)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (reserva == null)
@@ -142,6 +142,9 @@ public class ReservaController : ControllerBase
                 publicacionId = r.PublicacionId,
                 publicacionTitulo = r.Publicacion!.Titulo,
                 tipo = r.Publicacion!.Tipo,
+                experienciaCategoria = r.Publicacion!.Categoria != null
+                    ? r.Publicacion.Categoria.Nombre
+                    : null,
                 fechaInicio = r.FechaInicio,
                 fechaFin = r.FechaFin,
                 numeroHuespedes = r.NumeroHuespedes,
@@ -152,6 +155,12 @@ public class ReservaController : ControllerBase
                 telefonoHuesped = r.TelefonoHuesped,
                 fechaPago = r.FechaPago,
                 metodoPago = r.MetodoPago,
+                // Host->guest rating already submitted (null when the host has
+                // not rated this guest yet), so the panel can stop offering it.
+                calificacionHuesped = r.Resenas
+                    .Where(x => x.UsuarioDestinoId != null)
+                    .Select(x => (short?)x.Calificacion)
+                    .FirstOrDefault(),
             })
             .ToListAsync();
 

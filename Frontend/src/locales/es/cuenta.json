@@ -35,5 +35,11 @@
     "loadError": "No pudimos cargar tus publicaciones guardadas. Intentá de nuevo.",
     "count_one": "1 publicación guardada",
     "count_other": "{{count}} publicaciones guardadas"
+  },
+  "reviewsFromHosts": {
+    "title": "Reseñas recibidas de anfitriones",
+    "subtitle": "Calificaciones y comentarios que te han dejado los anfitriones.",
+    "empty": "Aún no has recibido reseñas de anfitriones.",
+    "by": "Por {{name}}"
   }
 }
