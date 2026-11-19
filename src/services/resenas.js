@@ -1,0 +1,50 @@
+import { api } from './api.js'
+import { getContentLocale } from '../i18n/config.js'
+
+// Public: star average + reviews of a publication (detail page).
+export async function getResenasPublicacion(publicacionId, language) {
+  const params = new URLSearchParams({ contentLocale: getContentLocale(language) })
+  return await api.get(`/Resena/publicacion/${publicacionId}?${params.toString()}`)
+}
+
+// Public: batch averages for catalog cards. Publications with no reviews are
+// absent from the returned map and the client shows "Aún no tiene reseñas".
+export async function getResumenResenas(publicacionIds) {
+  if (!publicacionIds || publicacionIds.length === 0) return {}
+  return await api.get(`/Resena/resumen?publicaciones=${publicacionIds.join(',')}`)
+}
+
+// Public: global star average of a host (public host profile).
+export async function getResumenAnfitrion(anfitrionId) {
+  return await api.get(`/Resena/anfitrion/${anfitrionId}`)
+}
+
+// Public: global star average of a normal user (public user profile).
+// Backend: GET /Resena/usuario/:id -> { promedio: number, total: number }
+export async function getResumenUsuario(usuarioId) {
+  return await api.get(`/Resena/usuario/${usuarioId}`)
+    .catch(() => ({ promedio: 0, total: 0 }))
+}
+
+// Public: host->guest reviews received by the user
+export async function getResenasRecibidasUsuario(usuarioId) {
+  return await api.get(`/Resena/usuario/${usuarioId}/recibidas`)
+    .catch(() => [])
+}
+
+// Host panel: reviews received by the caller's publications (+ per-listing
+// averages). Admins see every review.
+export async function getMisResenas(language) {
+  const params = new URLSearchParams({ contentLocale: getContentLocale(language) })
+  return await api.get(`/Resena/mias?${params.toString()}`)
+}
+
+// Host reply to a review (empty string clears the reply).
+export async function responderResena(id, respuesta) {
+  return await api.put(`/Resena/${id}/respuesta`, { respuesta: respuesta ?? '' })
+}
+
+// Admin moderation: permanently delete a review.
+export async function eliminarResena(id) {
+  return await api.delete(`/Resena/${id}`)
+}

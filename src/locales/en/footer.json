@@ -1,0 +1,19 @@
+{
+  "tagline": "Tourism and experiences in El Salvador. Explore, book and live the country with local hosts.",
+  "explore": {
+    "heading": "Explore"
+  },
+  "hosts": {
+    "heading": "Hosts",
+    "prompt": "Want to offer your experience?"
+  },
+  "becomeHost": "Become a host",
+  "follow": {
+    "heading": "Follow us"
+  },
+  "legal": {
+    "copyright": "© {{year}} I Guana Travel SV. All rights reserved.",
+    "terms": "Terms and conditions",
+    "privacy": "Privacy"
+  }
+}

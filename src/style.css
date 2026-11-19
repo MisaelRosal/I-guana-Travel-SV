@@ -1,20 +1,20 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme {
-  --color-crema: #FBF6EE;
-  --color-verde-bosque: #1B4332;
-  --color-verde-hoja: #52B788;
-  --color-azul: #1D4E89;
-  --color-azul-cielo: #48CAE4;
-  --color-cafe: #8B5E3C;
-  --color-cafe-claro: #C89F7B;
-  --color-cafe-oscuro: #4E342E;
-  --color-terracota: #C8553D;
-  --color-terracota-claro: #FFE890;
+  --color-crema: #F7F7F3;
+  --color-verde-bosque: #10231A;
+  --color-verde-hoja: #348956;
+  --color-azul: #24417A;
+  --color-cafe: #55635C; /* texto secundario: tinta al 70% sobre cal, 5.9:1 */
+  --color-cafe-claro: #E9E6DA;
+  --color-iguana-hondo: #1F5C3A;
+  --color-amber: #B45309;
+  --font-display: 'Petrona', Georgia, serif;
 }
 
 :root {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Chivo', system-ui, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   color-scheme: light;
   font-synthesis: none;
@@ -27,4 +27,59 @@ body {
   margin: 0;
   min-height: 100svh;
   background-color: var(--color-crema);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+}
+
+/* Limitar el z-index del mapa Leaflet para que nunca se sobreponga a los modales */
+.leaflet-container {
+  z-index: 0;
+}
+.leaflet-pane {
+  z-index: 1;
+}
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 2;
+}
+.leaflet-popup {
+  z-index: 3;
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-box-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modal-backdrop {
+  animation: modal-backdrop-in 0.25s ease-out both;
+}
+
+.animate-modal-box {
+  animation: modal-box-in 0.3s ease-out both;
+}
+
+/* WCAG 2.3.3: users who ask for less motion get the end state with no animation. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-modal-backdrop,
+  .animate-modal-box {
+    animation: none;
+  }
 }

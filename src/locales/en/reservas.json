@@ -1,0 +1,149 @@
+{
+  "heading": "My bookings",
+  "subtitle": "Here you'll find all your bookings.",
+  "gate": {
+    "body": "You must sign in to see your bookings.",
+    "cta": "Sign in"
+  },
+  "chip": {
+    "pendiente": "Pending",
+    "confirmada": "Confirmed",
+    "cancelada": "Cancelled",
+    "completada": "Completed"
+  },
+  "cupos_one": "{{count}} spot",
+  "cupos_other": "{{count}} spots",
+  "bookingRef": "Booking #{{id}}",
+  "status": {
+    "loading": "Loading your bookings…",
+    "error": "Your bookings could not be loaded.",
+    "retry": "Retry",
+    "emptyTitle": "No bookings yet",
+    "emptyBody": "Once you make a booking, you'll see it here.",
+    "emptyBodyHost": "When your guests book, you'll see their reservations here.",
+    "exploreCta": "Explore experiences"
+  },
+  "sections": {
+    "upcoming": "Upcoming bookings",
+    "cancelled": "Cancelled bookings",
+    "completed": "Completed bookings",
+    "emptyUpcoming": "You have no upcoming bookings.",
+    "emptyCancelled": "You have no cancelled bookings.",
+    "emptyCompleted": "You have no completed bookings."
+  },
+  "calendar": {
+    "hint": "Only the dates offered by the host can be selected."
+  },
+  "edit": {
+    "title": "Edit booking",
+    "startLabel": "Check-in",
+    "endLabel": "Check-out",
+    "currentDate": "Current date: {{date}}",
+    "noDates": "This experience has no available dates yet.",
+    "capacityHint_one": "Maximum capacity: {{count}} guest",
+    "capacityHint_other": "Maximum capacity: {{count}} guests",
+    "peopleUnit_one": "person",
+    "peopleUnit_other": "people",
+    "ariaLess": "Fewer people",
+    "ariaMore": "More people",
+    "summaryNights_one": "{{count}} night",
+    "summaryNights_other": "{{count}} nights",
+    "summaryGuests_one": "{{count}} guest",
+    "summaryGuests_other": "{{count}} guests",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "errorPickDate": "Pick a start date.",
+    "errorEndBefore": "The end date cannot be before the start date.",
+    "errorCapacity_one": "The maximum capacity is {{count}} person.",
+    "errorCapacity_other": "The maximum capacity is {{count}} people.",
+    "toastSaved": "Booking updated.",
+    "toastError": "Error updating the booking."
+  },
+  "pay": {
+    "title": "Simulate payment",
+    "methodLabel": "Payment method",
+    "methods": {
+      "credit": "Credit card",
+      "debit": "Debit card",
+      "paypal": "PayPal"
+    },
+    "simulatedNote": "Simulated payment: no real charge is made.",
+    "paypalNotice": "You'll be redirected to PayPal to complete the payment.",
+    "submit": "Confirm payment",
+    "processing": "Processing payment...",
+    "errorMethod": "Select a payment method",
+    "errorGeneric": "Error processing the payment"
+  },
+  "cancel": {
+    "title": "Cancel booking",
+    "reasonStarted": "A booking whose start date already passed or is today cannot be cancelled.",
+    "reasonCompleted": "A booking that was already completed cannot be cancelled.",
+    "question": "Are you sure you want to cancel this booking?",
+    "freeNote": "This booking was rescheduled by the host: you can cancel it without restrictions.",
+    "checkIn": "Check-in: {{date}}",
+    "confirm": "Yes, cancel booking",
+    "processing": "Cancelling...",
+    "keep": "No, keep it",
+    "errorGeneric": "Error cancelling the booking"
+  },
+  "deleteConfirm": {
+    "dialogLabel": "Confirm deletion",
+    "heading": "Delete booking?",
+    "body": "You are about to delete the booking of <b>{{title}}</b> for <b>{{date}}</b>. This action cannot be undone.",
+    "deleting": "Deleting...",
+    "toastDone": "Booking deleted.",
+    "toastError": "Error deleting the booking."
+  },
+  "toast": {
+    "paySuccess": "Payment completed successfully.",
+    "cancelSuccess": "Booking cancelled successfully."
+  },
+  "tabs": {
+    "reservations": "Reservations",
+    "reservationStatus": "Status",
+    "actions": "Actions"
+  },
+  "reviews": {
+    "button": "Leave a review",
+    "sent": "Review submitted · {{rating}}/5",
+    "modalTitle": "Leave a review",
+    "question": "How was your experience?",
+    "rateGuestTitle": "Rate guest",
+    "rateGuestQuestion": "How was the guest?",
+    "commentLabel": "Comment",
+    "commentOptional": "(optional)",
+    "commentPlaceholder": "Tell us what you liked, how the service was, tips for other travelers…",
+    "rating": {
+      "0": "No rating",
+      "1": "1 star",
+      "2": "2 stars",
+      "3": "3 stars",
+      "4": "4 stars",
+      "5": "5 stars"
+    },
+    "submitting": "Sending…",
+    "submit": "Submit review",
+    "error": "There was an error submitting your review",
+    "toastSuccess": "Thank you! Your review was submitted.",
+    "rateGuest": "Rate guest",
+    "notEligible": "Not eligible"
+  },
+  "card": {
+    "dateLabel": "Date",
+    "peopleLabel": "People",
+    "totalLabel": "Total",
+    "categoryLabel": "Category: {{categoria}}",
+    "category": "Category",
+    "persons_one": "{{count}} person",
+    "persons_other": "{{count}} people",
+    "noteCancelled": "This booking has already been cancelled.",
+    "noteShortConfirmed": "Paid: less than a day left, editing and cancelling are no longer available.",
+    "noteGraceExpired": "The payment hour expired. This booking will be cancelled automatically.",
+    "noteBlockedSoon": "Your start date is a day away or earlier, so this booking can no longer be edited or deleted.",
+    "noteRescheduled": "The host changed this experience's date and your booking moved with it. You can cancel without restrictions if it no longer works for you.",
+    "noteRescheduledFrom": "The host moved this booking from {{date}} to the new date. You can cancel without restrictions if it no longer works for you.",
+    "pay": "Pay",
+    "edit": "Edit",
+    "delete": "Delete"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "heading": "Become a host",
+  "subtitle": "Create your host profile. We need a photo of you.",
+  "loginRequired": {
+    "body": "To offer your experiences you need to sign in.",
+    "cta": "Sign in"
+  },
+  "photoLabel": "Profile photo *",
+  "photoAlt": "Profile photo",
+  "choosePhoto": "Choose photo",
+  "choosePhotoAria": "Choose profile photo",
+  "photoHint": "JPG or PNG. It will be visible to your guests.",
+  "emailLabel": "Email address *",
+  "phoneLabel": "Phone",
+  "phonePlaceholder": "Contact phone",
+  "descLabel": "Short description *",
+  "descPlaceholder": "Tell us who you are and what experience you offer...",
+  "deptoLabel": "Department *",
+  "deptoOption": "Select a department",
+  "muniLabel": "Municipality *",
+  "muniOption": "Select a municipality",
+  "submit": "Create host profile",
+  "submitting": "Signing up...",
+  "submittingPhoto": "Uploading photo...",
+  "errors": {
+    "photoRequired": "Profile photo is required.",
+    "descRequired": "Tell us a brief description about yourself.",
+    "municipioRequired": "Select your municipality."
+  },
+  "successToast": "You're a host now!",
+  "genericError": "Couldn't complete the sign-up.",
+  "uploadError": "Couldn't upload the photo.",
+  "waypoints": {
+    "meeting": "Meeting point",
+    "destination": "Destination",
+    "selectorHint": "Choose a point type to mark it on the map",
+    "meetingOutside": "The meeting point must be inside El Salvador.",
+    "locationOutside": "The location must be inside El Salvador.",
+    "legendMain": "Main location",
+    "clear": "Clear",
+    "clearMeeting": "Clear meeting point",
+    "clearDestination": "Clear destination",
+    "hint": "Optional — click on the map or search for an address",
+    "hintMeeting": "Required — click on the map or search for an address",
+    "errorRange": "The {{label}} coordinates are out of range (lat -90 to 90, lng -180 to 180)."
+  }
+}

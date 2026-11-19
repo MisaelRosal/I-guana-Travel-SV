@@ -1,0 +1,58 @@
+{
+  "nav": {
+    "inbox": "Mensajes"
+  },
+  "floating": {
+    "open": "Abrir mensajes",
+    "title": "Tus mensajes"
+  },
+  "entry": {
+    "contactHost": "Contáctame",
+    "messageHost": "Enviar un mensaje"
+  },
+  "drawer": {
+    "title": "Mensaje al anfitrión",
+    "close": "Cerrar",
+    "loading": "Cargando mensajes…",
+    "error": "No pudimos cargar la conversación.",
+    "retry": "Reintentar",
+    "empty": "Todavía no hay mensajes. Escribí el primero.",
+    "loadOlder": "Ver mensajes más antiguos",
+    "placeholder": "Escribí tu mensaje…",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "counter": "{{count}}/500",
+    "counterLimit": "Máximo 500 caracteres",
+    "sentYou": "Vos",
+    "publicationCard": {
+      "label": "Publicación",
+      "view": "Ver publicación"
+    },
+    "loginTitle": "Iniciá sesión para escribir al anfitrión",
+    "loginBody": "Necesitás una cuenta para chatear. Iniciá sesión y volvé a esta página.",
+    "loginCta": "Iniciar sesión",
+    "registerCta": "Crear cuenta"
+  },
+  "page": {
+    "title": "Tus mensajes",
+    "loading": "Cargando tus conversaciones…",
+    "error": "No pudimos cargar tus conversaciones.",
+    "empty": "Todavía no tenés conversaciones. Encontrá un anfitrión y escribile desde su perfil o una experiencia.",
+    "open": "Abrir conversación",
+    "unread_one": "{{count}} sin leer",
+    "unread_other": "{{count}} sin leer",
+    "noPreview": "Sin mensajes todavía",
+    "selectHint": "Elegí una conversación para ver los mensajes.",
+    "back": "Volver a las conversaciones",
+    "loginTitle": "Iniciá sesión para ver tus mensajes",
+    "loginBody": "Tu bandeja de chat requiere una cuenta.",
+    "loginCta": "Iniciar sesión"
+  },
+  "badge": {
+    "aria_one": "{{count}} mensaje sin leer",
+    "aria_other": "{{count}} mensajes sin leer"
+  },
+  "aria": {
+    "liveRegion": "Nuevos mensajes"
+  }
+}

@@ -1,0 +1,59 @@
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+export default function Toast({ mensaje, tipo, onCerrar }) {
+  // `mensaje` is backend/user content: it renders verbatim in every locale
+  // (passthrough MUST). Only the close control's accessible name is ours.
+  const { t } = useTranslation('common')
+  const [visible, setVisible] = useState(false)
+  const esExito = tipo === 'exito'
+
+  useEffect(() => {
+    if (!mensaje) return
+    const t1 = setTimeout(() => setVisible(true), 50)
+    // Success/info auto-dismiss; errors stay until dismissed so a message that
+    // needs a decision never disappears on its own (WCAG 2.2.1 timing).
+    if (!esExito) return () => clearTimeout(t1)
+    const t2 = setTimeout(() => {
+      setVisible(false)
+      if (onCerrar) setTimeout(onCerrar, 300)
+    }, 3500)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [mensaje, onCerrar, esExito])
+
+  if (!mensaje) return null
+
+  return (
+    <div
+      className={`fixed top-5 right-5 z-[2000] flex items-center gap-3 rounded-full border border-cafe-claro px-4 py-3 transition-all duration-300 ${
+        visible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
+      } ${esExito ? 'bg-verde-bosque text-white' : 'bg-red-600 text-white'}`}
+      role={esExito ? 'status' : 'alert'}
+    >
+      {esExito ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4M12 16h.01" />
+        </svg>
+      )}
+      <span className="text-sm font-semibold">{mensaje}</span>
+      <button
+        type="button"
+        onClick={() => { setVisible(false); setTimeout(onCerrar, 300) }}
+        className="relative ml-2 cursor-pointer rounded-full p-0.5 opacity-80 transition-opacity after:absolute after:-inset-3 after:content-[''] hover:opacity-100"
+        aria-label={t('toast.close')}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  )
+}

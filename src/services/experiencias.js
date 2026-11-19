@@ -1,4 +1,10 @@
 import { api } from './api.js'
+import { getContentLocale } from '../i18n/config.js'
+
+function publicacionUrl(path, language) {
+  const params = new URLSearchParams({ contentLocale: getContentLocale(language) })
+  return `${path}?${params.toString()}`
+}
 
 const imagenesDepartamentos = {
   'San Salvador': 'https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?w=1200',
@@ -17,32 +23,89 @@ const imagenesDepartamentos = {
   'Usulután': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200',
 }
 
-function mapearPublicacion(p) {
-  const experiencia = p.experiencia?.[0] ?? null
+export function mapearPublicacion(p) {
+  const experiencias = p.experiencia ?? []
+  const categoriaNombre = p.categoria?.nombre ?? ''
+  const esHospedaje = (p.tipo || (experiencias.length === 0 ? 'hospedaje' : 'experiencia')) === 'hospedaje'
+  const horariosPub = p.horarios ?? []
+  const horarioEntradaSalida = esHospedaje
+    ? horariosPub.filter(Boolean).find((h) => h.diaSemana === 0)
+    : null
   return {
     id: p.id,
+    // Chat card context binds this explicit publication id — the detail page's
+    // route :id is the same value today, but consumers must never assume it.
+    publicacionId: p.id,
     titulo: p.titulo,
-    tipo: p.experiencia?.length ? 'experiencia' : 'hospedaje',
-    categoria: p.categoria?.nombre ?? '',
+    tipo: esHospedaje ? 'hospedaje' : 'experiencia',
+    categoria: categoriaNombre,
     descripcion: p.descripcion ?? '',
     precio: p.precioPorNoche,
-    municipio: p.anfitrion?.municipio?.nombre ?? '',
-    departamento: p.anfitrion?.municipio?.departamento?.nombre ?? '',
+    anfitrion: p.anfitrion?.nombre ?? '',
+    anfitrionId: p.anfitrion?.id ?? null,
+    anfitrionUsuarioId: p.anfitrion?.usuarioId ?? null,
+    anfitrionFoto: p.anfitrion?.fotoPerfil ?? '',
+    anfitrionDescripcion: p.anfitrion?.descripcion ?? '',
+    anfitrionVerificado: p.anfitrion?.verificado ?? false,
+    municipio: p.municipio?.nombre ?? p.anfitrion?.municipio?.nombre ?? '',
+    departamento: p.municipio?.departamento?.nombre ?? p.anfitrion?.municipio?.departamento?.nombre ?? '',
+    direccion: p.direccionExacta ?? '',
     latitud: p.latitud,
     longitud: p.longitud,
+    puntoEncuentroLatitud: p.puntoEncuentroLatitud ?? null,
+    puntoEncuentroLongitud: p.puntoEncuentroLongitud ?? null,
+    destinoLatitud: p.destinoLatitud ?? null,
+    destinoLongitud: p.destinoLongitud ?? null,
+    estado: p.estado ?? '',
     imagenes: (p.imagenesPublicacions ?? [])
+      .filter(Boolean)
       .slice()
       .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
       .map((i) => i.url),
     capacidad: p.capacidadMaxima,
-    duracionHoras: experiencia?.duracionHoras ?? null,
-    habitaciones: p.habitaciones ?? null,
+    habitaciones: p.habitaciones ?? 0,
+    camas: p.camas ?? 0,
+    banos: p.banos ?? 0,
+    amenidades: (p.publicacionAmenidads ?? []).filter(Boolean).map((pa) => pa.amenidad?.nombre).filter(Boolean),
+    experiencias: experiencias.filter(Boolean).map((e) => ({
+      nombre: e.nombre,
+      descripcion: e.descripcion ?? '',
+      duracionHoras: e.duracionHoras ?? null,
+      precioAdicional: e.precioAdicional ?? null,
+    })),
+    horarios: (p.horarios ?? [])
+      .filter(Boolean)
+      .filter((h) => h.diaSemana !== 0)
+      .map((h) => ({
+        diaSemana: h.diaSemana ?? null,
+        fecha: h.fecha ?? null,
+        horaInicio: h.horaInicio,
+        horaFin: h.horaFin,
+        disponible: h.disponible ?? true,
+      })),
+    fechasDisponibles: (p.horarios ?? [])
+      .filter(Boolean)
+      .filter((h) => h.fecha && h.disponible !== false)
+      .map((h) => String(h.fecha).slice(0, 10)),
+    proximaFecha: (() => {
+      const hoy = new Date()
+      const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+      return (p.horarios ?? [])
+        .filter(Boolean)
+        .filter((h) => h.disponible !== false)
+        .map((h) => (h.fecha ? String(h.fecha).slice(0, 10) : null))
+        .filter((f) => f && f >= hoyStr)
+        .sort()
+        .shift() ?? null
+    })(),
+    horaEntrada: horarioEntradaSalida?.horaInicio || '',
+    horaSalida: horarioEntradaSalida?.horaFin || '',
     popular: false,
   }
 }
 
-export async function getExperiencias({ search = '', categoria = '', zona = '', tipo = '', precioMax = '' } = {}) {
-  const publicaciones = await api.get('/Publicacione')
+export async function getExperiencias({ search = '', categoria = '', zona = '', tipo = '', precioMax = '', locale } = {}) {
+  const publicaciones = await api.get(publicacionUrl('/Publicacione', locale))
   let resultados = publicaciones.map(mapearPublicacion)
 
   if (search) {
@@ -60,13 +123,13 @@ export async function getExperiencias({ search = '', categoria = '', zona = '', 
   return resultados
 }
 
-export async function getExperienciaById(id) {
-  const publicacion = await api.get(`/Publicacione/${id}`)
+export async function getExperienciaById(id, locale) {
+  const publicacion = await api.get(publicacionUrl(`/Publicacione/${id}`, locale))
   return publicacion ? mapearPublicacion(publicacion) : null
 }
 
-export async function getExperienciasPopulares(limite = 5) {
-  const publicaciones = await api.get('/Publicacione')
+export async function getExperienciasPopulares(limite = 5, locale) {
+  const publicaciones = await api.get(publicacionUrl('/Publicacione', locale))
   return publicaciones.map(mapearPublicacion).filter((e) => e.popular).slice(0, limite)
 }
 
@@ -82,5 +145,29 @@ export async function getDepartamentos() {
 
 export async function getCategorias() {
   const categorias = await api.get('/Categoria')
-  return categorias.map((c) => c.nombre)
+  // Each category comes with its own tipo ('experiencia'|'hospedaje'); keep the
+  // whole triple so consumers (catalog dropdown) can scope options by tipo.
+  return categorias.map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo }))
+}
+
+export async function getProximasExperiencias(limite = 3, locale) {
+  const publicaciones = await api.get(publicacionUrl('/Publicacione', locale))
+  const hoy = new Date()
+  const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(
+    hoy.getDate(),
+  ).padStart(2, '0')}`
+
+  return publicaciones
+    .map(mapearPublicacion)
+    .filter((e) => e.tipo === 'experiencia' && (e.fechasDisponibles ?? []).length > 0)
+    .map((e) => {
+      const proxima = (e.fechasDisponibles ?? [])
+        .filter((f) => f >= hoyStr)
+        .sort()
+        .shift()
+      return { ...e, proximaFecha: proxima || null }
+    })
+    .filter((e) => e.proximaFecha)
+    .sort((a, b) => a.proximaFecha.localeCompare(b.proximaFecha))
+    .slice(0, limite)
 }

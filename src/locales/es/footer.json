@@ -1,0 +1,19 @@
+{
+  "tagline": "Turismo y experiencias en El Salvador. Explora, reserva y vive el país con anfitriones locales.",
+  "explore": {
+    "heading": "Explorar"
+  },
+  "hosts": {
+    "heading": "Anfitriones",
+    "prompt": "¿Quieres ofrecer tu experiencia?"
+  },
+  "becomeHost": "Conviértete en anfitrión",
+  "follow": {
+    "heading": "Síguenos"
+  },
+  "legal": {
+    "copyright": "© {{year}} I Guana Travel SV. Todos los derechos reservados.",
+    "terms": "Términos y condiciones",
+    "privacy": "Privacidad"
+  }
+}

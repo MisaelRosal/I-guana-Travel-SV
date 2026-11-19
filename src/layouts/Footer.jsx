@@ -1,11 +1,19 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
+import { localePath } from '../i18n/routes.jsx'
+import { esAdmin } from '../services/anfitriones.js'
 
-const explorar = [
-  { to: '/', label: 'Inicio' },
-  { to: '/reservas', label: 'Mis reservas' },
-  { to: '/panel', label: 'Panel operador' },
-]
+const SESION_KEY = 'iguana_usuario'
+
+function leerSesion() {
+  try {
+    return JSON.parse(sessionStorage.getItem(SESION_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
 
 const redes = [
   {
@@ -26,22 +34,49 @@ const redes = [
 ]
 
 export default function Footer() {
+  // `header:nav.*` reuses the exact nav labels from the Header (shared chrome;
+  // AD-3 keeps one canonical string per concept instead of duplicated keys).
+  const { t } = useTranslation('footer')
+  const [usuario, setUsuario] = useState(leerSesion)
+
+  useEffect(() => {
+    const actualizar = () => setUsuario(leerSesion())
+    window.addEventListener('auth-change', actualizar)
+    window.addEventListener('storage', actualizar)
+    return () => {
+      window.removeEventListener('auth-change', actualizar)
+      window.removeEventListener('storage', actualizar)
+    }
+  }, [])
+
+  const rol = usuario?.rol ?? ''
+  // F5 (task 6.3, sibling of the Header nav): the Explore list emits
+  // locale-form URLs — the `key` stays the stable route key, not the URL.
+  const explorar = [{ key: 'catalog', to: localePath('catalog'), label: t('header:nav.home') }]
+  explorar.push({ key: 'reservations', to: localePath('reservations'), label: t('header:nav.reservations') })
+  if (rol === 'anfitrion' || rol === 'administrador') {
+    explorar.push({ key: 'panel', to: localePath('panel'), label: t('header:nav.operatorPanel') })
+  }
+  if (esAdmin(rol)) {
+    explorar.push({ key: 'admin', to: localePath('admin'), label: t('header:nav.adminPanel') })
+  }
+  explorar.push({ key: 'becomeHost', to: localePath('becomeHost'), label: t('becomeHost') })
+
   return (
-    <footer className="bg-cafe-oscuro text-crema/75 mt-16">
+    <footer className="bg-verde-bosque text-crema/75 mt-16">
       <div className="mx-auto max-w-7xl px-4 py-12 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <div>
           <Logo />
           <p className="mt-4 max-w-xs leading-relaxed">
-            Turismo y experiencias en El Salvador. Explorá, reservá y viví el país con
-            anfitriones locales.
+            {t('tagline')}
           </p>
         </div>
 
         <div>
-          <h3 className="text-white font-semibold mb-3">Explorar</h3>
+          <h3 className="text-white font-semibold mb-3">{t('explore.heading')}</h3>
           <ul className="space-y-2">
             {explorar.map((item) => (
-              <li key={item.to}>
+              <li key={item.key}>
                 <Link
                   to={item.to}
                   className="cursor-pointer transition-colors hover:text-verde-hoja"
@@ -54,17 +89,20 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="text-white font-semibold mb-3">Anfitriones</h3>
+          <h3 className="text-white font-semibold mb-3">{t('hosts.heading')}</h3>
           <p className="leading-relaxed">
-            ¿Quieres ofrecer tu experiencia?{' '}
-            <span className="cursor-pointer font-medium text-verde-hoja transition-colors hover:text-white">
-              Conviértete en anfitrión
-            </span>
+            {t('hosts.prompt')}{' '}
+            <Link
+              to={localePath('becomeHost')}
+              className="cursor-pointer font-medium text-verde-hoja transition-colors hover:text-white"
+            >
+              {t('becomeHost')}
+            </Link>
           </p>
         </div>
 
         <div>
-          <h3 className="text-white font-semibold mb-3">Síguenos</h3>
+          <h3 className="text-white font-semibold mb-3">{t('follow.heading')}</h3>
           <div className="flex items-center gap-3">
             {redes.map((red) => (
               <a
@@ -86,13 +124,13 @@ export default function Footer() {
 
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs sm:flex-row">
-          <p>© {new Date().getFullYear()} I Guana Travel SV. Todos los derechos reservados.</p>
+          <p>{t('legal.copyright', { year: new Date().getFullYear() })}</p>
           <p className="flex gap-4">
             <span className="cursor-pointer transition-colors hover:text-verde-hoja">
-              Términos y condiciones
+              {t('legal.terms')}
             </span>
             <span className="cursor-pointer transition-colors hover:text-verde-hoja">
-              Privacidad
+              {t('legal.privacy')}
             </span>
           </p>
         </div>

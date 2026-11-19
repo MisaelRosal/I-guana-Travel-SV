@@ -1,12 +1,494 @@
+import { useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Trans, useTranslation } from 'react-i18next'
+import { localePath } from '../../i18n/routes.jsx'
+import { api } from '../../services/api.js'
+import { restaurarSesion } from '../../services/session.js'
+import Toast from '../../components/Toast.jsx'
+import GoogleSignInButton from '../../components/GoogleSignInButton.jsx'
+
+const estilosInput =
+  'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/
+const soloTelefono = (valor) => valor.replace(/[^0-9+()\-\s]/g, '')
+
 export default function RegisterPage() {
+  // F2a (i18n-es-en): `auth` namespace (shared with AuthPage). Validation copy
+  // is frontend-owned and extracted; API `mensaje` passthrough stays verbatim.
+  const { t } = useTranslation('auth')
+  const [nombre, setNombre] = useState('')
+  const [apellido, setApellido] = useState('')
+  const [telefono, setTelefono] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmar, setConfirmar] = useState('')
+  const [verPassword, setVerPassword] = useState(false)
+  const [verConfirmar, setVerConfirmar] = useState(false)
+  const [errores, setErrores] = useState({})
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  // Email-verification step. The account is created on the server but stays
+  // dormant until the code sent to `emailRegistro` is entered, so no session
+  // exists yet and nothing is cached locally.
+  const [paso, setPaso] = useState('registro')
+  const [emailRegistro, setEmailRegistro] = useState('')
+  const [codigo, setCodigo] = useState('')
+  const [reenviando, setReenviando] = useState(false)
+
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  // Igual que el login: si venimos de una página concreta (p. ej. el detalle de
+  // una experiencia), volvemos ahí al terminar el registro; sin origen, al
+  // catálogo como antes. Soporta `location.state.from` y `?redirect=`.
+  const destino = location.state?.from || searchParams.get('redirect') || localePath('catalog')
+
+  const validar = () => {
+    const nuevos = {}
+
+    if (!nombre.trim()) {
+      nuevos.nombre = t('register.errors.nombreRequired')
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(nombre.trim())) {
+      nuevos.nombre = t('register.errors.nombreLetters')
+    }
+
+    if (!apellido.trim()) {
+      nuevos.apellido = t('register.errors.apellidoRequired')
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(apellido.trim())) {
+      nuevos.apellido = t('register.errors.apellidoLetters')
+    }
+
+    if (!telefono.trim()) {
+      nuevos.telefono = t('register.errors.telefonoRequired')
+    } else if (!/^[0-9+()\-\s]{7,}$/.test(telefono.trim())) {
+      nuevos.telefono = t('register.errors.telefonoChars')
+    } else {
+      const digitos = (telefono.match(/\d/g) ?? []).length
+      if (digitos < 8) {
+        nuevos.telefono = t('register.errors.telefonoDigits')
+      }
+    }
+
+    if (!email.trim()) {
+      nuevos.email = t('register.errors.emailRequired')
+    } else if (!emailRegex.test(email.trim())) {
+      nuevos.email = t('register.errors.emailInvalid')
+    }
+
+    if (!password) {
+      nuevos.password = t('register.errors.passwordRequired')
+    } else if (password.length < 6) {
+      nuevos.password = t('register.errors.passwordLength')
+    }
+
+    if (!confirmar) {
+      nuevos.confirmar = t('register.errors.confirmRequired')
+    } else if (password !== confirmar) {
+      nuevos.confirmar = t('register.errors.confirmMismatch')
+    }
+
+    setErrores(nuevos)
+    return nuevos
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    const erroresEncontrados = validar()
+    const camposInvalidos = Object.keys(erroresEncontrados)
+    if (camposInvalidos.length > 0) {
+      const primer = erroresEncontrados[camposInvalidos[0]]
+      setError(primer)
+      setToast({ tipo: 'error', mensaje: primer })
+      document.getElementById(camposInvalidos[0])?.focus()
+      return
+    }
+    setEnviando(true)
+    try {
+      // Create the account. Depending on the server's verification policy the
+      // response either completes registration (session cookies already set) or
+      // asks for the emailed code before any session exists.
+      const resultado = await api.post('/Auth/register', {
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        telefono: telefono.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      })
+      if (!resultado?.verificacionRequerida) {
+        // Server-authoritative rehydrate (POST body is not trusted as a session).
+        await restaurarSesion()
+        setToast({ tipo: 'exito', mensaje: resultado?.mensaje || t('register.successToast') })
+        setTimeout(() => navigate(destino), 1500)
+        return
+      }
+
+      setEmailRegistro(resultado.email)
+      setCodigo('')
+      setError('')
+      setPaso('verificar')
+      setToast({ tipo: 'exito', mensaje: resultado.mensaje })
+    } catch (err) {
+      const mensajeError = err.mensaje || err.message || t('register.genericError')
+      setError(mensajeError)
+      setToast({ tipo: 'error', mensaje: mensajeError })
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  // Signing up with Google skips the emailed-code step entirely: Google already
+  // verified the address, so the account is created active server-side.
+  const handleGoogleExito = () => {
+    setError('')
+    setToast({ tipo: 'exito', mensaje: t('register.successToast') })
+    setTimeout(() => navigate(destino), 1500)
+  }
+
+  const handleGoogleError = (err) => {
+    const mensaje = err?.mensaje || err?.message || t('register.genericError')
+    setError(mensaje)
+    setToast({ tipo: 'error', mensaje })
+  }
+
+  const soloDigitos = (valor) => valor.replace(/[^0-9]/g, '').slice(0, 6)
+
+  const handleVerificar = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (codigo.length !== 6) {
+      const mensaje = t('register.verify.codeLengthError')
+      setError(mensaje)
+      setToast({ tipo: 'error', mensaje })
+      document.getElementById('codigo')?.focus()
+      return
+    }
+    setEnviando(true)
+    try {
+      await api.post('/Auth/verificar-email', { email: emailRegistro, codigo })
+      await restaurarSesion()
+      setToast({ tipo: 'exito', mensaje: t('register.verify.verifiedToast') })
+      setTimeout(() => navigate(destino), 1500)
+    } catch (err) {
+      const mensajeError = err.mensaje || err.message || t('register.verify.verifyFailed')
+      setError(mensajeError)
+      setToast({ tipo: 'error', mensaje: mensajeError })
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const handleReenviar = async () => {
+    setError('')
+    setReenviando(true)
+    try {
+      const r = await api.post('/Auth/reenviar-verificacion', { email: emailRegistro })
+      setToast({ tipo: 'exito', mensaje: r?.mensaje || t('register.verify.resentToast') })
+    } catch (err) {
+      const mensajeError = err.mensaje || err.message || t('register.verify.resendFailed')
+      setError(mensajeError)
+      setToast({ tipo: 'error', mensaje: mensajeError })
+    } finally {
+      setReenviando(false)
+    }
+  }
+
+  const handleVolver = () => {
+    setPaso('registro')
+    setError('')
+    setCodigo('')
+  }
+
   return (
-    <main className="flex justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-xl border border-cafe-claro/60 bg-white p-8 text-center shadow-md">
-        <h1 className="text-2xl font-bold text-verde-bosque">Regístrate</h1>
-        <p className="mt-2 text-sm text-cafe">
-          Aquí irá el formulario de registro con usuario y contraseña.
+    <div className="flex justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="rounded-[22px] border border-cafe-claro/60 bg-white p-5 sm:p-8">
+          {paso === 'registro' ? (
+            <>
+          <h1 className="text-2xl font-bold text-verde-bosque">{t('register.heading')}</h1>
+          <p className="mt-1 text-sm text-cafe">{t('register.subtitle')}</p>
+
+          <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="nombre" className="mb-1 block text-sm font-semibold text-verde-bosque">
+                  {t('register.nombreLabel')}
+                </label>
+                <input
+                  id="nombre"
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => {
+                    setNombre(e.target.value)
+                    if (errores.nombre) setErrores((prev) => ({ ...prev, nombre: '' }))
+                  }}
+                  placeholder={t('register.nombrePlaceholder')}
+                  autoComplete="given-name"
+                  required
+                  aria-invalid={errores.nombre ? true : undefined}
+                  aria-describedby={errores.nombre ? 'nombre-error' : undefined}
+                  className={estilosInput}
+                />
+                {errores.nombre && <p id="nombre-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.nombre}</p>}
+              </div>
+              <div>
+                <label htmlFor="apellido" className="mb-1 block text-sm font-semibold text-verde-bosque">
+                  {t('register.apellidoLabel')}
+                </label>
+                <input
+                  id="apellido"
+                  type="text"
+                  value={apellido}
+                  onChange={(e) => {
+                    setApellido(e.target.value)
+                    if (errores.apellido) setErrores((prev) => ({ ...prev, apellido: '' }))
+                  }}
+                  placeholder={t('register.apellidoPlaceholder')}
+                  autoComplete="family-name"
+                  required
+                  aria-invalid={errores.apellido ? true : undefined}
+                  aria-describedby={errores.apellido ? 'apellido-error' : undefined}
+                  className={estilosInput}
+                />
+                {errores.apellido && <p id="apellido-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.apellido}</p>}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="telefono" className="mb-1 block text-sm font-semibold text-verde-bosque">
+                {t('register.telefonoLabel')}
+              </label>
+              <input
+                id="telefono"
+                type="tel"
+                value={telefono}
+                onChange={(e) => {
+                  setTelefono(soloTelefono(e.target.value))
+                  if (errores.telefono) setErrores((prev) => ({ ...prev, telefono: '' }))
+                }}
+                placeholder={t('register.telefonoPlaceholder')}
+                autoComplete="tel"
+                required
+                aria-invalid={errores.telefono ? true : undefined}
+                aria-describedby={errores.telefono ? 'telefono-error' : undefined}
+                className={estilosInput}
+              />
+              {errores.telefono && <p id="telefono-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.telefono}</p>}
+            </div>
+            <div>
+              <label htmlFor="email" className="mb-1 block text-sm font-semibold text-verde-bosque">
+                {t('register.emailLabel')}
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value.toLowerCase())
+                  if (errores.email) setErrores((prev) => ({ ...prev, email: '' }))
+                }}
+                placeholder={t('fields.emailPlaceholder')}
+                autoComplete="email"
+                required
+                aria-invalid={errores.email ? true : undefined}
+                aria-describedby={errores.email ? 'email-error' : undefined}
+                className={estilosInput}
+              />
+              {errores.email && <p id="email-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.email}</p>}
+            </div>
+            <div>
+              <label htmlFor="password" className="mb-1 block text-sm font-semibold text-verde-bosque">
+                {t('register.passwordLabel')}
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={verPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (errores.password) setErrores((prev) => ({ ...prev, password: '' }))
+                  }}
+                  placeholder={t('register.passwordPlaceholder')}
+                  autoComplete="new-password"
+                  required
+                  aria-invalid={errores.password ? true : undefined}
+                  aria-describedby={errores.password ? 'password-error' : undefined}
+                  className={estilosInput + ' pr-11'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setVerPassword((v) => !v)}
+                  aria-label={verPassword ? t('fields.hidePassword') : t('fields.showPassword')}
+                  className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-neutral-400 transition-colors hover:text-verde-bosque"
+                >
+                  {verPassword ? (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {errores.password && <p id="password-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.password}</p>}
+            </div>
+            <div>
+              <label htmlFor="confirmar" className="mb-1 block text-sm font-semibold text-verde-bosque">
+                {t('register.confirmLabel')}
+              </label>
+              <div className="relative">
+                <input
+                  id="confirmar"
+                  type={verConfirmar ? 'text' : 'password'}
+                  value={confirmar}
+                  onChange={(e) => {
+                    setConfirmar(e.target.value)
+                    if (errores.confirmar) setErrores((prev) => ({ ...prev, confirmar: '' }))
+                  }}
+                  placeholder={t('register.confirmPlaceholder')}
+                  autoComplete="new-password"
+                  required
+                  aria-invalid={errores.confirmar ? true : undefined}
+                  aria-describedby={errores.confirmar ? 'confirmar-error' : undefined}
+                  className={estilosInput + ' pr-11'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setVerConfirmar((v) => !v)}
+                  aria-label={verConfirmar ? t('fields.hidePassword') : t('fields.showPassword')}
+                  className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-neutral-400 transition-colors hover:text-verde-bosque"
+                >
+                  {verConfirmar ? (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {errores.confirmar && <p id="confirmar-error" role="alert" className="mt-1 text-xs font-medium text-red-600">{errores.confirmar}</p>}
+            </div>
+
+            {error && (
+              <p className="rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={enviando}
+              className="cursor-pointer w-full rounded-full bg-iguana-hondo px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+            >
+              {enviando ? t('register.submitting') : t('register.submit')}
+            </button>
+          </form>
+
+          <GoogleSignInButton
+            text="signup_with"
+            onExito={handleGoogleExito}
+            onError={handleGoogleError}
+          />
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-verde-bosque">{t('register.verify.heading')}</h1>
+              <p className="mt-1 text-sm text-cafe">
+                <Trans
+                  ns="auth"
+                  i18nKey="register.verify.intro"
+                  values={{ email: emailRegistro }}
+                  components={{ strong: <span className="font-semibold break-all text-verde-bosque" /> }}
+                />
+              </p>
+
+              <form className="mt-6 space-y-4" onSubmit={handleVerificar} noValidate>
+                <div>
+                  <label htmlFor="codigo" className="mb-1 block text-sm font-semibold text-verde-bosque">
+                    {t('register.verify.codeLabel')}
+                  </label>
+                  <input
+                    id="codigo"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={codigo}
+                    onChange={(e) => {
+                      setCodigo(soloDigitos(e.target.value))
+                      if (error) setError('')
+                    }}
+                    placeholder="123456"
+                    maxLength={6}
+                    required
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? 'codigo-error' : undefined}
+                    className={estilosInput + ' text-center text-2xl font-semibold tracking-[0.5em]'}
+                  />
+                </div>
+
+                {error && (
+                  <p id="codigo-error" role="alert" className="rounded-[22px] bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={enviando}
+                  className="cursor-pointer w-full rounded-full bg-iguana-hondo px-4 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors disabled:opacity-50"
+                >
+                  {enviando ? t('register.verify.submitting') : t('register.verify.submit')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleReenviar}
+                  disabled={reenviando}
+                  className="cursor-pointer w-full rounded-full border border-cafe-claro/60 bg-white px-4 py-2.5 font-semibold text-verde-bosque hover:bg-cafe-claro/20 transition-colors disabled:opacity-50"
+                >
+                  {reenviando ? t('register.verify.resending') : t('register.verify.resend')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleVolver}
+                  className="cursor-pointer w-full text-center text-sm font-semibold text-cafe transition-colors hover:text-iguana-hondo"
+                >
+                  {t('register.verify.back')}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+
+        <p className="mt-5 text-center text-sm text-cafe">
+          {t('register.haveAccount')}{' '}
+          <Link
+            to={`${localePath('login')}?redirect=${encodeURIComponent(destino)}`}
+            className="cursor-pointer font-semibold text-iguana-hondo transition-colors hover:text-verde-bosque"
+          >
+            {t('register.loginLink')}
+          </Link>
         </p>
       </div>
-    </main>
+
+      <Toast
+        mensaje={toast?.mensaje || ''}
+        tipo={toast?.tipo || 'exito'}
+        onCerrar={() => setToast(null)}
+      />
+    </div>
   )
 }

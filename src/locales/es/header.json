@@ -1,0 +1,42 @@
+{
+  "langToggle": {
+    "group": "Selecciona el idioma de la interfaz",
+    "spanish": "Español",
+    "english": "English",
+    "switchToEs": "Cambiar a español",
+    "switchToEn": "Cambiar a inglés"
+  },
+  "brand": {
+    "ariaLabel": "I Guana Travel SV"
+  },
+  "nav": {
+    "mainAria": "Navegación principal",
+    "home": "Inicio",
+    "reservations": "Mis reservas",
+    "operatorPanel": "Panel operador",
+    "adminPanel": "Panel admin"
+  },
+  "user": {
+    "profilePhotoAlt": "Foto de perfil",
+    "myAccount": "Mi cuenta",
+    "myProfile": "Mi perfil",
+    "signOut": "Cerrar sesión"
+  },
+  "session": {
+    "signIn": "Iniciar sesión"
+  },
+  "mobileMenu": {
+    "open": "Abrir menú",
+    "close": "Cerrar menú",
+    "label": "Menú móvil"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "markAll": "Marcar todas",
+    "empty": "Sin notificaciones todavía",
+    "error": "No se pudieron cargar las notificaciones",
+    "loading": "Cargando…",
+    "unreadLabel_one": "Notificaciones, 1 sin leer",
+    "unreadLabel_other": "Notificaciones, {{count}} sin leer"
+  }
+}

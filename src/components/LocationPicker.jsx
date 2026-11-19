@@ -1,0 +1,415 @@
+import { useEffect, useRef, useCallback, useState } from 'react'
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
+import { useTranslation } from 'react-i18next'
+import L from 'leaflet'
+// M9: marker assets come from the installed leaflet package through static
+// URL imports (same idiom as CatalogPage's hero image) — never an external CDN.
+import markerIconPng from 'leaflet/dist/images/marker-icon.png'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
+const markerIcon = new L.Icon({
+  iconUrl: markerIconPng,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+})
+
+// Optional tour waypoints: dependency-free colored dots via L.divIcon so the
+// meeting point (blue) and destination (red) read apart from the main pin.
+const dotIcon = (color) => L.divIcon({
+  className: '',
+  html: `<span style="display:block;width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.25)"></span>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+})
+
+export const puntoEncuentroIcon = dotIcon('#2563eb')
+export const destinoIcon = dotIcon('#dc2626')
+const puntoDotCls = 'h-2.5 w-2.5 shrink-0 rounded-full'
+
+function MapEventsHandler({ onMarkerMove, disabled }) {
+  useMapEvents({
+    click(e) {
+      if (!disabled) onMarkerMove(e.latlng)
+    },
+  })
+  return null
+}
+
+function DraggableMarker({ position, onMove, disabled }) {
+  const markerRef = useRef(null)
+
+  const onDragEnd = useCallback(() => {
+    const marker = markerRef.current
+    if (marker) {
+      const latlng = marker.getLatLng()
+      onMove(latlng)
+    }
+  }, [onMove])
+
+  if (!position) return null
+
+  return (
+    <Marker
+      ref={markerRef}
+      position={position}
+      icon={markerIcon}
+      draggable={!disabled}
+      eventHandlers={{ dragend: onDragEnd }}
+    />
+  )
+}
+
+function SearchBar({ onSearch, disabled }) {
+  const { t } = useTranslation('experiencia')
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  // Nominatim race guard: only the newest search may write results — a new
+  // search aborts the previous in-flight request.
+  const busquedaActivaRef = useRef(null)
+
+  const handleSearch = async () => {
+    if (!query.trim()) return
+    busquedaActivaRef.current?.abort()
+    const controller = new AbortController()
+    busquedaActivaRef.current = controller
+    setSearching(true)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', El Salvador')}&format=json&limit=5&addressdetails=1`,
+        { headers: { 'Accept-Language': 'es' }, signal: controller.signal }
+      )
+      const data = await res.json()
+      // A superseded request (aborted predecessor) must not paint its results.
+      if (controller.signal.aborted) return
+      setResults(data)
+    } catch (err) {
+      if (err?.name !== 'AbortError') console.error('Error buscando:', err)
+    } finally {
+      if (busquedaActivaRef.current === controller) {
+        busquedaActivaRef.current = null
+        setSearching(false)
+      }
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSearch()
+    }
+  }
+
+  const selectResult = (item) => {
+    const latlng = L.latLng(parseFloat(item.lat), parseFloat(item.lon))
+    onSearch(latlng)
+    setQuery(item.display_name.split(',').slice(0, 3).join(','))
+    setResults([])
+  }
+
+  return (
+    <div className="relative">
+      <div className="flex">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setResults([]) }}
+          onKeyDown={handleKeyDown}
+          placeholder={t('location.searchPlaceholder')}
+          disabled={disabled}
+          className="flex-1 rounded-l-full border border-r-0 border-neutral-300 bg-white px-3 py-2 text-sm focus:border-verde-hoja focus:outline-none focus:ring-1 focus:ring-verde-hoja/40 disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+        <button
+          type="button"
+          onClick={handleSearch}
+          disabled={searching || disabled}
+          className="cursor-pointer rounded-r-full bg-verde-bosque px-3 py-2 text-sm font-semibold text-white hover:bg-verde-bosque/90 disabled:opacity-50"
+        >
+          {searching ? '...' : t('location.search')}
+        </button>
+      </div>
+      {results.length > 0 && (
+        <ul className="absolute top-full left-0 z-[1000] mt-1 max-h-48 w-full overflow-y-auto rounded-[22px] border border-neutral-200 bg-white">
+          {results.map((item, i) => (
+            <li key={i} className="border-b border-neutral-100 last:border-0">
+              {/* A real button keeps the row in the tab order and answers Enter/Space. */}
+              <button
+                type="button"
+                onClick={() => selectResult(item)}
+                className="w-full cursor-pointer px-3 py-2 text-left text-sm text-neutral-700 hover:bg-verde-hoja/10"
+              >
+                {item.display_name.split(',').slice(0, 4).join(',')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+export default function LocationPicker({
+  departamentos,
+  municipios,
+  latitud,
+  longitud,
+  departamentoId,
+  municipioId,
+  // Waypoints (meeting point / destination) render only for experience forms;
+  // lodging keeps the plain single-location picker.
+  conPuntosTours = false,
+  puntoEncuentro,
+  destino,
+  onLocationChange,
+  onPuntoEncuentroChange,
+  onDestinoChange,
+  onDepartamentoChange,
+  onMunicipioChange,
+  disabled = false,
+}) {
+  const { t } = useTranslation('experiencia')
+  const { t: tp } = useTranslation('publicacion')
+  const defaultPosition = [13.7, -89.2]
+  const markerPosition = latitud && longitud ? [parseFloat(latitud), parseFloat(longitud)] : null
+  const puntoEncuentroPos = puntoEncuentro?.lat && puntoEncuentro?.lng
+    ? [parseFloat(puntoEncuentro.lat), parseFloat(puntoEncuentro.lng)]
+    : null
+  const destinoPos = destino?.lat && destino?.lng
+    ? [parseFloat(destino.lat), parseFloat(destino.lng)]
+    : null
+
+  // Active waypoint selector: null = the main location (current behavior);
+  // 'encuentro' | 'destino' route the next map click / search pick there.
+  // Experience forms start with 'encuentro' preselected: it is the mandatory
+  // point, so the very first click already sets it.
+  const [modo, setModo] = useState(conPuntosTours ? 'encuentro' : null)
+
+  // The modo follows tipo switches within the same modal lifetime (the picker
+  // is not remounted when the tipo radio flips).
+  useEffect(() => {
+    setModo(conPuntosTours ? 'encuentro' : null)
+  }, [conPuntosTours])
+
+  // ALL map picks must land inside El Salvador: the lodging pin AND the
+  // experience meeting point (bounding with a three-band northern ceiling —
+  // Guatemala's Jutiapa strip shares latitude with western SV). The destination
+  // stays unrestricted for international tours.
+  const dentroDeElSalvador = (lat, lng) => {
+    let topeNorte = 14.45
+    if (lng < -89.75) topeNorte = 14.26
+    else if (lng < -89.62) topeNorte = 14.31
+    return lat >= 13.08 && lat <= topeNorte && lng >= -90.18 && lng <= -87.62
+  }
+  const [avisoFuera, setAvisoFuera] = useState(null)
+
+  const reverseGeocode = useCallback(async (latlng) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latlng.lat}&lon=${latlng.lng}&format=json&addressdetails=1`,
+        { headers: { 'Accept-Language': 'es' } }
+      )
+      const data = await res.json()
+      const addr = data.address || {}
+
+      const state = addr.state || ''
+      const city = addr.city || addr.town || addr.village || addr.municipality || ''
+
+      const matchedDepto = departamentos.find((d) =>
+        d.nombre.toLowerCase().includes(state.toLowerCase()) ||
+        state.toLowerCase().includes(d.nombre.toLowerCase())
+      )
+
+      if (matchedDepto) {
+        onDepartamentoChange(String(matchedDepto.id))
+
+        setTimeout(() => {
+          const matchedMunicipio = municipios.find(
+            (m) =>
+              m.departamentoId === matchedDepto.id &&
+              (m.nombre.toLowerCase().includes(city.toLowerCase()) ||
+                city.toLowerCase().includes(m.nombre.toLowerCase()))
+          )
+          if (matchedMunicipio) {
+            onMunicipioChange(String(matchedMunicipio.id))
+          }
+        }, 150)
+      }
+    } catch (err) {
+      console.error('Error en reverse geocoding:', err)
+    }
+  }, [departamentos, municipios, onDepartamentoChange, onMunicipioChange])
+
+  const handleMarkerMove = useCallback(
+    (latlng) => {
+      if (disabled) return
+      const lat = String(latlng.lat.toFixed(6))
+      const lng = String(latlng.lng.toFixed(6))
+      if (conPuntosTours) {
+        // Experience map: the main lodging pin does not exist here; raw clicks
+        // without an active waypoint chip are ignored on purpose.
+        if (modo === 'encuentro') {
+          if (!dentroDeElSalvador(latlng.lat, latlng.lng)) {
+            setAvisoFuera('waypoints.meetingOutside')
+            return
+          }
+          setAvisoFuera(null)
+          onPuntoEncuentroChange(lat, lng)
+        } else if (modo === 'destino') {
+          onDestinoChange(lat, lng)
+        }
+        return
+      }
+      if (!dentroDeElSalvador(latlng.lat, latlng.lng)) {
+        // Same national bounding applies to the lodging pin itself.
+        setAvisoFuera('waypoints.locationOutside')
+        return
+      }
+      setAvisoFuera(null)
+      onLocationChange(lat, lng)
+      // An explicit department+municipality choice wins: the map only
+      // auto-fills them while the user has not picked both, so a click never
+      // silently replaces a selection made in the dropdowns.
+      if (!(departamentoId && municipioId)) reverseGeocode(latlng)
+    },
+    [
+      conPuntosTours,
+      modo,
+      onLocationChange,
+      onPuntoEncuentroChange,
+      onDestinoChange,
+      reverseGeocode,
+      disabled,
+      departamentoId,
+      municipioId,
+    ]
+  )
+
+  const autoGeocodeKey = `${latitud},${longitud}`
+  const [autoGeocodeIntento, setAutoGeocodeIntento] = useState(null)
+
+  useEffect(() => {
+    if (disabled) return
+    if (!latitud || !longitud) return
+    if (departamentoId && municipioId) return
+    const key = `${latitud},${longitud}`
+    if (autoGeocodeIntento === key) return
+    setAutoGeocodeIntento(key)
+    reverseGeocode(L.latLng(parseFloat(latitud), parseFloat(longitud)))
+  }, [latitud, longitud, departamentoId, municipioId, disabled, reverseGeocode, autoGeocodeIntento])
+
+  return (
+    <div className="overflow-hidden rounded-[22px] border border-neutral-200">
+      <SearchBar onSearch={handleMarkerMove} disabled={disabled} />
+      {avisoFuera && (
+        <p role="alert" className="w-full border-b border-neutral-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">
+          {tp(avisoFuera)}
+        </p>
+      )}
+      {conPuntosTours && (
+      <> {/* Waypoint mode toggles: whichever chip is active receives the next
+          map click / search pick; re-clicking it goes back to the main pick. */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-neutral-100 bg-neutral-50 px-3 py-2">
+        <p className="w-full text-xs font-medium text-cafe">{tp('waypoints.selectorHint')}</p>
+        <button
+          type="button"
+          onClick={() => setModo(modo === 'encuentro' ? null : 'encuentro')}
+          disabled={disabled}
+          aria-pressed={modo === 'encuentro'}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            modo === 'encuentro'
+              ? 'border-blue-600 bg-blue-600/10 text-blue-700'
+              : 'border-neutral-200 bg-white text-neutral-700 hover:border-blue-600/50'
+          }`}
+        >
+          <span className={`${puntoDotCls} bg-blue-600`} />
+          {tp('waypoints.meeting')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setModo(modo === 'destino' ? null : 'destino')}
+          disabled={disabled}
+          aria-pressed={modo === 'destino'}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            modo === 'destino'
+              ? 'border-red-600 bg-red-600/10 text-red-700'
+              : 'border-neutral-200 bg-white text-neutral-700 hover:border-red-600/50'
+          }`}
+        >
+          <span className={`${puntoDotCls} bg-red-600`} />
+          {tp('waypoints.destination')}
+        </button>
+      </div>
+      </>
+      )}
+      <MapContainer
+        center={markerPosition || defaultPosition}
+        zoom={markerPosition ? 14 : 9}
+        style={{ height: '300px', width: '100%' }}
+        scrollWheelZoom={!disabled}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <MapEventsHandler onMarkerMove={handleMarkerMove} disabled={disabled} />
+        <DraggableMarker position={markerPosition} onMove={handleMarkerMove} disabled={disabled || conPuntosTours} />
+        {conPuntosTours && puntoEncuentroPos && <Marker position={puntoEncuentroPos} icon={puntoEncuentroIcon} />}
+        {conPuntosTours && destinoPos && <Marker position={destinoPos} icon={destinoIcon} />}
+      </MapContainer>
+      {!conPuntosTours && markerPosition && (
+        <div className="bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+          {t('location.lat')}: {markerPosition[0]} | {t('location.lng')}: {markerPosition[1]}
+        </div>
+      )}
+      {conPuntosTours && (
+        <div className="grid gap-1 border-t border-neutral-100 bg-neutral-50 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className={`${puntoDotCls} bg-blue-600`} />
+            <span className="font-semibold text-neutral-700">{tp('waypoints.meeting')}</span>
+            {puntoEncuentroPos ? (
+              <>
+                <span className="text-neutral-600">{puntoEncuentroPos[0]}, {puntoEncuentroPos[1]}</span>
+                <button
+                  type="button"
+                  onClick={() => onPuntoEncuentroChange('', '')}
+                  disabled={disabled}
+                  aria-label={tp('waypoints.clearMeeting')}
+                  className="cursor-pointer rounded-full border border-neutral-300 bg-white px-2 py-0.5 font-semibold text-neutral-600 transition-colors hover:border-red-600/50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tp('waypoints.clear')}
+                </button>
+              </>
+            ) : (
+              <span className="text-cafe">{tp('waypoints.hintMeeting')}</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className={`${puntoDotCls} bg-red-600`} />
+            <span className="font-semibold text-neutral-700">{tp('waypoints.destination')}</span>
+            {destinoPos ? (
+              <>
+                <span className="text-neutral-600">{destinoPos[0]}, {destinoPos[1]}</span>
+                <button
+                  type="button"
+                  onClick={() => onDestinoChange('', '')}
+                  disabled={disabled}
+                  aria-label={tp('waypoints.clearDestination')}
+                  className="cursor-pointer rounded-full border border-neutral-300 bg-white px-2 py-0.5 font-semibold text-neutral-600 transition-colors hover:border-red-600/50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tp('waypoints.clear')}
+                </button>
+              </>
+            ) : (
+              <span className="text-cafe">{tp('waypoints.hint')}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

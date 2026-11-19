@@ -1,43 +1,346 @@
-import { useEffect, useState } from 'react'
-import { getCategorias, getDepartamentos } from '../../services/experiencias.js'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Trans, useTranslation } from 'react-i18next'
+import { getContentLocale } from '../../i18n/config.js'
+import { getCategorias, getDepartamentos, getExperiencias, getProximasExperiencias } from '../../services/experiencias.js'
+import { getResumenResenas } from '../../services/resenas.js'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
+import ExperienceCard from '../../components/ExperienceCard.jsx'
+import LoadingIguana from '../../components/LoadingIguana.jsx'
+import Toast from '../../components/Toast.jsx'
+import useFavoritos from '../../hooks/useFavoritos.js'
 
-const clasesSelect =
-  'rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 focus:border-azul focus:outline-none focus:ring-2 focus:ring-azul-cielo/40'
+// Cuántas próximas experiencias se piden y se muestran; el subtítulo de la
+// sección las interpola desde el recurso (AD-3), nunca por concatenación.
+const PROXIMAS_LIMITE = 3
 
-export default function CatalogPage() {
-  const [categorias, setCategorias] = useState([])
-  const [departamentos, setDepartamentos] = useState([])
+// Paginación clásica: 2 filas x 3 columnas = 6 tarjetas por página.
+const POR_PAGINA = 6
 
-  const [busqueda, setBusqueda] = useState('')
-  const [categoria, setCategoria] = useState('')
-  const [zona, setZona] = useState('')
-  const [tipo, setTipo] = useState('')
-  const [precioMax, setPrecioMax] = useState('')
+// Filtro desplegable con la estetica del sitio: pastilla redondeada con borde
+// cafe, panel de opciones estilo tarjeta (hover crema, seleccion verde-bosque
+// con tilde). Cierra con Escape o clic fuera. Sustituye al <select> nativo.
+function FiltroDesplegable({ etiqueta, placeholder, valor, opciones, onChange }) {
+  const { t, i18n } = useTranslation('catalog')
+  const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
+  const [abierto, setAbierto] = useState(false)
+  const contenedor = useRef(null)
 
   useEffect(() => {
-    getCategorias().then(setCategorias)
-    getDepartamentos().then(setDepartamentos)
-  }, [])
+    if (!abierto) return undefined
+    const cerrarFuera = (evento) => {
+      if (contenedor.current && !contenedor.current.contains(evento.target)) setAbierto(false)
+    }
+    const cerrarEscape = (evento) => {
+      if (evento.key === 'Escape') setAbierto(false)
+    }
+    document.addEventListener('mousedown', cerrarFuera)
+    document.addEventListener('keydown', cerrarEscape)
+    return () => {
+      document.removeEventListener('mousedown', cerrarFuera)
+      document.removeEventListener('keydown', cerrarEscape)
+    }
+  }, [abierto])
+
+  const seleccion = opciones.find((op) => op.valor === valor)
+  const todas = [{ valor: '', etiqueta: placeholder }, ...opciones]
+
+  return (
+    <div className="relative w-full sm:min-w-[190px] sm:flex-1" ref={contenedor}>
+      <button
+        type="button"
+        onClick={() => setAbierto((prev) => !prev)}
+        aria-expanded={abierto}
+        aria-haspopup="listbox"
+        className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-full border-2 bg-white px-4 py-2.5 text-left text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 ${
+          valor
+            ? 'border-verde-bosque text-verde-bosque'
+            : 'border-verde-bosque text-neutral-700 hover:border-verde-hoja'
+        }`}
+      >
+        <span className="min-w-0 truncate">
+          <span className="mr-1.5 text-xs font-bold opacity-70">{etiqueta}</span>
+          <span className={valor ? 'font-semibold' : 'text-neutral-500'}>
+            {seleccion ? seleccion.etiqueta : placeholder}
+          </span>
+        </span>
+        <svg
+          className={`h-4 w-4 shrink-0 transition-transform ${abierto ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {abierto && (
+        <div
+          role="listbox"
+          aria-label={t('filters.optionsFor', { label: etiqueta })}
+          className="absolute left-0 right-0 z-30 mt-1.5 max-h-64 overflow-auto rounded-[22px] border border-neutral-200 bg-white p-1.5"
+        >
+          {todas.map((op) => {
+            const activa = op.valor === valor
+            return (
+              <button
+                key={op.valor || '__cualquiera__'}
+                type="button"
+                role="option"
+                aria-selected={activa}
+                onClick={() => { onChange(op.valor); setAbierto(false) }}
+                className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-full px-3.5 py-2.5 text-left text-sm transition-colors ${
+                  activa
+                    ? 'bg-verde-bosque/10 font-semibold text-verde-bosque'
+                    : 'text-neutral-700 hover:bg-crema'
+                }`}
+              >
+                <span className="truncate">{op.etiqueta}</span>
+                {activa && (
+                  <svg
+                    className="h-4 w-4 shrink-0 text-verde-bosque"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Números para la barra de paginación: todos cuando hay 7 páginas o menos;
+// si no, el patrón compacto 1 … p-1 p p+1 … N, con "…" cubriendo cada hueco
+// mayor a una página consecutiva.
+function numerosDePagina(actual, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const marcados = [...new Set([1, actual - 1, actual, actual + 1, total])]
+    .filter((n) => n >= 1 && n <= total)
+    .sort((a, b) => a - b)
+  return marcados.flatMap((n, i) =>
+    i > 0 && n - marcados[i - 1] > 1 ? ['…', n] : [n],
+  )
+}
+
+export default function CatalogPage() {
+  const { t, i18n } = useTranslation('catalog')
+  const contentLocale = getContentLocale(i18n.resolvedLanguage || i18n.language)
+  const [categorias, setCategorias] = useState([])
+  const [departamentos, setDepartamentos] = useState([])
+  const [experiencias, setExperiencias] = useState([])
+  const [proximasExperiencias, setProximasExperiencias] = useState([])
+  const [cargando, setCargando] = useState(true)
+  // La lista de publicaciones y las opciones de filtro se cargan por separado:
+  // cada fallo lleva su propio estado, y ambos comparten el mismo bloque de error.
+  const [error, setError] = useState(false)
+  const [errorFiltros, setErrorFiltros] = useState(false)
+  const [reintento, setReintento] = useState(0)
+  // La pantalla de carga completa solo se muestra la primera vez que se entra.
+  // Al cambiar filtros o escribir en el buscador la lista se actualiza sin tapar la pantalla.
+  const primeraCarga = useRef(true)
+
+  // El estado de filtros y búsqueda vive en la URL: así el catálogo filtrado
+  // es enlazable, sobrevive a la recarga y funciona con Atrás/Adelante. La URL
+  // es la única fuente de verdad y los valores vacíos no se escriben.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const busqueda = searchParams.get('q') ?? ''
+  const categoria = searchParams.get('categoria') ?? ''
+  const zona = searchParams.get('zona') ?? ''
+  const tipo = searchParams.get('tipo') ?? ''
+  const precioMax = searchParams.get('precio') ?? ''
+  const orden = searchParams.get('orden') ?? ''
+
+  // M4 (debounce de refetch): la URL sigue siendo instantánea en cada tecla,
+  // pero la llamada al catálogo espera ~300ms a que la escritura termine.
+  // El ref está en true solo cuando el cambio viene del input: los cambios
+  // "externos" (filtros, Atrás/Adelante, deep link) se sincronizan al toque.
+  const RETARDO_BUSQUEDA_MS = 300
+  const [busquedaAplazada, setBusquedaAplazada] = useState(busqueda)
+  const tecleandoRef = useRef(false)
+
+  useEffect(() => {
+    if (!tecleandoRef.current) {
+      setBusquedaAplazada(busqueda)
+      return undefined
+    }
+    tecleandoRef.current = false
+    const temporizador = setTimeout(() => setBusquedaAplazada(busqueda), RETARDO_BUSQUEDA_MS)
+    return () => clearTimeout(temporizador)
+  }, [busqueda])
+
+  // Escribir en el buscador reemplaza la entrada actual (no llena el historial);
+  // elegir un filtro empuja una entrada nueva para que Atrás restaure el anterior.
+  const actualizarFiltro = (clave, valor, opciones) => {
+    setSearchParams((previos) => {
+      const siguiente = new URLSearchParams(previos)
+      if (valor) siguiente.set(clave, valor)
+      else siguiente.delete(clave)
+      return siguiente
+    }, opciones)
+  }
+
+  const limpiarFiltros = () => {
+    setSearchParams((previos) => {
+      const siguiente = new URLSearchParams(previos)
+      ;['q', 'categoria', 'zona', 'tipo', 'precio', 'orden'].forEach((clave) => siguiente.delete(clave))
+      return siguiente
+    })
+  }
+
+  // Mapa publicacionId -> { promedio, total }. Publicaciones sin reseñas no
+  // vienen en la respuesta y la tarjeta muestra "Aún no tiene reseñas".
+  const [resumenes, setResumenes] = useState({})
+  // En móvil los filtros van ocultos tras un botón "Filtros" hasta que se abre.
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
+  const filtrosActivos = [tipo, categoria, zona, precioMax].filter(Boolean).length
+
+  // Guardar publicación (Fase 2): cada card pinta su corazón desde el set de ids
+  // que trae el servidor para la sesión actual. El toggle es optimista; si la
+  // llamada falla, useFavoritos revierte el estado y sube `error`, que dispara
+  // el toast (sin sesión el propio hook ya manda a la pantalla de login).
+  const { guardado, alternar, error: errorFavoritos } = useFavoritos()
+  const { t: tExperiencia } = useTranslation('experiencia')
+  const [avisoFavoritos, setAvisoFavoritos] = useState(null)
+
+  useEffect(() => {
+    if (errorFavoritos > 0) setAvisoFavoritos(tExperiencia('favoritos.error'))
+  }, [errorFavoritos, tExperiencia])
+
+  useEffect(() => {
+    getCategorias().then(setCategorias).catch(() => setErrorFiltros(true))
+    getDepartamentos().then(setDepartamentos).catch(() => setErrorFiltros(true))
+  }, [reintento])
+
+  useEffect(() => {
+    let activo = true
+    if (primeraCarga.current) setCargando(true)
+
+    getExperiencias({ search: busquedaAplazada, categoria, zona, tipo, precioMax, locale: contentLocale })
+      .then((datos) => { if (activo) { setExperiencias(datos); setError(false) } })
+      .catch(() => { if (activo) setError(true) })
+      .finally(() => {
+        if (primeraCarga.current) {
+          primeraCarga.current = false
+          setCargando(false)
+        }
+      })
+
+    return () => { activo = false }
+  }, [busquedaAplazada, categoria, zona, tipo, precioMax, contentLocale, reintento])
+
+  useEffect(() => {
+    getProximasExperiencias(PROXIMAS_LIMITE, contentLocale)
+      .then(setProximasExperiencias)
+      .catch(() => setProximasExperiencias([]))
+  }, [contentLocale])
+
+  // Batch de promedios: una sola llamada con los ids visibles. Paginación
+  // clásica: solo los ids de la página actual (más la tira de próximas, que
+  // siempre se ve) — el payload deja de escalar con el tamaño del catálogo.
+  // "Valoradas" sigue necesitando TODOS los resúmenes: el orden client-side
+  // clasifica la lista completa. Derivado solo de estados estables
+  // (experiencias/proximas/paginaActual/orden, nunca de `visibles`, que
+  // depende de `resumenes`: eso causaría un bucle infinito de fetch).
+  const [paginaActual, setPaginaActual] = useState(1)
+  const idsResumen = useMemo(() => {
+    const base = orden === 'valoradas'
+      ? experiencias
+      : experiencias.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
+    return [...new Set([...base, ...proximasExperiencias].map((e) => e.id))]
+  }, [experiencias, proximasExperiencias, paginaActual, orden])
+  useEffect(() => {
+    if (idsResumen.length === 0) {
+      setResumenes({})
+      return undefined
+    }
+    let activo = true
+    getResumenResenas(idsResumen)
+      .then((data) => { if (activo) setResumenes(data || {}) })
+      .catch(() => { if (activo) setResumenes({}) })
+    return () => { activo = false }
+  }, [idsResumen])
+
+  const hayFiltros = Boolean(busqueda || categoria || zona || tipo || precioMax || orden)
+  // La lista de categorias del desplegable sigue al tipo elegido: sin tipo se
+  // muestran las de ambos tipos, y con tipo solo las del tipo correspondiente.
+  const opcionesCategoria = useMemo(() => categorias
+    .filter((c) => !tipo || c.tipo === tipo)
+    .map((c) => ({ valor: c.nombre, etiqueta: c.nombre })),
+  [categorias, tipo])
+
+  // Una categoria elegida bajo otro tipo ya no aplica (produciría siempre un
+  // resultado vacío): se borra el parámetro de la URL con el mismo estilo de
+  // actualizarFiltro. Se espera a que la lista cargue para no invalidar un
+  // enlace profundo mientras aún está vacía; sin tipo todas las categorías valen.
+  useEffect(() => {
+    if (!categoria || !tipo || categorias.length === 0) return undefined
+    const sigueValida = categorias.some((c) => c.nombre === categoria && c.tipo === tipo)
+    if (!sigueValida) actualizarFiltro('categoria', '')
+  }, [categoria, tipo, categorias])
+
+  const visibles = useMemo(() => {
+    if (orden === 'valoradas') {
+      return [...experiencias].sort((a, b) => {
+        const ra = resumenes[a.id]?.total > 0 ? resumenes[a.id].promedio : -1
+        const rb = resumenes[b.id]?.total > 0 ? resumenes[b.id].promedio : -1
+        return rb - ra
+      })
+    }
+    // Full catalog, always: with classic pagination the unfiltered view needs
+    // every publication (6 per page), not the old 6-card random teaser.
+    return experiencias
+  }, [experiencias, orden, resumenes])
+
+  // Classic pagination: the visible slice is a page of the full result set.
+  // Every filter/search/sort change (the same state the fetch effect watches,
+  // plus `orden` which reorders client-side) snaps the strip back to page 1;
+  // a shrinking dataset clamps the current page to the new last page.
+  const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA))
+
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [busquedaAplazada, categoria, zona, tipo, precioMax, orden, contentLocale, reintento])
+
+  useEffect(() => {
+    if (paginaActual > totalPaginas) setPaginaActual(totalPaginas)
+  }, [paginaActual, totalPaginas])
+
+  const handleBuscar = (e) => {
+    e.preventDefault()
+  }
+
+  const reintentar = () => {
+    setError(false)
+    setErrorFiltros(false)
+    setReintento((n) => n + 1)
+  }
 
   return (
     <div>
-      {/* Hero */}
+      <Toast
+        mensaje={avisoFavoritos}
+        tipo="error"
+        onCerrar={() => setAvisoFavoritos(null)}
+      />
       <section className="relative overflow-hidden bg-verde-bosque text-white">
         <img
           src={imagenHero}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-25"
         />
-        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:py-24">
-          <h1 className="text-4xl font-extrabold sm:text-5xl">
-            Descubrí las experiencias de <span className="text-verde-hoja">El Salvador</span>
+        <div className="relative mx-auto max-w-7xl px-4 py-12 sm:py-24">
+          <h1 className="text-3xl font-extrabold sm:text-5xl">
+            <Trans i18nKey="hero.title" ns="catalog" components={{ green: <span className="text-verde-hoja" /> }} />
           </h1>
-          <p className="mt-3 max-w-2xl text-lg text-crema/85">
-            Surf, café, volcanes y pueblos con encanto. Explorá, reservá y viví el país con
-            anfitriones locales.
+          <p className="mt-3 max-w-2xl text-base text-crema/85 sm:text-lg">
+            {t('hero.subtitle')}
           </p>
-          <form className="mt-8 flex max-w-2xl gap-2">
+
+          <form onSubmit={handleBuscar} className="mt-8 flex max-w-2xl flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
               <svg
                 className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cafe"
@@ -55,16 +358,22 @@ export default function CatalogPage() {
               <input
                 type="search"
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por nombre o descripción…"
-                className="w-full rounded-lg border-2 border-cafe-claro bg-white py-3 pl-11 pr-4 text-neutral-800 shadow-md placeholder:text-neutral-500 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
+                onChange={(e) => {
+                  // Keystrokes mark the next URL change as typed so the
+                  // refetch (not the URL sync) waits out the debounce window.
+                  tecleandoRef.current = true
+                  actualizarFiltro('q', e.target.value, { replace: true })
+                }}
+                aria-label={t('search.label')}
+                placeholder={t('search.placeholder')}
+                className="w-full rounded-full border-2 border-verde-bosque bg-white py-3 pl-11 pr-4 text-neutral-800 placeholder:text-neutral-500 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors"
               />
             </div>
             <button
               type="submit"
-              className="rounded-lg bg-terracota px-6 py-3 font-semibold text-white hover:bg-verde-hoja transition-colors"
+              className="rounded-full bg-iguana-hondo px-6 py-3 font-semibold text-white hover:bg-verde-bosque transition-colors sm:w-auto"
             >
-              Buscar
+              {t('search.button')}
             </button>
           </form>
         </div>
@@ -72,49 +381,265 @@ export default function CatalogPage() {
 
       {/* Filtros y listado */}
       <section className="mx-auto max-w-7xl px-4 py-10">
-        <div className="mb-6 grid grid-cols-2 gap-3 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-3 lg:grid-cols-5">
-          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className={clasesSelect}>
-            <option value="">Todas las categorías</option>
-            {categorias.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <select value={zona} onChange={(e) => setZona(e.target.value)} className={clasesSelect}>
-            <option value="">Todo El Salvador</option>
-            {departamentos.map((d) => (
-              <option key={d.nombre} value={d.nombre}>{d.nombre}</option>
-            ))}
-          </select>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={clasesSelect}>
-            <option value="">Cualquier tipo</option>
-            <option value="experiencia">Experiencia</option>
-            <option value="hospedaje">Hospedaje</option>
-          </select>
-          <select
-            value={precioMax}
-            onChange={(e) => setPrecioMax(e.target.value)}
-            className={clasesSelect}
-          >
-            <option value="">Cualquier precio</option>
-            <option value="30">Hasta $30</option>
-            <option value="40">Hasta $40</option>
-            <option value="50">Hasta $50</option>
-            <option value="80">Hasta $80</option>
-          </select>
+        <div className="mb-6 rounded-[22px] border border-verde-bosque/30 bg-white p-4 sm:p-5">
+          {/* Botón tipo menú de filtros: visible SOLO en móvil, colapsa/expande los controles */}
           <button
-            className="rounded-lg bg-azul px-4 py-2 text-sm font-semibold text-white hover:bg-azul-cielo transition-colors"
+            type="button"
+            onClick={() => setFiltrosAbiertos((prev) => !prev)}
+            aria-expanded={filtrosAbiertos}
+            aria-controls="filtros-controles"
+            className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-full border-2 border-verde-bosque bg-verde-bosque/5 px-4 py-3 text-sm font-bold text-verde-bosque transition-colors hover:bg-verde-bosque/10 focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 sm:hidden"
           >
-            Filtrar
+            <span className="flex items-center gap-2">
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              {filtrosActivos > 0 ? t('filters.buttonCount', { n: filtrosActivos }) : t('filters.button')}
+            </span>
+            <svg
+              className={`h-4 w-4 shrink-0 transition-transform ${filtrosAbiertos ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
           </button>
+
+          <p className="mb-3 hidden text-xs font-bold text-verde-bosque sm:block">{t('filters.heading')}</p>
+
+          <div
+            id="filtros-controles"
+            className={`${filtrosAbiertos ? 'flex' : 'hidden'} mt-3 flex-col gap-3 sm:mt-0 sm:flex sm:flex-row sm:flex-wrap sm:items-center`}
+          >
+            {/* Tipo: control segmentado con la paleta del sitio */}
+            <div
+              role="group"
+              aria-label={t('filters.typeGroup')}
+              className="flex w-full flex-nowrap items-center gap-1 rounded-full border-2 border-verde-bosque bg-verde-bosque/5 p-1.5 sm:w-fit sm:flex-none"
+            >
+              {[
+                { valor: '', etiqueta: t('type.all') },
+                { valor: 'experiencia', etiqueta: t('type.experiences') },
+                { valor: 'hospedaje', etiqueta: t('type.stays') },
+              ].map((op) => (
+                <button
+                  key={op.valor || 'todos'}
+                  type="button"
+                  onClick={() => actualizarFiltro('tipo', op.valor)}
+                  aria-pressed={tipo === op.valor}
+                  className={`flex-none cursor-pointer whitespace-nowrap rounded-full px-1.5 py-1.5 text-xs transition-colors sm:px-2.5 sm:text-sm ${
+                    tipo === op.valor
+                      ? 'bg-verde-bosque font-semibold text-white'
+                      : 'text-verde-bosque hover:bg-white'
+                  }`}
+                >
+                  {op.etiqueta}
+                </button>
+              ))}
+            </div>
+
+            <FiltroDesplegable
+              etiqueta={t('filters.categoryLabel')}
+              placeholder={t('filters.categoryPlaceholder')}
+              valor={categoria}
+              opciones={opcionesCategoria}
+              onChange={(valor) => actualizarFiltro('categoria', valor)}
+            />
+            <FiltroDesplegable
+              etiqueta={t('filters.zoneLabel')}
+              placeholder={t('filters.zonePlaceholder')}
+              valor={zona}
+              opciones={departamentos.map((d) => ({ valor: d.nombre, etiqueta: d.nombre }))}
+              onChange={(valor) => actualizarFiltro('zona', valor)}
+            />
+            <FiltroDesplegable
+              etiqueta={t('filters.priceLabel')}
+              placeholder={t('filters.pricePlaceholder')}
+              valor={precioMax}
+              opciones={[30, 40, 50, 80].map((max) => ({
+                valor: String(max),
+                etiqueta: t('filters.priceUpTo', { max }),
+              }))}
+              onChange={(valor) => actualizarFiltro('precio', valor)}
+            />
+            <FiltroDesplegable
+              etiqueta={t('filters.sortLabel')}
+              placeholder={t('filters.sortPlaceholder')}
+              valor={orden}
+              opciones={[{ valor: 'valoradas', etiqueta: t('filters.sortBestRated') }]}
+              onChange={(valor) => actualizarFiltro('orden', valor)}
+            />
+            {hayFiltros && (
+              <div className="flex w-full justify-center">
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  className="w-fit cursor-pointer whitespace-nowrap rounded-full border-2 border-dashed border-verde-bosque px-4 py-2.5 text-sm font-semibold text-verde-bosque transition-colors hover:border-verde-bosque hover:bg-verde-bosque hover:text-white"
+                >
+                  {t('filters.clear')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex h-72 items-center justify-center rounded-xl border-2 border-dashed border-cafe-claro bg-white/60 text-cafe">
-          <p className="px-6 text-center">
-            <span className="block text-lg font-semibold text-verde-bosque">Listado de experiencias</span>
-            El listado de tarjetas se integrará con el backend.
-          </p>
-        </div>
+        {cargando ? (
+          <LoadingIguana fullscreen message={t('status.loading')} />
+        ) : error || errorFiltros ? (
+          <div
+            role="alert"
+            className="flex h-72 flex-col items-center justify-center gap-4 rounded-[22px] border-2 border-dashed border-red-200 bg-red-50/60 px-6 text-center"
+          >
+            <p className="text-lg font-semibold text-red-700">{t('status.error')}</p>
+            <button
+              type="button"
+              onClick={reintentar}
+              className="cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
+            >
+              {t('status.retry')}
+            </button>
+          </div>
+        ) : visibles.length === 0 ? (
+          <div className="flex h-72 items-center justify-center rounded-[22px] border-2 border-dashed border-cafe-claro bg-white/60 text-cafe">
+            <p className="px-6 text-center">
+              <span className="block text-lg font-semibold text-verde-bosque">{t('status.emptyTitle')}</span>
+              {busqueda || categoria || zona || tipo || precioMax
+                ? t('status.emptyWithFilters')
+                : t('status.emptyNoContent')}
+            </p>
+          </div>
+        ) : (
+          <div>
+            {/* Paginated grid: one page of 6 cards (2 rows x 3 columns on
+              desktop). Same list/listitem semantics as before. */}
+            <div
+              role="list"
+              aria-label={t('pagination.label')}
+              className="grid grid-cols-1 gap-6 py-4 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {visibles
+                .slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
+                .map((e) => (
+                  <div key={e.id} role="listitem">
+                    <ExperienceCard
+                      experiencia={e}
+                      proximaFecha={e.proximaFecha}
+                      resena={resumenes[e.id]}
+                      guardado={guardado(e.id)}
+                      onToggleGuardado={alternar}
+                    />
+                  </div>
+                ))}
+            </div>
+
+            {totalPaginas > 1 && (
+              <nav
+                aria-label={t('pagination.pageOf', { current: paginaActual, total: totalPaginas })}
+                className="mt-8 flex flex-wrap items-center justify-center gap-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                  disabled={paginaActual === 1}
+                  aria-label={t('pagination.previous')}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-verde-bosque text-verde-bosque transition-colors hover:bg-verde-bosque hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-verde-bosque"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  >
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
+
+                {numerosDePagina(paginaActual, totalPaginas).map((n, i) =>
+                  n === '…' ? (
+                    <span key={`puntos-${i}`} aria-hidden="true" className="px-1 text-cafe">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setPaginaActual(n)}
+                      aria-label={t('pagination.page', { page: n })}
+                      aria-current={n === paginaActual ? 'page' : undefined}
+                      className={`flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-full border-2 border-verde-bosque px-1 text-sm transition-colors ${
+                        n === paginaActual
+                          ? 'bg-verde-bosque font-bold text-white'
+                          : 'text-verde-bosque hover:bg-verde-bosque/10'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ),
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+                  disabled={paginaActual === totalPaginas}
+                  aria-label={t('pagination.next')}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-verde-bosque text-verde-bosque transition-colors hover:bg-verde-bosque hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-verde-bosque"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  >
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+              </nav>
+            )}
+          </div>
+        )}
       </section>
+
+      {/* Próximas experiencias */}
+      {proximasExperiencias.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 pb-14">
+          <div className="rounded-[22px] border border-verde-hoja/30 bg-cafe-claro p-6 sm:p-8">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-extrabold text-verde-bosque">
+                  {t('upcoming.title')}
+                </h2>
+                <p className="mt-1 text-sm text-cafe">
+                  {t('upcoming.subtitle', { count: proximasExperiencias.length })}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {proximasExperiencias.map((e) => (
+                <ExperienceCard
+                  key={e.id}
+                  experiencia={e}
+                  proximaFecha={e.proximaFecha}
+                  resena={resumenes[e.id]}
+                  guardado={guardado(e.id)}
+                  onToggleGuardado={alternar}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

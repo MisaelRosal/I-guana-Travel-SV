@@ -1,0 +1,38 @@
+{
+  "skipToContent": "Saltar al contenido",
+  "brand": {
+    "name": "I Guana Travel SV"
+  },
+  "loading": {
+    "default": "Cargando…"
+  },
+  "toast": {
+    "close": "Cerrar"
+  },
+  "modal": {
+    "close": "Cerrar"
+  },
+  "actions": {
+    "cancel": "Cancelar",
+    "deleteQuestion": "¿Eliminar?",
+    "deleteYes": "Sí, eliminar"
+  },
+  "calendar": {
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente"
+  },
+  "banner": {
+    "dismiss": "Descartar mensaje"
+  },
+  "notFound": {
+    "title": "No encontramos la página",
+    "body": "La dirección que buscás no existe o fue movida a otra sección.",
+    "back": "Volver al catálogo"
+  },
+  "stars": {
+    "ariaLabel": "{{valor}} de 5 estrellas",
+    "pickerAria": "Calificación de 0 a 5 estrellas",
+    "star_one": "{{count}} estrella",
+    "star_other": "{{count}} estrellas"
+  }
+}

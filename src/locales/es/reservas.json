@@ -1,0 +1,149 @@
+{
+  "heading": "Mis reservas",
+  "subtitle": "Aquí vas a encontrar todas tus reservas.",
+  "gate": {
+    "body": "Debes iniciar sesión para ver tus reservas.",
+    "cta": "Iniciar sesión"
+  },
+  "chip": {
+    "pendiente": "Pendiente",
+    "confirmada": "Confirmada",
+    "cancelada": "Cancelada",
+    "completada": "Completada"
+  },
+  "cupos_one": "{{count}} cupo",
+  "cupos_other": "{{count}} cupos",
+  "bookingRef": "Reserva #{{id}}",
+  "status": {
+    "loading": "Cargando tus reservas…",
+    "error": "No se pudieron cargar tus reservas.",
+    "retry": "Reintentar",
+    "emptyTitle": "Todavía no tienes reservas",
+    "emptyBody": "Cuando hagas una reserva, la vas a poder ver aquí.",
+    "emptyBodyHost": "Cuando tus huéspedes reserven, vas a poder ver sus reservas aquí.",
+    "exploreCta": "Explorar experiencias"
+  },
+  "sections": {
+    "upcoming": "Futuras reservas",
+    "cancelled": "Reservas canceladas",
+    "completed": "Reservas completadas",
+    "emptyUpcoming": "No tienes futuras reservas.",
+    "emptyCancelled": "No tienes reservas canceladas.",
+    "emptyCompleted": "No tienes reservas completadas."
+  },
+  "calendar": {
+    "hint": "Solo se pueden elegir las fechas que ofrece el anfitrión."
+  },
+  "edit": {
+    "title": "Editar reserva",
+    "startLabel": "Entrada",
+    "endLabel": "Salida",
+    "currentDate": "Fecha actual: {{date}}",
+    "noDates": "Esta experiencia todavía no tiene fechas disponibles.",
+    "capacityHint_one": "Capacidad máxima: {{count}} persona",
+    "capacityHint_other": "Capacidad máxima: {{count}} personas",
+    "peopleUnit_one": "persona",
+    "peopleUnit_other": "personas",
+    "ariaLess": "Menos personas",
+    "ariaMore": "Más personas",
+    "summaryNights_one": "{{count}} noche",
+    "summaryNights_other": "{{count}} noches",
+    "summaryGuests_one": "{{count}} persona",
+    "summaryGuests_other": "{{count}} personas",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "errorPickDate": "Elige una fecha de inicio.",
+    "errorEndBefore": "La fecha de fin no puede ser anterior a la de inicio.",
+    "errorCapacity_one": "La capacidad máxima es de {{count}} persona.",
+    "errorCapacity_other": "La capacidad máxima es de {{count}} personas.",
+    "toastSaved": "Reserva actualizada.",
+    "toastError": "Error al actualizar la reserva."
+  },
+  "pay": {
+    "title": "Simular pago",
+    "methodLabel": "Método de pago",
+    "methods": {
+      "credit": "Tarjeta de crédito",
+      "debit": "Tarjeta de débito",
+      "paypal": "PayPal"
+    },
+    "simulatedNote": "Pago simulado: no se realiza ningún cobro real.",
+    "paypalNotice": "Serás redirigido a PayPal para completar el pago.",
+    "submit": "Confirmar pago",
+    "processing": "Procesando pago...",
+    "errorMethod": "Seleccioná un método de pago",
+    "errorGeneric": "Error al procesar el pago"
+  },
+  "cancel": {
+    "title": "Cancelar reserva",
+    "reasonStarted": "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy.",
+    "reasonCompleted": "No se puede cancelar una reserva que ya fue completada.",
+    "question": "¿Estás seguro que deseas cancelar esta reserva?",
+    "freeNote": "Esta reserva fue reprogramada por el anfitrión: podés cancelarla sin restricciones.",
+    "checkIn": "Check-in: {{date}}",
+    "confirm": "Sí, cancelar reserva",
+    "processing": "Cancelando...",
+    "keep": "No, mantener",
+    "errorGeneric": "Error al cancelar la reserva"
+  },
+  "deleteConfirm": {
+    "dialogLabel": "Confirmar eliminación",
+    "heading": "¿Eliminar reserva?",
+    "body": "Vas a eliminar la reserva de <b>{{title}}</b> para el <b>{{date}}</b>. Esta acción no se puede deshacer.",
+    "deleting": "Eliminando...",
+    "toastDone": "Reserva eliminada.",
+    "toastError": "Error al eliminar la reserva."
+  },
+  "toast": {
+    "paySuccess": "Pago realizado exitosamente.",
+    "cancelSuccess": "Reserva cancelada exitosamente."
+  },
+  "tabs": {
+    "reservations": "Reservaciones",
+    "reservationStatus": "Estado",
+    "actions": "Acciones"
+  },
+  "reviews": {
+    "button": "Dejar reseña",
+    "sent": "Reseña enviada · {{rating}}/5",
+    "modalTitle": "Dejar reseña",
+    "question": "¿Cómo estuvo tu experiencia?",
+    "rateGuestTitle": "Calificar huésped",
+    "rateGuestQuestion": "¿Cómo estuvo el huésped?",
+    "commentLabel": "Comentario",
+    "commentOptional": "(opcional)",
+    "commentPlaceholder": "Contá qué te gustó, cómo fue la atención, consejos para otros viajeros…",
+    "rating": {
+      "0": "Sin calificación",
+      "1": "1 estrella",
+      "2": "2 estrellas",
+      "3": "3 estrellas",
+      "4": "4 estrellas",
+      "5": "5 estrellas"
+    },
+    "submitting": "Enviando…",
+    "submit": "Enviar reseña",
+    "error": "Error al enviar la reseña",
+    "toastSuccess": "¡Gracias! Tu reseña fue enviada.",
+    "rateGuest": "Calificar huésped",
+    "notEligible": "No elegible"
+  },
+  "card": {
+    "dateLabel": "Fecha",
+    "peopleLabel": "Personas",
+    "totalLabel": "Total",
+    "categoryLabel": "Categoría: {{categoria}}",
+    "category": "Categoría",
+    "persons_one": "{{count}} persona",
+    "persons_other": "{{count}} personas",
+    "noteCancelled": "Esta reserva ya fue cancelada.",
+    "noteShortConfirmed": "Pagaste: falta menos de un día, ya no se puede editar ni cancelar.",
+    "noteGraceExpired": "La hora para pagar venció. Esta reserva se cancelará automáticamente.",
+    "noteBlockedSoon": "Falta un día o menos para tu entrada. Por eso esta reserva ya no se puede editar ni eliminar.",
+    "noteRescheduled": "El anfitrión cambió la fecha de esta experiencia y tu reserva se movió con ella. Podés cancelarla sin restricciones si no te sirve.",
+    "noteRescheduledFrom": "El anfitrión movió esta reserva del {{date}} a la nueva fecha. Podés cancelarla sin restricciones si no te sirve.",
+    "pay": "Pagar",
+    "edit": "Editar",
+    "delete": "Eliminar"
+  }
+}

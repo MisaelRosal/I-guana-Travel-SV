@@ -1,0 +1,249 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { StrictMode } from 'react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import '@testing-library/jest-dom/vitest'
+import App from '../../App.jsx'
+import i18n from '../config.js'
+
+// F0 (i18n-es-en): mounted-runtime behavior (specs/i18n-runtime/spec.md).
+// Renders the real <App/> (provider + router + Header + catalog) under jsdom:
+//   * Header exposes an ES/EN pill with localized aria-labels (header ns);
+//   * activating EN re-renders everything without a page reload;
+//   * <html lang> follows the active language;
+//   * `iguana_locale` is written exactly once per `languageChanged`;
+//   * a `storage` event for `iguana_locale` syncs this instance (cross-tab)
+//     while foreign keys are ignored and the existing sessionStorage auth
+//     listeners (Header.jsx / Footer.jsx) keep working.
+
+const KEY = 'iguana_locale'
+const USER = { id: 1, nombre: 'Ana', apellido: 'Test', email: 'ana@test.sv', rol: 'viajero' }
+
+function jsonResponse(body, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: status === 401 ? 'Unauthorized' : 'OK',
+    json: async () => body,
+  }
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  sessionStorage.clear()
+  // The catalog + Header session revalidation hit /api; answer with empty
+  // lists and an authenticated user so no test depends on the network.
+  globalThis.fetch = vi.fn(async (url) => {
+    if (String(url).includes('/Auth/me')) return jsonResponse(USER)
+    return jsonResponse([])
+  })
+})
+
+afterEach(async () => {
+  cleanup()
+  if (i18n.language !== 'es') {
+    await i18n.changeLanguage('es')
+  }
+  localStorage.clear()
+  sessionStorage.clear()
+})
+
+describe('ES/EN toggle pill in the Header (desktop)', () => {
+  it('shows both languages with localized aria-labels and switches to EN without a reload', async () => {
+    render(<App />)
+
+    // ES active: the trigger carries the group label; the options carry the
+    // localized per-language aria labels (dropdown, not the old two pills).
+    const trigger = screen.getByRole('button', { name: 'Selecciona el idioma de la interfaz' })
+    expect(trigger).toBeInTheDocument()
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: 'Cambiar a inglés' }))
+
+    // Same document, no reload: localized chrome re-renders in English.
+    await waitFor(() => {
+      expect(i18n.language).toBe('en')
+      expect(document.documentElement).toHaveAttribute('lang', 'en')
+    })
+
+    // Preference persisted to localStorage under the iguana_* convention.
+    expect(localStorage.getItem(KEY)).toBe('en')
+
+    // The group label now exists in the EN overlay too (dropdown UI): the
+    // trigger re-renders in full English.
+    expect(screen.getByRole('group', { name: 'Choose the interface language' })).toBeInTheDocument()
+
+    // F1 landed the catalog pilot content: page chrome now localizes through
+    // resources too, so under EN the hero renders the English catalog resource.
+    const heading = await screen.findByRole('heading', { level: 1 })
+    expect(heading).toHaveTextContent('Discover the experiences of El Salvador')
+  })
+
+  it('localizes the header nav and footer chrome from resources under EN (F1 pilot)', async () => {
+    // Logged-out chrome: /Auth/me answers 401 so the Sign in control is stable.
+    globalThis.fetch = vi.fn(async (url) =>
+      String(url).includes('/Auth/me') ? jsonResponse({}, 401) : jsonResponse([]),
+    )
+    await i18n.changeLanguage('en')
+    render(<App />)
+
+    // Spec scenario "Localized accessibility names": the header nav's
+    // accessible names are the English strings from the header resource.
+    const mainNav = await screen.findByRole('navigation', { name: 'Main navigation' })
+    expect(within(mainNav).getByRole('link', { name: 'Home' })).toBeInTheDocument()
+    expect(within(mainNav).getByRole('link', { name: 'My bookings' })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Sign in' })).toBeInTheDocument()
+
+    // Footer chrome comes from the footer resource (EN overlay).
+    const footer = screen.getByRole('contentinfo')
+    expect(within(footer).getByText('Explore')).toBeInTheDocument()
+    expect(within(footer).getByText('Follow us')).toBeInTheDocument()
+    expect(within(footer).getByText(/All rights reserved\./)).toBeInTheDocument()
+    expect(within(footer).getAllByRole('link', { name: 'Become a host' })).toHaveLength(2)
+  })
+
+  it('writes iguana_locale exactly once per languageChanged (StrictMode-safe single listener)', async () => {
+    // StrictMode double-mounts effects: a per-component persistence listener
+    // would write twice here. Config registers it once at module scope.
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    )
+
+    const spy = vi.spyOn(Storage.prototype, 'setItem')
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Selecciona el idioma de la interfaz' }))
+      fireEvent.click(screen.getByRole('option', { name: 'Cambiar a inglés' }))
+      await waitFor(() => expect(localStorage.getItem(KEY)).toBe('en'))
+      const localeWrites = spy.mock.calls.filter(([key]) => key === KEY)
+      expect(localeWrites).toHaveLength(1)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('reloads keep the stored choice: EN is restored on mount', async () => {
+    localStorage.setItem(KEY, 'en')
+    await i18n.changeLanguage('en')
+
+    render(<App />)
+
+    // The dropdown trigger re-renders fully in EN (group label is now part of
+    // the EN overlay).
+    expect(await screen.findByRole('group', { name: 'Choose the interface language' })).toBeInTheDocument()
+    expect(document.documentElement).toHaveAttribute('lang', 'en')
+  })
+})
+
+describe('cross-tab synchronization via storage events', () => {
+  it('adopts the language broadcast by another tab for iguana_locale', async () => {
+    render(<App />)
+
+    // `storage` only fires in the OTHER tabs; the test simulates tab B receiving it.
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: 'en' }))
+
+    await waitFor(() => {
+      expect(i18n.language).toBe('en')
+      expect(document.documentElement).toHaveAttribute('lang', 'en')
+      expect(screen.getByRole('group', { name: 'Choose the interface language' })).toBeInTheDocument()
+    })
+  })
+
+  it('ignores storage events for foreign keys', async () => {
+    render(<App />)
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'iguana_usuario', newValue: 'en' }))
+    window.dispatchEvent(new StorageEvent('storage', { key: null, newValue: 'en' }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(i18n.language).toBe('es')
+    expect(document.documentElement).toHaveAttribute('lang', 'es')
+  })
+
+  it('keeps the existing sessionStorage auth listeners working through a locale change', async () => {
+    // Pre-seed the session cache so the auth chrome renders before the async
+    // /Auth/me revalidation resolves.
+    sessionStorage.setItem('iguana_usuario', JSON.stringify(USER))
+    render(<App />)
+
+    expect(await screen.findByText('Ana Test')).toBeInTheDocument()
+
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: 'en' }))
+    await waitFor(() => expect(i18n.language).toBe('en'))
+
+    // Header.jsx / Footer.jsx listen to the same `storage` event to
+    // re-read the auth cache: the user name must survive the locale switch.
+    expect(screen.getByText('Ana Test')).toBeInTheDocument()
+    // The dropdown and the auth control coexist in the new locale.
+    expect(screen.getByRole('group', { name: 'Choose the interface language' })).toBeInTheDocument()
+  })
+
+  it('a locale change from another tab does not reset open Header UI state', async () => {
+    // JD-INFO-2: the legacy Header `storage` handler ran for EVERY key, so a
+    // locale toggle in another tab re-read the session cache, cleared the
+    // avatar photo and force-closed the open dropdown. `iguana_locale` is
+    // owned by the i18n runtime (its own cross-tab listener above): the
+    // Header must ignore it and keep its UI state intact.
+    const ANFITRION = {
+      ...USER,
+      id: 7,
+      rol: 'anfitrion',
+      fotoPerfil: 'https://cdn.example.test/ana.jpg',
+    }
+    // Empty session cache on mount: the host user and the avatar arrive only
+    // through the /Auth/me revalidation, so no `auth-change` (a legitimate
+    // reset signal) races with the storage event asserted below.
+    globalThis.fetch = vi.fn(async (url) =>
+      String(url).includes('/Auth/me') ? jsonResponse(ANFITRION) : jsonResponse([]),
+    )
+    const { container } = render(<App />)
+
+    const avatarButton = await screen.findByRole('button', { name: /Ana Test/ })
+    await waitFor(() => {
+      expect(container.querySelector(`img[src="${ANFITRION.fotoPerfil}"]`)).not.toBeNull()
+    })
+
+    fireEvent.click(avatarButton)
+    expect(await screen.findByRole('menu')).toBeInTheDocument()
+
+    // Tab B toggles the language: this tab receives the iguana_locale event.
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: 'en' }))
+    await waitFor(() => expect(i18n.language).toBe('en'))
+
+    // The runtime synced the language, while the Header kept its state: the
+    // dropdown is still open and the avatar photo was not cleared.
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(container.querySelector(`img[src="${ANFITRION.fotoPerfil}"]`)).not.toBeNull()
+  })
+})
+
+describe('ES/EN toggle pill in the Header (mobile)', () => {
+  it('renders the same dropdown inside the mobile menu', async () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir menú' }))
+
+    // Scope every query to the mobile nav (aria-label from mobileMenu.label):
+    // the desktop nav exposes an identical dropdown and must not interfere.
+    const menuMovil = await screen.findByRole('navigation', { name: 'Menú móvil' })
+    const mobile = within(menuMovil)
+
+    // The mobile menu carries its own dropdown trigger.
+    const trigger = mobile.getByRole('button', { name: 'Selecciona el idioma de la interfaz' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    // Clicking the trigger opens the listbox INSIDE the mobile menu without
+    // closing the menu itself (regression: the menu used to self-close on
+    // inside clicks, so the dropdown could never be used on mobile).
+    fireEvent.click(trigger)
+    const opcion = await mobile.findByRole('option', { name: 'Cambiar a inglés' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    // Selecting EN re-renders everything under the persisted choice.
+    fireEvent.click(opcion)
+    await waitFor(() => {
+      expect(i18n.language).toBe('en')
+      expect(document.documentElement).toHaveAttribute('lang', 'en')
+    })
+    expect(localStorage.getItem(KEY)).toBe('en')
+  })
+})

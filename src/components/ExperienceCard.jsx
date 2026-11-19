@@ -1,54 +1,139 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { useFormatLocale } from '../i18n/config.js'
+import { localePath } from '../i18n/routes.jsx'
+import { formatDayMonthYear, formatPrice } from '../i18n/format.js'
 
-const formatoPrecio = new Intl.NumberFormat('es-SV', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
+// F4 (AD-4): Intl comes from format.js through the active-locale hook; the
+// tags are never hardcoded here (es-SV stays `5 ene 2026`, EN switches to
+// `Jan 5, 2026` and en-US grouping in place, without a reload).
 
-export default function ExperienceCard({ experiencia }) {
+export default function ExperienceCard({
+  experiencia,
+  proximaFecha,
+  resena,
+  // M7: surfaces without a review summary (e.g. the wishlist) can omit the
+  // review row entirely instead of the always-true "no reviews yet" line.
+  mostrarResenas = true,
+  guardado = false,
+  onToggleGuardado,
+}) {
+  const { t } = useTranslation('experiencia')
+  const locale = useFormatLocale()
   const esHospedaje = experiencia.tipo === 'hospedaje'
-  const unidad = esHospedaje ? 'noche' : 'persona'
+  const unidad = esHospedaje ? t('card.perNight') : t('card.perPerson')
+  // Capacity badge (spec "Enum, unit, and badge labels localized"): consumed
+  // from the `reservas:cupos` plural contract F2b-1 established — single
+  // source of truth for `{{count}} cupo(s)`, so no duplicate key lands here.
+  // JD-INFO-4: the stay detail is two count-driven plural sub-keys (the
+  // repo's `_one/_other` convention) joined with the ` · ` separator, so
+  // "1 room"/"2 rooms" and "1 huésped"/"N huéspedes" each agree with their
+  // own count instead of a hardcoded template.
   const detalle = esHospedaje
-    ? `${experiencia.habitaciones ?? 1} hab · ${experiencia.capacidad} huéspedes`
-    : `${experiencia.duracionHoras ?? 0} h · ${experiencia.capacidad} cupos`
+    ? [
+        t('card.stayRooms', { count: experiencia.habitaciones ?? 1 }),
+        t('card.stayGuests', { count: experiencia.capacidad }),
+      ].join(' · ')
+    : t('reservas:cupos', { count: experiencia.capacidad })
+  const conResenas = resena && resena.total > 0
 
   return (
-    <Link
-      to={`/experiencias/${experiencia.id}`}
-      className="group flex flex-col overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow"
-    >
-      <div className="relative h-52 overflow-hidden">
-        <img
-          src={experiencia.imagenes[0]}
-          alt={experiencia.titulo}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
-        <span className="absolute top-3 left-3 rounded-full bg-verde-bosque/90 px-3 py-1 text-xs font-semibold text-white">
-          {experiencia.categoria}
-        </span>
-        {experiencia.popular && (
-          <span className="absolute top-3 right-3 rounded-full bg-terracota px-3 py-1 text-xs font-semibold text-white">
-            Popular
+    // Fase 2 (guardar publicación): el botón es HERMANO del link, nunca un
+    // <button> dentro de un <a> (HTML válido y clic que no navega por accidente).
+    // El <Link> sigue cubriendo la tarjeta entera; el corazón se superpone a la
+    // línea del título, alineado a la derecha.
+    <div className="group relative flex flex-col overflow-hidden rounded-[22px] border-2 border-cafe-claro bg-white transition-all duration-300 group-hover:-translate-y-2 group-hover:border-verde-bosque group-hover:shadow-lg">
+      {/* F5 (task 6.4): the card link follows the active locale's detail form. */}
+      <Link
+        to={localePath('experienceDetail', { id: experiencia.id })}
+        className="flex flex-1 flex-col"
+      >
+        <div className="relative h-52 overflow-hidden">
+          <img
+            src={(experiencia.imagenes && experiencia.imagenes[0]) || '/logo.png'}
+            alt={experiencia.titulo}
+            loading="lazy"
+            // Dead hosted URL -> swap to the local logo once; if the logo
+            // itself fails, clear the handler to avoid an onError loop.
+            onError={(e) => {
+              const img = e.currentTarget
+              if (img.src.endsWith('/logo.png')) img.onerror = null
+              else img.src = '/logo.png'
+            }}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          <span className="absolute top-3 left-3 rounded-full bg-verde-bosque/90 px-3 py-1 text-xs font-semibold text-white">
+            {experiencia.categoria}
           </span>
-        )}
-      </div>
-
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="text-lg font-bold text-verde-bosque line-clamp-1">{experiencia.titulo}</h3>
-        <p className="mt-1 text-sm text-cafe">
-          {experiencia.municipio}, {experiencia.departamento}
-        </p>
-        <p className="mt-2 text-sm text-neutral-600 line-clamp-2 flex-1">{experiencia.descripcion}</p>
-        <div className="mt-3 flex items-end justify-between gap-2 border-t border-neutral-100 pt-3">
-          <div className="min-w-0">
-            <span className="text-xl font-extrabold text-terracota">{formatoPrecio.format(experiencia.precio)}</span>
-            <span className="text-xs text-cafe"> / {unidad}</span>
-          </div>
-          <span className="text-xs text-cafe whitespace-nowrap">{detalle}</span>
+          {proximaFecha && (
+            <span className="absolute top-3 right-3 rounded-full bg-iguana-hondo px-3 py-1 text-xs font-semibold text-white">
+              {formatDayMonthYear(proximaFecha, locale)}
+            </span>
+          )}
+          {!proximaFecha && experiencia.popular && (
+            <span className="absolute top-3 right-3 rounded-full bg-iguana-hondo px-3 py-1 text-xs font-semibold text-white">
+              {t('card.popular')}
+            </span>
+          )}
         </div>
-      </div>
-    </Link>
+
+        <div className="flex flex-1 flex-col p-4">
+          <h3 className={`text-lg font-bold text-verde-bosque line-clamp-1 ${onToggleGuardado ? 'pr-12' : ''}`}>{experiencia.titulo}</h3>
+          {mostrarResenas && (
+            <div className="mt-1 flex min-h-[20px] items-center gap-1.5 text-sm">
+              {conResenas ? (
+                <>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-amber" aria-hidden="true">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  <span className="font-bold text-neutral-800">{Number(resena.promedio).toFixed(1)}</span>
+                  <span className="text-cafe">
+                    ({t('reviews.count', { count: resena.total })})
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs italic text-cafe">{t('reviews.empty')}</span>
+              )}
+            </div>
+          )}
+          <p className="mt-1 text-base text-cafe">
+            {experiencia.municipio}, {experiencia.departamento}
+          </p>
+          <p className="mt-2 text-base text-neutral-600 line-clamp-2 flex-1">{experiencia.descripcion}</p>
+          <div className="mt-3 flex items-end justify-between gap-2 border-t border-neutral-100 pt-3">
+            <div className="min-w-0">
+              <span className="text-3xl font-extrabold text-iguana-hondo">{formatPrice(experiencia.precio, locale)}</span>
+              <span className="text-sm text-cafe"> / {unidad}</span>
+            </div>
+            <span className="text-sm text-cafe whitespace-nowrap">{detalle}</span>
+          </div>
+        </div>
+      </Link>
+
+      {onToggleGuardado && (
+        <button
+          type="button"
+          onClick={() => onToggleGuardado(experiencia.id)}
+          aria-pressed={guardado}
+          aria-label={guardado ? t('card.unsaveAria') : t('card.saveAria')}
+          // top = imagen (13rem) + padding (1rem) - 6px para centrar el botón
+          // de 40px sobre la línea de título de 28px.
+          className="absolute right-4 top-[13.625rem] z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-cafe-claro/60 bg-white/90 text-verde-bosque shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-bosque"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill={guardado ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+        </button>
+      )}
+    </div>
   )
 }
