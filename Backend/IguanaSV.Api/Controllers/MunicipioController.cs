@@ -1,5 +1,8 @@
-using IguanaSV.Api.Entities;
+using MunicipioEntity = IguanaSV.Api.Entities.Municipio;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,20 +20,18 @@ public class MunicipioController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Municipio>>> GetMunicipios()
+    public async Task<ActionResult<IEnumerable<MunicipioEntity>>> GetMunicipios()
     {
         return await _context.Municipios
             .Include(m => m.Departamento)
-            .Include(m => m.Anfitriones)
             .ToListAsync();
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Municipio>> GetMunicipio(int id)
+    public async Task<ActionResult<MunicipioEntity>> GetMunicipio(int id)
     {
         var municipio = await _context.Municipios
             .Include(m => m.Departamento)
-            .Include(m => m.Anfitriones)
             .FirstOrDefaultAsync(m => m.Id == id);
 
         if (municipio == null)
@@ -41,25 +42,30 @@ public class MunicipioController : ControllerBase
         return municipio;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutMunicipio(int id, Municipio municipio)
+    public async Task<IActionResult> PutMunicipio(int id, CreateMunicipioDto dto)
     {
-        if (id != municipio.Id)
+        if (!await User.IsFreshAdminAsync(_context))
         {
-            return BadRequest();
+            return Forbid();
         }
 
-        var exists = await _context.Municipios.AnyAsync(m => m.Id == id);
+        var municipio = await _context.Municipios.FindAsync(id);
 
-        if (!exists)
+        if (municipio == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Departamentos.AnyAsync(d => d.Id == municipio.DepartamentoId))
+        if (!await _context.Departamentos.AnyAsync(d => d.Id == dto.DepartamentoId))
         {
-            return NotFound($"El departamento con id {municipio.DepartamentoId} no existe.");
+            return NotFound($"El departamento con id {dto.DepartamentoId} no existe.");
         }
+
+        municipio.DepartamentoId = dto.DepartamentoId;
+        municipio.Nombre = dto.Nombre;
+        municipio.UpdatedAt = DateTime.Now;
 
         _context.Entry(municipio).State = EntityState.Modified;
 
@@ -75,13 +81,26 @@ public class MunicipioController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
-    public async Task<ActionResult<Municipio>> PostMunicipio(Municipio municipio)
+    public async Task<ActionResult<MunicipioEntity>> PostMunicipio(CreateMunicipioDto dto)
     {
-        if (!await _context.Departamentos.AnyAsync(d => d.Id == municipio.DepartamentoId))
+        if (!await User.IsFreshAdminAsync(_context))
         {
-            return NotFound($"El departamento con id {municipio.DepartamentoId} no existe.");
+            return Forbid();
         }
+
+        if (!await _context.Departamentos.AnyAsync(d => d.Id == dto.DepartamentoId))
+        {
+            return NotFound($"El departamento con id {dto.DepartamentoId} no existe.");
+        }
+
+        var municipio = new MunicipioEntity
+        {
+            DepartamentoId = dto.DepartamentoId,
+            Nombre = dto.Nombre,
+            CreatedAt = DateTime.Now
+        };
 
         _context.Municipios.Add(municipio);
         await _context.SaveChangesAsync();
@@ -89,9 +108,15 @@ public class MunicipioController : ControllerBase
         return CreatedAtAction(nameof(GetMunicipio), new { id = municipio.Id }, municipio);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteMunicipio(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var municipio = await _context.Municipios.FindAsync(id);
 
         if (municipio == null)

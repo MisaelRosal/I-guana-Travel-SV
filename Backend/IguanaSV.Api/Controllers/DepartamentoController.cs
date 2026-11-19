@@ -1,5 +1,8 @@
-using IguanaSV.Api.Entities;
+using DepartamentoEntity = IguanaSV.Api.Entities.Departamento;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +20,7 @@ public class DepartamentoController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Departamento>>> GetDepartamentos()
+    public async Task<ActionResult<IEnumerable<DepartamentoEntity>>> GetDepartamentos()
     {
         return await _context.Departamentos
             .Include(d => d.Municipios)
@@ -25,7 +28,7 @@ public class DepartamentoController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Departamento>> GetDepartamento(int id)
+    public async Task<ActionResult<DepartamentoEntity>> GetDepartamento(int id)
     {
         var departamento = await _context.Departamentos
             .Include(d => d.Municipios)
@@ -39,20 +42,24 @@ public class DepartamentoController : ControllerBase
         return departamento;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutDepartamento(int id, Departamento departamento)
+    public async Task<IActionResult> PutDepartamento(int id, CreateDepartamentoDto dto)
     {
-        if (id != departamento.Id)
+        if (!await User.IsFreshAdminAsync(_context))
         {
-            return BadRequest();
+            return Forbid();
         }
 
-        var exists = await _context.Departamentos.AnyAsync(d => d.Id == id);
+        var departamento = await _context.Departamentos.FindAsync(id);
 
-        if (!exists)
+        if (departamento == null)
         {
             return NotFound();
         }
+
+        departamento.Nombre = dto.Nombre;
+        departamento.UpdatedAt = DateTime.Now;
 
         _context.Entry(departamento).State = EntityState.Modified;
 
@@ -68,18 +75,36 @@ public class DepartamentoController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
-    public async Task<ActionResult<Departamento>> PostDepartamento(Departamento departamento)
+    public async Task<ActionResult<DepartamentoEntity>> PostDepartamento(CreateDepartamentoDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
+        var departamento = new DepartamentoEntity
+        {
+            Nombre = dto.Nombre,
+            CreatedAt = DateTime.Now
+        };
+
         _context.Departamentos.Add(departamento);
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetDepartamento), new { id = departamento.Id }, departamento);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteDepartamento(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var departamento = await _context.Departamentos.FindAsync(id);
 
         if (departamento == null)

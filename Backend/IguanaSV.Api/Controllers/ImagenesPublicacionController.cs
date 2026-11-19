@@ -1,5 +1,8 @@
-using IguanaSV.Api.Entities;
+using ImagenesPublicacionEntity = IguanaSV.Api.Entities.ImagenesPublicacion;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +20,7 @@ public class ImagenesPublicacionController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ImagenesPublicacion>>> GetImagenesPublicacions()
+    public async Task<ActionResult<IEnumerable<ImagenesPublicacionEntity>>> GetImagenesPublicacions()
     {
         return await _context.ImagenesPublicacions
             .Include(ip => ip.Publicacion)
@@ -25,7 +28,7 @@ public class ImagenesPublicacionController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ImagenesPublicacion>> GetImagenesPublicacion(int id)
+    public async Task<ActionResult<ImagenesPublicacionEntity>> GetImagenesPublicacion(int id)
     {
         var imagenesPublicacion = await _context.ImagenesPublicacions
             .Include(ip => ip.Publicacion)
@@ -39,25 +42,38 @@ public class ImagenesPublicacionController : ControllerBase
         return imagenesPublicacion;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutImagenesPublicacion(int id, ImagenesPublicacion imagenesPublicacion)
+    public async Task<IActionResult> PutImagenesPublicacion(int id, CreateImagenPublicacionDto dto)
     {
-        if (id != imagenesPublicacion.Id)
-        {
-            return BadRequest();
-        }
+        var imagenesPublicacion = await _context.ImagenesPublicacions.FindAsync(id);
 
-        var exists = await _context.ImagenesPublicacions.AnyAsync(ip => ip.Id == id);
-
-        if (!exists)
+        if (imagenesPublicacion == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == imagenesPublicacion.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {imagenesPublicacion.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
+
+        // Owner-or-admin gate (spec: "Publication ownership gate"): a non-admin
+        // must own both the image's current publication and the target one.
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            if (!await CallerOwnsPublicationAsync(imagenesPublicacion.PublicacionId)
+                || !await CallerOwnsPublicationAsync(dto.PublicacionId))
+            {
+                return Forbid();
+            }
+        }
+
+        imagenesPublicacion.PublicacionId = dto.PublicacionId;
+        imagenesPublicacion.Url = dto.Url;
+        imagenesPublicacion.EsPrincipal = dto.EsPrincipal;
+        imagenesPublicacion.Orden = dto.Orden;
+        imagenesPublicacion.UpdatedAt = DateTime.Now;
 
         _context.Entry(imagenesPublicacion).State = EntityState.Modified;
 
@@ -73,13 +89,29 @@ public class ImagenesPublicacionController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
-    public async Task<ActionResult<ImagenesPublicacion>> PostImagenesPublicacion(ImagenesPublicacion imagenesPublicacion)
+    public async Task<ActionResult<ImagenesPublicacionEntity>> PostImagenesPublicacion(CreateImagenPublicacionDto dto)
     {
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == imagenesPublicacion.PublicacionId))
+        if (!await _context.Publicaciones.AnyAsync(p => p.Id == dto.PublicacionId))
         {
-            return NotFound($"La publicacion con id {imagenesPublicacion.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
+
+        // A non-admin may only attach an image to a publication they own.
+        if (!User.IsInRole(AuthConstants.AdminRole) && !await CallerOwnsPublicationAsync(dto.PublicacionId))
+        {
+            return Forbid();
+        }
+
+        var imagenesPublicacion = new ImagenesPublicacionEntity
+        {
+            PublicacionId = dto.PublicacionId,
+            Url = dto.Url,
+            EsPrincipal = dto.EsPrincipal,
+            Orden = dto.Orden,
+            CreatedAt = DateTime.Now
+        };
 
         _context.ImagenesPublicacions.Add(imagenesPublicacion);
         await _context.SaveChangesAsync();
@@ -87,6 +119,7 @@ public class ImagenesPublicacionController : ControllerBase
         return CreatedAtAction(nameof(GetImagenesPublicacion), new { id = imagenesPublicacion.Id }, imagenesPublicacion);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteImagenesPublicacion(int id)
     {
@@ -97,9 +130,24 @@ public class ImagenesPublicacionController : ControllerBase
             return NotFound();
         }
 
+        // Owner-or-admin gate (spec: "Publication ownership gate").
+        if (!User.IsInRole(AuthConstants.AdminRole)
+            && !await CallerOwnsPublicationAsync(imagenesPublicacion.PublicacionId))
+        {
+            return Forbid();
+        }
+
         _context.ImagenesPublicacions.Remove(imagenesPublicacion);
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>True when the token subject owns the host behind the given publication.</summary>
+    private async Task<bool> CallerOwnsPublicationAsync(int publicacionId)
+    {
+        var sub = User.GetSubjectId();
+        return sub.HasValue
+            && await _context.Publicaciones.AnyAsync(p => p.Id == publicacionId && p.Anfitrion!.UsuarioId == sub.Value);
     }
 }

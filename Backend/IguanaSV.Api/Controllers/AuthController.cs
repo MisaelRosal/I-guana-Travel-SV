@@ -1,0 +1,604 @@
+using System.Security.Cryptography;
+using IguanaSV.Api.Auth;
+using IguanaSV.Api.DTOs;
+using IguanaSV.Api.Entities;
+using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+
+namespace IguanaSV.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
+{
+    private readonly IguanasDbContext _context;
+    private readonly JwtTokenService _tokens;
+    private readonly JwtOptions _jwtOptions;
+    private readonly IHostEnvironment _environment;
+    private readonly VerificationCodeService _codigos;
+    private readonly IEmailNotificationService _notificaciones;
+    private readonly EmailOptions _emailOptions;
+    private readonly IGoogleTokenVerifier _google;
+    private readonly ILogger<AuthController> _logger;
+
+    public AuthController(
+        IguanasDbContext context,
+        JwtTokenService tokens,
+        JwtOptions jwtOptions,
+        IHostEnvironment environment,
+        VerificationCodeService codigos,
+        IEmailNotificationService notificaciones,
+        IOptions<EmailOptions> emailOptions,
+        IGoogleTokenVerifier google,
+        ILogger<AuthController> logger)
+    {
+        _context = context;
+        _tokens = tokens;
+        _jwtOptions = jwtOptions;
+        _environment = environment;
+        _codigos = codigos;
+        _notificaciones = notificaciones;
+        _emailOptions = emailOptions.Value;
+        _google = google;
+        _logger = logger;
+    }
+
+    [HttpPost("register")]
+    [EnableRateLimiting("auth")]
+    public async Task<ActionResult<RegistroResponseDto>> Register(RegistroRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Nombre) ||
+            string.IsNullOrWhiteSpace(request.Apellido) ||
+            string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new { mensaje = "Todos los campos son obligatorios." });
+        }
+
+        // (A6) Register hardening: password policy + caps matching the DB
+        // columns (usuarios.nombre/apellido varchar(100), email varchar(150),
+        // telefono varchar(20)). The 6-char minimum matches the reset flow and
+        // applies only to NEW accounts; existing users are never retro-strengthened.
+        if (request.Password.Length < 6)
+        {
+            return BadRequest(new { mensaje = "La contraseña debe tener al menos 6 caracteres." });
+        }
+
+        if (request.Nombre.Trim().Length > 100 || request.Apellido.Trim().Length > 100)
+        {
+            return BadRequest(new { mensaje = "El nombre y el apellido no pueden exceder los 100 caracteres." });
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        if (email.Length > 150 || !System.Net.Mail.MailAddress.TryCreate(email, out _))
+        {
+            return BadRequest(new { mensaje = "El correo no es válido." });
+        }
+
+        if ((request.Telefono?.Length ?? 0) > 20)
+        {
+            return BadRequest(new { mensaje = "El teléfono no puede exceder los 20 caracteres." });
+        }
+
+        var existe = await _context.Usuarios.AnyAsync(u => u.Email == email);
+        if (existe)
+        {
+            return Conflict(new { mensaje = "Ya existe una cuenta registrada con este correo." });
+        }
+
+        var usuario = new Usuario
+        {
+            Nombre = request.Nombre.Trim(),
+            Apellido = request.Apellido.Trim(),
+            Telefono = request.Telefono?.Trim(),
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            EmailVerificado = _codigos.VerificacionDeshabilitada,
+        };
+
+        _context.Usuarios.Add(usuario);
+        await _context.SaveChangesAsync();
+
+        if (usuario.EmailVerificado)
+        {
+            // Verification is off: registration completes exactly as before and
+            // starts the session immediately.
+            IssueSession(usuario);
+            return CreatedAtAction(nameof(Register), new { id = usuario.Id }, new RegistroResponseDto
+            {
+                Id = usuario.Id,
+                Email = usuario.Email,
+                VerificacionRequerida = false,
+                Mensaje = "Cuenta creada con éxito.",
+            });
+        }
+
+        // The account exists but is dormant until the emailed code is entered.
+        var codigo = await _codigos.GenerarAsync(usuario.Id);
+        var enviado = await _notificaciones.VerificacionDeCorreoAsync(usuario.Email, usuario.Nombre, codigo);
+
+        if (!enviado)
+        {
+            // Delivery failed (no email provider configured, network…).
+            // Never trap the user behind a mailbox we could not reach: activate
+            // the account and tell them plainly instead of leaving it locked.
+            usuario.EmailVerificado = true;
+            await _context.SaveChangesAsync();
+            _logger.LogWarning(
+                "No se pudo enviar el correo de verificación a {Email}; la cuenta {Id} se activó sin verificar.",
+                usuario.Email, usuario.Id);
+
+            return CreatedAtAction(nameof(Register), new { id = usuario.Id }, new RegistroResponseDto
+            {
+                Id = usuario.Id,
+                Email = usuario.Email,
+                VerificacionRequerida = false,
+                Mensaje = "Cuenta creada, pero no se pudo enviar el correo de verificación. " +
+                          "Revisá la configuración de correo o probá de nuevo más tarde.",
+            });
+        }
+
+        return CreatedAtAction(nameof(Register), new { id = usuario.Id }, new RegistroResponseDto
+        {
+            Id = usuario.Id,
+            Email = usuario.Email,
+            VerificacionRequerida = true,
+            Mensaje = $"Te enviamos un código de verificación a {usuario.Email}. " +
+                      $"Caduca en {_emailOptions.VerificacionExpiraMinutos} minutos.",
+        });
+    }
+
+    /// <summary>
+    /// Completes a registration held for email verification. Issues the session
+    /// (same cookies as login) only when the newest unused, unexpired code for
+    /// that address matches.
+    /// </summary>
+    [EnableRateLimiting("auth")]
+    [HttpPost("verificar-email")]
+    public async Task<ActionResult<UsuarioResponse>> VerificarEmail(VerificarEmailRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Codigo))
+        {
+            return BadRequest(new { mensaje = "El correo y el código son obligatorios." });
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+
+        // Same message for "no such account" and "wrong code": never let a
+        // caller use this endpoint to enumerate which addresses are registered.
+        if (usuario == null)
+        {
+            return BadRequest(new { mensaje = "El código ingresado no es válido." });
+        }
+
+        if (usuario.EmailVerificado)
+        {
+            // Already active (e.g. re-verified from a second tab): just sign in.
+            IssueSession(usuario);
+            return Ok(ToResponse(usuario));
+        }
+
+        var valido = await _codigos.VerificarAsync(usuario.Id, request.Codigo);
+        if (!valido)
+        {
+            return BadRequest(new { mensaje = "El código ingresado no es válido o ya expiró." });
+        }
+
+        usuario.EmailVerificado = true;
+        usuario.UpdatedAt = DateTime.Now;
+        await _context.SaveChangesAsync();
+
+        IssueSession(usuario);
+        await _notificaciones.BienvenidaAsync(usuario.Email, usuario.Nombre);
+
+        return Ok(ToResponse(usuario));
+    }
+
+    /// <summary>
+    /// Supersedes the outstanding code with a fresh one. Rate-limited per user
+    /// so a runaway client cannot hammer the mail provider.
+    /// </summary>
+    [HttpPost("reenviar-verificacion")]
+    public async Task<IActionResult> ReenviarVerificacion(ReenviarVerificacionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { mensaje = "El correo es obligatorio." });
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+
+        // Do not reveal whether the address exists.
+        if (usuario == null || usuario.EmailVerificado)
+        {
+            return Ok(new { mensaje = "Si existe una cuenta pendiente de verificación, te enviamos un correo nuevo." });
+        }
+
+        var desde = DateTime.Now.AddHours(-1);
+        var reenvios = await _context.VerificacionesEmail
+            .CountAsync(v => v.UsuarioId == usuario.Id && v.CreadoEn >= desde);
+        if (reenvios >= Math.Max(1, _emailOptions.VerificacionMaxReenviosHora))
+        {
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                new { mensaje = "Pediste demasiados códigos. Esperá un momento antes de intentar de nuevo." });
+        }
+
+        var codigo = await _codigos.GenerarAsync(usuario.Id);
+        await _notificaciones.VerificacionDeCorreoAsync(usuario.Email, usuario.Nombre, codigo);
+
+        return Ok(new { mensaje = $"Te enviamos un código nuevo a {usuario.Email}." });
+    }
+
+    /// <summary>
+    /// Starts the password-reset challenge: emails a 6-digit code scoped to
+    /// <c>reset_password</c>. The response is byte-identical whether or not the
+    /// address exists, so this endpoint cannot be used to enumerate accounts.
+    /// Rate-limited per user through the same hourly code count as resend.
+    /// </summary>
+    [HttpPost("solicitar-reset-password")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> SolicitarResetPassword(SolicitarResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { mensaje = "El correo es obligatorio." });
+        }
+
+        // Same message for "exists" and "does not exist": never reveal which
+        // addresses are registered (mirrors ReenviarVerificacion).
+        const string mensajeGenerico = "Si existe una cuenta con ese correo, te enviamos un código para restablecer tu contraseña.";
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+        if (usuario == null)
+        {
+            return Ok(new { mensaje = mensajeGenerico });
+        }
+
+        if (await SuperoLimiteReenviosAsync(usuario.Id))
+        {
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                new { mensaje = "Pediste demasiados códigos. Esperá un momento antes de intentar de nuevo." });
+        }
+
+        var codigo = await _codigos.GenerarAsync(usuario.Id, "reset_password");
+        await _notificaciones.RestablecerPasswordAsync(usuario.Email, usuario.Nombre, codigo);
+
+        return Ok(new { mensaje = mensajeGenerico });
+    }
+
+    /// <summary>
+    /// Supersedes the outstanding reset code with a fresh one. Same anti-
+    /// enumeration contract and hourly rate limit as the request endpoint.
+    /// </summary>
+    [HttpPost("reenviar-reset-password")]
+    public async Task<IActionResult> ReenviarResetPassword(ReenviarResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { mensaje = "El correo es obligatorio." });
+        }
+
+        const string mensajeGenerico = "Si existe una cuenta con ese correo, te enviamos un código nuevo para restablecer tu contraseña.";
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+        if (usuario == null)
+        {
+            return Ok(new { mensaje = mensajeGenerico });
+        }
+
+        if (await SuperoLimiteReenviosAsync(usuario.Id))
+        {
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                new { mensaje = "Pediste demasiados códigos. Esperá un momento antes de intentar de nuevo." });
+        }
+
+        var codigo = await _codigos.GenerarAsync(usuario.Id, "reset_password");
+        await _notificaciones.RestablecerPasswordAsync(usuario.Email, usuario.Nombre, codigo);
+
+        return Ok(new { mensaje = mensajeGenerico });
+    }
+
+    /// <summary>
+    /// Completes the reset: consumes the newest unused, unexpired
+    /// <c>reset_password</c> code and stores the BCrypt hash of the new
+    /// password. Never starts a session — the caller signs in again. A wrong
+    /// code reuses the generic message so a caller cannot probe which accounts
+    /// requested a reset.
+    /// </summary>
+    [EnableRateLimiting("auth")]
+    [HttpPost("restablecer-password")]
+    public async Task<ActionResult<UsuarioResponse>> RestablecerPassword(RestablecerPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Codigo) ||
+            string.IsNullOrWhiteSpace(request.NuevaPassword))
+        {
+            return BadRequest(new { mensaje = "El correo, el código y la contraseña son obligatorios." });
+        }
+
+        if (request.NuevaPassword.Length < 6)
+        {
+            return BadRequest(new { mensaje = "La contraseña debe tener al menos 6 caracteres." });
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+
+        // Same message for "no such account", "no challenge" and "wrong code":
+        // the endpoint must not confirm which addresses requested a reset.
+        const string mensajeInvalido = "El código ingresado no es válido o ya expiró.";
+        if (usuario == null)
+        {
+            return BadRequest(new { mensaje = mensajeInvalido });
+        }
+
+        var valido = await _codigos.VerificarAsync(usuario.Id, request.Codigo, "reset_password");
+        if (!valido)
+        {
+            return BadRequest(new { mensaje = mensajeInvalido });
+        }
+
+        usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NuevaPassword);
+        usuario.UpdatedAt = DateTime.Now;
+        await _context.SaveChangesAsync();
+
+        // Security notice: if this reset was not theirs, the owner learns now.
+        await _notificaciones.PasswordCambiadaAsync(usuario.Email, usuario.Nombre);
+
+        return Ok(new { mensaje = "Tu contraseña fue restablecida con éxito. Ya podés iniciar sesión." });
+    }
+
+    /// <summary>
+    /// True when this user already burned through the hourly code quota
+    /// (shared by verification resends and password-reset codes).
+    /// </summary>
+    private async Task<bool> SuperoLimiteReenviosAsync(int usuarioId)
+    {
+        var desde = DateTime.Now.AddHours(-1);
+        var reenvios = await _context.VerificacionesEmail
+            .CountAsync(v => v.UsuarioId == usuarioId && v.CreadoEn >= desde);
+        return reenvios >= Math.Max(1, _emailOptions.VerificacionMaxReenviosHora);
+    }
+
+    [HttpPost("login")]
+    [EnableRateLimiting("auth")]
+    public async Task<ActionResult<UsuarioResponse>> Login(LoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new { mensaje = "Correo y contraseña son obligatorios." });
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+        if (usuario == null || !BCrypt.Net.BCrypt.Verify(request.Password, usuario.PasswordHash))
+        {
+            return Unauthorized(new { mensaje = "Correo o contraseña incorrectos." });
+        }
+
+        if (!usuario.EmailVerificado)
+        {
+            // Deliberately specific: the user already knows the address (they
+            // typed it), so telling them to check the inbox is actionable.
+            return Unauthorized(new { mensaje = "Tu correo aún no está verificado. Revisa tu bandeja de entrada e ingresa el código que te enviamos." });
+        }
+
+        IssueSession(usuario);
+
+        return Ok(ToResponse(usuario));
+    }
+
+    /// <summary>
+    /// Public, unauthenticated hint the SPA uses to decide whether to render the
+    /// Google button at all. Empty until the Google OAuth client id is configured.
+    /// </summary>
+    [HttpGet("google-config")]
+    public IActionResult GoogleConfig()
+        => Ok(new { clientId = _emailOptions.GoogleClientId ?? string.Empty });
+
+    /// <summary>
+    /// Sign in (or sign up) with Google. The ID token from the embedded Google
+    /// button is verified server-side; the email is therefore already proven, so
+    /// a brand-new account is created active (no verification code) and only a
+    /// "cuenta creada" notification is emailed. An existing local account with
+    /// the same address is linked and signed in; a dormant unverified one is
+    /// activated, since Google just proved control of the mailbox.
+    /// </summary>
+    [HttpPost("google")]
+    public async Task<ActionResult<UsuarioResponse>> Google(GoogleLoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(_emailOptions.GoogleClientId))
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { mensaje = "El inicio de sesión con Google no está configurado." });
+        }
+
+        if (request is null || string.IsNullOrWhiteSpace(request.Credential))
+        {
+            return BadRequest(new { mensaje = "Falta el token de Google." });
+        }
+
+        var info = await _google.VerifyAsync(request.Credential, HttpContext.RequestAborted);
+        if (info is null || !info.EmailVerified || string.IsNullOrWhiteSpace(info.Email))
+        {
+            return Unauthorized(new { mensaje = "No se pudo validar tu cuenta de Google." });
+        }
+
+        var email = info.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+        var esNuevo = usuario is null;
+
+        if (usuario is null)
+        {
+            var (nombre, apellido) = NombreDeGoogle(info);
+            usuario = new Usuario
+            {
+                Nombre = nombre,
+                Apellido = apellido,
+                Email = email,
+                // Google accounts have no local password: store a random,
+                // unusable hash so a credential login can never match it.
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+                EmailVerificado = true,
+            };
+            _context.Usuarios.Add(usuario);
+            await _context.SaveChangesAsync();
+        }
+        else if (!usuario.EmailVerificado)
+        {
+            usuario.EmailVerificado = true;
+            usuario.UpdatedAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+        }
+
+        IssueSession(usuario);
+
+        if (esNuevo)
+        {
+            await _notificaciones.CuentaCreadaAsync(usuario.Email, usuario.Nombre);
+        }
+
+        return Ok(ToResponse(usuario));
+    }
+
+    /// <summary>
+    /// Split Google's profile into the two name columns. Falls back to the full
+    /// display name, then to neutral placeholders so the NOT NULL columns are
+    /// always satisfied.
+    /// </summary>
+    private static (string Nombre, string Apellido) NombreDeGoogle(GoogleUserInfo info)
+    {
+        var nombre = info.GivenName?.Trim();
+        var apellido = info.FamilyName?.Trim();
+
+        if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(apellido))
+        {
+            var partes = (info.Name ?? string.Empty)
+                .Trim()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (string.IsNullOrWhiteSpace(nombre) && partes.Length > 0)
+            {
+                nombre = partes[0];
+            }
+            if (string.IsNullOrWhiteSpace(apellido) && partes.Length > 1)
+            {
+                apellido = string.Join(' ', partes[1..]);
+            }
+        }
+
+        return (string.IsNullOrWhiteSpace(nombre) ? "Usuario" : nombre,
+                string.IsNullOrWhiteSpace(apellido) ? "Google" : apellido);
+    }
+
+    /// <summary>
+    /// Session rehydration endpoint. Returns the caller's identity derived from the
+    /// auth cookie, with the role taken fresh from the database (a role upgrade
+    /// applies on the next /me even if the token still carries the old claim).
+    /// [Authorize] means no valid token yields 401 automatically.
+    /// </summary>
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<UsuarioResponse>> Me()
+    {
+        var userId = User.GetSubjectId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (usuario is null)
+        {
+            // Token is valid but the account no longer exists.
+            return Unauthorized();
+        }
+
+        return Ok(ToResponse(usuario));
+    }
+
+    /// <summary>
+    /// Clears both session cookies so subsequent protected calls are anonymous.
+    /// Safe to call even when not authenticated; it always expires the cookies.
+    /// </summary>
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        var baseOptions = new CookieOptions
+        {
+            Path = "/",
+            SameSite = SameSiteMode.Lax,
+            Secure = _environment.IsProduction(),
+            Expires = DateTimeOffset.UnixEpoch,
+        };
+
+        Response.Cookies.Delete(AuthConstants.AuthCookieName, baseOptions);
+        Response.Cookies.Delete(AuthConstants.CsrfCookieName, baseOptions);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Sign a fresh JWT and write the HttpOnly auth cookie plus the readable
+    /// double-submit CSRF cookie. Body of the response is unaffected.
+    /// </summary>
+    private void IssueSession(Usuario usuario)
+    {
+        var token = _tokens.CreateToken(usuario);
+        var expires = DateTimeOffset.UtcNow.AddMinutes(_jwtOptions.ExpiresInMinutes);
+        var isProduction = _environment.IsProduction();
+
+        Response.Cookies.Append(AuthConstants.AuthCookieName, token, new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax,
+            Secure = isProduction,
+            Path = "/",
+            Expires = expires,
+        });
+
+        Response.Cookies.Append(AuthConstants.CsrfCookieName, GenerateCsrfToken(), new CookieOptions
+        {
+            // Intentionally NOT HttpOnly: the SPA must read it and echo it back
+            // in the X-CSRF-Token header. Cross-site code cannot read our cookie.
+            HttpOnly = false,
+            SameSite = SameSiteMode.Lax,
+            Secure = isProduction,
+            Path = "/",
+            Expires = expires,
+        });
+    }
+
+    private static string GenerateCsrfToken()
+    {
+        // Hex keeps the value URL/cookie-safe with no encoding surprises.
+        return Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+    }
+
+    private static UsuarioResponse ToResponse(Usuario u)
+    {
+        return new UsuarioResponse
+        {
+            Id = u.Id,
+            Nombre = u.Nombre,
+            Apellido = u.Apellido,
+            Telefono = u.Telefono,
+            Email = u.Email,
+            Rol = u.Rol,
+            EmailVerificado = u.EmailVerificado,
+            CreatedAt = u.CreatedAt,
+        };
+    }
+}

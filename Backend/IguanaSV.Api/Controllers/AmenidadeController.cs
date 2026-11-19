@@ -1,5 +1,8 @@
-using IguanaSV.Api.Entities;
+using AmenidadeEntity = IguanaSV.Api.Entities.Amenidade;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +20,7 @@ public class AmenidadeController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Amenidade>>> GetAmenidades()
+    public async Task<ActionResult<IEnumerable<AmenidadeEntity>>> GetAmenidades()
     {
         return await _context.Amenidades
             .Include(a => a.PublicacionAmenidads)
@@ -25,7 +28,7 @@ public class AmenidadeController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Amenidade>> GetAmenidade(int id)
+    public async Task<ActionResult<AmenidadeEntity>> GetAmenidade(int id)
     {
         var amenidade = await _context.Amenidades
             .Include(a => a.PublicacionAmenidads)
@@ -39,20 +42,25 @@ public class AmenidadeController : ControllerBase
         return amenidade;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutAmenidade(int id, Amenidade amenidade)
+    public async Task<IActionResult> PutAmenidade(int id, CreateAmenidadDto dto)
     {
-        if (id != amenidade.Id)
+        if (!await User.IsFreshAdminAsync(_context))
         {
-            return BadRequest();
+            return Forbid();
         }
 
-        var exists = await _context.Amenidades.AnyAsync(a => a.Id == id);
+        var amenidade = await _context.Amenidades.FindAsync(id);
 
-        if (!exists)
+        if (amenidade == null)
         {
             return NotFound();
         }
+
+        amenidade.Nombre = dto.Nombre;
+        amenidade.Icono = dto.Icono;
+        amenidade.UpdatedAt = DateTime.Now;
 
         _context.Entry(amenidade).State = EntityState.Modified;
 
@@ -68,18 +76,37 @@ public class AmenidadeController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
-    public async Task<ActionResult<Amenidade>> PostAmenidade(Amenidade amenidade)
+    public async Task<ActionResult<AmenidadeEntity>> PostAmenidade(CreateAmenidadDto dto)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
+        var amenidade = new AmenidadeEntity
+        {
+            Nombre = dto.Nombre,
+            Icono = dto.Icono,
+            CreatedAt = DateTime.Now
+        };
+
         _context.Amenidades.Add(amenidade);
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetAmenidade), new { id = amenidade.Id }, amenidade);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAmenidade(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var amenidade = await _context.Amenidades.FindAsync(id);
 
         if (amenidade == null)

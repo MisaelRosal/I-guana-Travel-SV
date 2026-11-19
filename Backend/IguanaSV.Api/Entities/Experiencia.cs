@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace IguanaSV.Api.Entities;
 
@@ -11,7 +12,13 @@ public partial class Experiencia
 
     public string Nombre { get; set; } = null!;
 
+    [JsonIgnore]
+    public string? NombreEn { get; set; }
+
     public string? Descripcion { get; set; }
+
+    [JsonIgnore]
+    public string? DescripcionEn { get; set; }
 
     public int? DuracionHoras { get; set; }
 

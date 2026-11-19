@@ -1,5 +1,7 @@
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,11 +19,18 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Categoria>>> GetCategorias()
+    public async Task<ActionResult<IEnumerable<Categoria>>> GetCategorias([FromQuery] string? tipo = null)
     {
-        return await _context.Categorias
+        var query = _context.Categorias
             .Include(c => c.Publicaciones)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(tipo))
+        {
+            query = query.Where(c => c.Tipo == tipo);
+        }
+
+        return await query.ToListAsync();
     }
 
     [HttpGet("{id}")]
@@ -39,12 +48,23 @@ public class CategoriaController : ControllerBase
         return categoria;
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutCategoria(int id, Categoria categoria)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         if (id != categoria.Id)
         {
             return BadRequest();
+        }
+
+        if (categoria.Tipo != "hospedaje" && categoria.Tipo != "experiencia")
+        {
+            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
         }
 
         var exists = await _context.Categorias.AnyAsync(c => c.Id == id);
@@ -68,18 +88,35 @@ public class CategoriaController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
+        if (categoria.Tipo != "hospedaje" && categoria.Tipo != "experiencia")
+        {
+            return BadRequest(new { mensaje = "El tipo debe ser 'hospedaje' o 'experiencia'." });
+        }
+
         _context.Categorias.Add(categoria);
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetCategoria), new { id = categoria.Id }, categoria);
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCategoria(int id)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         var categoria = await _context.Categorias.FindAsync(id);
 
         if (categoria == null)

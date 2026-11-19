@@ -7,7 +7,9 @@ public partial class Notificacione
 {
     public int Id { get; set; }
 
-    public int ReservaId { get; set; }
+    public int? ReservaId { get; set; }
+
+    public int? UsuarioId { get; set; }
 
     public string Tipo { get; set; } = null!;
 
@@ -22,4 +24,6 @@ public partial class Notificacione
     public DateTime? UpdatedAt { get; set; }
 
     public virtual Reserva? Reserva { get; set; }
+
+    public virtual Usuario? Usuario { get; set; }
 }

@@ -1,5 +1,9 @@
-using IguanaSV.Api.Entities;
+using ReservaHorarioEntity = IguanaSV.Api.Entities.ReservaHorario;
+using ReservaEntity = IguanaSV.Api.Entities.Reserva;
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +21,8 @@ public class ReservaHorarioController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ReservaHorario>>> GetReservaHorarios()
+    [Authorize(Roles = AuthConstants.AdminRole)]
+    public async Task<ActionResult<IEnumerable<ReservaHorarioEntity>>> GetReservaHorarios()
     {
         return await _context.ReservaHorarios
             .Include(rh => rh.Reserva)
@@ -26,7 +31,8 @@ public class ReservaHorarioController : ControllerBase
     }
 
     [HttpGet("{reservaId}/{horarioId}")]
-    public async Task<ActionResult<ReservaHorario>> GetReservaHorario(int reservaId, int horarioId)
+    [Authorize]
+    public async Task<ActionResult<ReservaHorarioEntity>> GetReservaHorario(int reservaId, int horarioId)
     {
         var reservaHorario = await _context.ReservaHorarios
             .Include(rh => rh.Reserva)
@@ -38,72 +44,20 @@ public class ReservaHorarioController : ControllerBase
             return NotFound();
         }
 
-        return reservaHorario;
-    }
-
-    [HttpPut("{reservaId}/{horarioId}")]
-    public async Task<IActionResult> PutReservaHorario(int reservaId, int horarioId, ReservaHorario reservaHorario)
-    {
-        if (reservaId != reservaHorario.ReservaId || horarioId != reservaHorario.HorarioId)
-        {
-            return BadRequest();
-        }
-
-        var exists = await _context.ReservaHorarios
-            .AnyAsync(rh => rh.ReservaId == reservaId && rh.HorarioId == horarioId);
-
-        if (!exists)
+        if (!await CanAccessAsync(reservaHorario.Reserva!))
         {
             return NotFound();
         }
 
-        _context.Entry(reservaHorario).State = EntityState.Modified;
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Conflict();
-        }
-
-        return NoContent();
+        return reservaHorario;
     }
 
-    [HttpPost]
-    public async Task<ActionResult<ReservaHorario>> PostReservaHorario(ReservaHorario reservaHorario)
-    {
-        var reservaExists = await _context.Reservas.AnyAsync(r => r.Id == reservaHorario.ReservaId);
-        if (!reservaExists)
-        {
-            return NotFound($"La reserva con id {reservaHorario.ReservaId} no existe.");
-        }
-
-        var horarioExists = await _context.Horarios.AnyAsync(h => h.Id == reservaHorario.HorarioId);
-        if (!horarioExists)
-        {
-            return NotFound($"El horario con id {reservaHorario.HorarioId} no existe.");
-        }
-
-        var alreadyExists = await _context.ReservaHorarios
-            .AnyAsync(rh => rh.ReservaId == reservaHorario.ReservaId && rh.HorarioId == reservaHorario.HorarioId);
-
-        if (alreadyExists)
-        {
-            return Conflict("Esa relacion reserva-horario ya existe.");
-        }
-
-        _context.ReservaHorarios.Add(reservaHorario);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetReservaHorario), new { reservaId = reservaHorario.ReservaId, horarioId = reservaHorario.HorarioId }, reservaHorario);
-    }
-
-    [HttpDelete("{reservaId}/{horarioId}")]
-    public async Task<IActionResult> DeleteReservaHorario(int reservaId, int horarioId)
+    [Authorize]
+    [HttpPut("{reservaId}/{horarioId}")]
+    public async Task<IActionResult> PutReservaHorario(int reservaId, int horarioId, CreateReservaHorarioDto dto)
     {
         var reservaHorario = await _context.ReservaHorarios
+            .Include(rh => rh.Reserva)
             .FirstOrDefaultAsync(rh => rh.ReservaId == reservaId && rh.HorarioId == horarioId);
 
         if (reservaHorario == null)
@@ -111,9 +65,142 @@ public class ReservaHorarioController : ControllerBase
             return NotFound();
         }
 
+        if (!await CanAccessAsync(reservaHorario.Reserva!))
+        {
+            return Forbid();
+        }
+
+        if (reservaId != dto.ReservaId || horarioId != dto.HorarioId)
+        {
+            return BadRequest("Los IDs del body no coinciden con los de la ruta.");
+        }
+
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPost]
+    public async Task<ActionResult<ReservaHorarioEntity>> PostReservaHorario(CreateReservaHorarioDto dto)
+    {
+        var reserva = await _context.Reservas.FirstOrDefaultAsync(r => r.Id == dto.ReservaId);
+        if (reserva is null)
+        {
+            return NotFound($"La reserva con id {dto.ReservaId} no existe.");
+        }
+
+        var horario = await _context.Horarios.FirstOrDefaultAsync(h => h.Id == dto.HorarioId);
+        if (horario is null)
+        {
+            return NotFound($"El horario con id {dto.HorarioId} no existe.");
+        }
+
+        var publicacion = await _context.Publicaciones.FirstOrDefaultAsync(p => p.Id == horario.PublicacionId);
+        if (publicacion is null)
+        {
+            return NotFound($"La publicacion del horario con id {dto.HorarioId} no existe.");
+        }
+
+        if (!await CanAccessAsync(reserva))
+        {
+            return Forbid();
+        }
+
+        if (horario.PublicacionId != reserva.PublicacionId)
+        {
+            return BadRequest("El horario debe pertenecer a la publicación de la reserva.");
+        }
+
+        // Experience slot capacity (design TD3): a per-slot guest count cannot be
+        // expressed as a DB EXCLUDE, so it is guarded by a per-slot advisory
+        // transaction lock. pg_advisory_xact_lock(horario_id) serializes concurrent
+        // bookings that target the same slot for the whole transaction (the lock is
+        // released automatically at commit/rollback), closing the read-modify-write
+        // race an unlocked count would leave open — this is the DB-enforced
+        // replacement for the old racy application check on this path.
+        await using var tx = await _context.Database.BeginTransactionAsync();
+
+        await _context.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0}::bigint)", horario.Id);
+
+        var yaExiste = await _context.ReservaHorarios
+            .AnyAsync(rh => rh.ReservaId == dto.ReservaId && rh.HorarioId == dto.HorarioId);
+
+        if (yaExiste)
+        {
+            await tx.RollbackAsync();
+            return Conflict("Esa relacion reserva-horario ya existe.");
+        }
+
+        // Guests already committed to this slot by active reservations. NULL estado
+        // counts as active (IS DISTINCT FROM 'cancelada'), mirroring the lodging
+        // EXCLUDE predicate, so the two guards never disagree.
+        var ocupados = (await _context.ReservaHorarios
+            .Where(rh => rh.HorarioId == horario.Id
+                && (rh.Reserva!.Estado ?? "") != "cancelada")
+            .Select(rh => (int?)rh.Reserva!.NumeroHuespedes)
+            .SumAsync()) ?? 0;
+
+        // Binding ceiling: the horario's own cupos when configured (>0), falling
+        // back to the publication capacity. Comparing against the publication
+        // alone let a cupos=2 slot accept more guests than it holds.
+        var capacidadSlot = horario.Cupos is > 0 ? horario.Cupos.Value : publicacion.CapacidadMaxima;
+
+        if (ocupados + reserva.NumeroHuespedes > capacidadSlot)
+        {
+            // Slot full: refuse the link (and therefore the seat demand) with a 409.
+            await tx.RollbackAsync();
+            return Conflict(new { mensaje = "El cupo de este horario ya no está disponible." });
+        }
+
+        var reservaHorario = new ReservaHorarioEntity
+        {
+            ReservaId = dto.ReservaId,
+            HorarioId = dto.HorarioId,
+            CreatedAt = DateTime.Now
+        };
+
+        _context.ReservaHorarios.Add(reservaHorario);
+        await _context.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        return CreatedAtAction(nameof(GetReservaHorario), new { reservaId = reservaHorario.ReservaId, horarioId = reservaHorario.HorarioId }, reservaHorario);
+    }
+
+    [Authorize]
+    [HttpDelete("{reservaId}/{horarioId}")]
+    public async Task<IActionResult> DeleteReservaHorario(int reservaId, int horarioId)
+    {
+        var reservaHorario = await _context.ReservaHorarios
+            .Include(rh => rh.Reserva)
+            .FirstOrDefaultAsync(rh => rh.ReservaId == reservaId && rh.HorarioId == horarioId);
+
+        if (reservaHorario == null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanAccessAsync(reservaHorario.Reserva!))
+        {
+            return Forbid();
+        }
+
         _context.ReservaHorarios.Remove(reservaHorario);
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private async Task<bool> CanAccessAsync(ReservaEntity reserva)
+    {
+        if (User.IsInRole(AuthConstants.AdminRole))
+        {
+            return true;
+        }
+
+        var sub = User.GetSubjectId();
+        return sub.HasValue
+            && (reserva.UsuarioId == sub.Value
+                || await _context.Publicaciones.AnyAsync(p =>
+                    p.Id == reserva.PublicacionId && p.Anfitrion!.UsuarioId == sub.Value));
     }
 }

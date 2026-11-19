@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace IguanaSV.Api.Entities;
 
@@ -11,9 +12,17 @@ public partial class Publicacione
 
     public int CategoriaId { get; set; }
 
+    public string Tipo { get; set; } = null!;
+
     public string Titulo { get; set; } = null!;
 
     public string? Descripcion { get; set; }
+
+    [JsonIgnore]
+    public string? TituloEn { get; set; }
+
+    [JsonIgnore]
+    public string? DescripcionEn { get; set; }
 
     public decimal PrecioPorNoche { get; set; }
 
@@ -31,6 +40,18 @@ public partial class Publicacione
 
     public decimal? Longitud { get; set; }
 
+    // Optional tour map points (used mainly by tipo = 'experiencia'):
+    // "punto de encuentro" (meeting point) and "destino" (destination).
+    public decimal? PuntoEncuentroLatitud { get; set; }
+
+    public decimal? PuntoEncuentroLongitud { get; set; }
+
+    public decimal? DestinoLatitud { get; set; }
+
+    public decimal? DestinoLongitud { get; set; }
+
+    public int? MunicipioId { get; set; }
+
     public string? Estado { get; set; }
 
     public DateTime? CreatedAt { get; set; }
@@ -41,6 +62,8 @@ public partial class Publicacione
 
     public virtual Categoria? Categoria { get; set; }
 
+    public virtual Municipio? Municipio { get; set; }
+
     public virtual ICollection<Experiencia> Experiencia { get; set; } = new List<Experiencia>();
 
     public virtual ICollection<Horario> Horarios { get; set; } = new List<Horario>();
@@ -50,4 +73,6 @@ public partial class Publicacione
     public virtual ICollection<PublicacionAmenidad> PublicacionAmenidads { get; set; } = new List<PublicacionAmenidad>();
 
     public virtual ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
+
+    public virtual ICollection<Resena> Resenas { get; set; } = new List<Resena>();
 }

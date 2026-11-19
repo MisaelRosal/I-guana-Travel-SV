@@ -1,7 +1,12 @@
+using IguanaSV.Api.Auth;
 using IguanaSV.Api.Entities;
 using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Models;
+using IguanaSV.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace IguanaSV.Api.Controllers;
 
@@ -10,29 +15,66 @@ namespace IguanaSV.Api.Controllers;
 public class ReservaController : ControllerBase
 {
     private readonly IguanasDbContext _context;
+    private readonly IEmailNotificationService _notificaciones;
+    private readonly INotificacionSitioService _notificacionesSitio;
 
-    public ReservaController(IguanasDbContext context)
+    public ReservaController(
+        IguanasDbContext context,
+        IEmailNotificationService notificaciones,
+        INotificacionSitioService notificacionesSitio)
     {
         _context = context;
+        _notificaciones = notificaciones;
+        _notificacionesSitio = notificacionesSitio;
     }
 
+    // Owner-scoped list (W4): a plain user sees only their own reservations;
+    // an admin sees every row. Reservations with a NULL owner (legacy rows the
+    // W2 backfill could not match) are hidden from non-admins, so the guest-PII
+    // leak of returning all rows is closed.
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<Reserva>>> GetReservas()
     {
-        return await _context.Reservas
+        var query = _context.Reservas
             .Include(r => r.Publicacion)
+                .ThenInclude(p => p.ImagenesPublicacions)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p.Categoria)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
-            .ToListAsync();
+            .Include(r => r.Resenas)
+            .AsQueryable();
+
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            var sub = User.GetSubjectId();
+            query = query.Where(r => r.UsuarioId.HasValue && r.UsuarioId == sub);
+        }
+
+        return await query.ToListAsync();
     }
 
+    // Single reservation detail is PII (W4): owner-or-admin only. A non-owner
+    // gets 404 rather than 403 so the existence of someone else's row is not
+    // leaked through the status code. Orphan-NULL rows are never owned, so they
+    // resolve to 404 for any non-admin subject.
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<Reserva>> GetReserva(int id)
     {
         var reserva = await _context.Reservas
             .Include(r => r.Publicacion)
+                .ThenInclude(p => p.ImagenesPublicacions)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p.Categoria)
+            .Include(r => r.Publicacion)
+                .ThenInclude(p => p.Horarios)
             .Include(r => r.ReservaHorarios)
             .Include(r => r.Notificaciones)
+            .Include(r => r.Resenas)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (reserva == null)
@@ -40,35 +82,225 @@ public class ReservaController : ControllerBase
             return NotFound();
         }
 
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            var sub = User.GetSubjectId();
+            if (!reserva.UsuarioId.HasValue || reserva.UsuarioId.Value != sub)
+            {
+                return NotFound();
+            }
+        }
+
         return reserva;
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> PutReserva(int id, Reserva reserva)
+    // Public availability windows (dates only, no guest data) stay anonymous:
+    // the experience detail page renders them before any login.
+    [HttpGet("disponibilidad/{publicacionId}")]
+    public async Task<IActionResult> GetDisponibilidad(int publicacionId)
     {
-        if (id != reserva.Id)
+        var reservasOcupadas = await _context.Reservas
+            .Where(r => r.PublicacionId == publicacionId
+                && r.Estado != "cancelada"
+                && r.FechaFin >= DateOnly.FromDateTime(DateTime.Today))
+            .Select(r => new { inicio = r.FechaInicio, fin = r.FechaFin })
+            .ToListAsync();
+
+        return Ok(reservasOcupadas);
+    }
+
+    // Operator agenda (A-20): every reservation behind the caller's own
+    // publications, so the panel can paint a month calendar and a forward-looking
+    // list without leaking other hosts' guest PII. Owner scoping mirrors
+    // DashboardController: an admin sees every reservation, a host sees only
+    // their listings' rows, and a plain user with no host row gets an empty list.
+    // Cancelled rows are included (the client filters them out of the occupancy
+    // marks) so an operator can still audit them.
+    [HttpGet("agenda")]
+    [Authorize]
+    public async Task<IActionResult> GetAgenda()
+    {
+        var sub = User.GetSubjectId();
+        if (!sub.HasValue)
         {
-            return BadRequest();
+            return Forbid();
         }
 
-        var exists = await _context.Reservas.AnyAsync(r => r.Id == id);
+        var query = _context.Reservas.AsNoTracking();
 
-        if (!exists)
+        if (!User.IsInRole(AuthConstants.AdminRole))
+        {
+            query = query.Where(r => r.Publicacion!.Anfitrion!.UsuarioId == sub.Value);
+        }
+
+        var filas = await query
+            .OrderBy(r => r.FechaInicio)
+            .ThenBy(r => r.Id)
+            .Select(r => new
+            {
+                id = r.Id,
+                publicacionId = r.PublicacionId,
+                publicacionTitulo = r.Publicacion!.Titulo,
+                tipo = r.Publicacion!.Tipo,
+                experienciaCategoria = r.Publicacion!.Categoria != null
+                    ? r.Publicacion.Categoria.Nombre
+                    : null,
+                fechaInicio = r.FechaInicio,
+                fechaFin = r.FechaFin,
+                numeroHuespedes = r.NumeroHuespedes,
+                precioTotal = r.PrecioTotal,
+                estado = r.Estado,
+                nombreHuesped = r.NombreHuesped,
+                emailHuesped = r.EmailHuesped,
+                telefonoHuesped = r.TelefonoHuesped,
+                fechaPago = r.FechaPago,
+                metodoPago = r.MetodoPago,
+                // Host->guest rating already submitted (null when the host has
+                // not rated this guest yet), so the panel can stop offering it.
+                calificacionHuesped = r.Resenas
+                    .Where(x => x.UsuarioDestinoId != null)
+                    .Select(x => (short?)x.Calificacion)
+                    .FirstOrDefault(),
+            })
+            .ToListAsync();
+
+        return Ok(filas);
+    }
+
+    // Edit (W4): binds CreateReservaDto, so the validator runs and only the
+    // legitimate guest fields (dates, guests) change. PrecioTotal is recomputed
+    // server-side; UsuarioId, Estado and the owning publication are never read
+    // from the body. The W3b owner-or-admin gate still authorizes the mutation.
+    [HttpPut("{id}")]
+    [Authorize]
+    public async Task<IActionResult> PutReserva(int id, CreateReservaDto dto)
+    {
+        var existente = await _context.Reservas
+            .Include(r => r.ReservaHorarios)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (existente == null)
         {
             return NotFound();
         }
 
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == reserva.PublicacionId))
+        if (!CallerCanMutateReserva(existente))
         {
-            return NotFound($"La publicacion con id {reserva.PublicacionId} no existe.");
+            return Forbid();
         }
 
-        if (reserva.FechaFin < reserva.FechaInicio)
+        if (existente.FechaExpiracionGracia != null)
+        {
+            // Short reservation: edit is governed by the grace window, not by the
+            // "1 day or less" rule. Paying locks the row; a lapsed grace blocks it.
+            if (existente.Estado == "confirmada")
+            {
+                return BadRequest("Ya pagaste, no se puede editar.");
+            }
+
+            if (!EstaEnGracia(existente))
+            {
+                return BadRequest("La hora para editar venció.");
+            }
+        }
+        else if (existente.FechaInicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
+        {
+            return BadRequest("No es posible editar una reserva cuando falta un día o menos para la fecha de entrada.");
+        }
+
+        if (dto.FechaFin < dto.FechaInicio)
         {
             return BadRequest("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
         }
 
-        _context.Entry(reserva).State = EntityState.Modified;
+        // The reservation stays bound to its original publication; the client
+        // cannot reparent it onto another host's listing.
+        var publicacion = await _context.Publicaciones.FirstOrDefaultAsync(p => p.Id == existente.PublicacionId);
+        if (publicacion == null)
+        {
+            return NotFound($"La publicacion con id {existente.PublicacionId} no existe.");
+        }
+
+        if (dto.NumeroHuespedes > publicacion.CapacidadMaxima)
+        {
+            return BadRequest($"La capacidad máxima de esta publicación es de {publicacion.CapacidadMaxima} personas.");
+        }
+
+        // Same advisory lock as PostReserva/reprogramar so an edit can't race a
+        // host reschedule of this publication.
+        var esExperiencia = string.Equals(publicacion.Tipo, "experiencia", StringComparison.OrdinalIgnoreCase);
+        await using var tx = await _context.Database.BeginTransactionAsync();
+        if (esExperiencia)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock({0}::bigint)", publicacion.Id);
+        }
+
+        // Effective dates honor the half-open [check-in, check-out) rule (TD2); an
+        // experience collapses to a single day so it self-exempts from the lodging
+        // exclusion and is governed by per-slot capacity instead (TD3).
+        var (inicio, fin) = EffectiveDates(publicacion, dto);
+
+        // Strict half-open overlap predicate: two ranges overlap iff
+        // a.inicio < b.fin AND b.inicio < a.fin. This replaces the racy inclusive
+        // (<= / >=) check that wrongly flagged the checkout==checkin adjacency.
+        // The DB EXCLUDE constraint is the authoritative guard for the concurrent
+        // case; this pre-check only produces a friendly message for the common,
+        // non-contended case.
+        var hayConflicto = await _context.Reservas
+            .AnyAsync(r => r.Id != id
+                && r.PublicacionId == existente.PublicacionId
+                && r.Estado != "cancelada"
+                && r.FechaInicio < fin
+                && inicio < r.FechaFin);
+
+        if (hayConflicto)
+        {
+            return Conflict(OverlapConflict());
+        }
+
+        // Experience day-cap (mirrors PostReserva): an edit can move the date and
+        // the guest count, so the same day ceiling applies here. The row being
+        // edited is EXCLUDED from the day occupancy (r.Id != id) so its current
+        // guests do not double-count against their own new value.
+        if (esExperiencia)
+        {
+            // Same rules as POST: a day with configured cupos keeps that sum as
+            // the ceiling; a day with slots but no cupos is per-slot governed;
+            // a horario-less day falls back to the publication capacity.
+            var cuposPorDia = await _context.Horarios
+                .Where(h => h.PublicacionId == publicacion.Id && h.Fecha == inicio)
+                .Select(h => h.Cupos ?? 0)
+                .ToListAsync();
+
+            var cuposConfigurados = cuposPorDia.Sum();
+            var hayDiaSinSlots = cuposPorDia.Count == 0;
+            var capacidadDelDia = cuposConfigurados > 0
+                ? cuposConfigurados
+                : publicacion.CapacidadMaxima;
+            var aplicaTopeDelDia = cuposConfigurados > 0 || hayDiaSinSlots;
+
+            var ocupadosDia = await _context.Reservas
+                .Where(r => r.Id != id
+                    && r.PublicacionId == publicacion.Id
+                    && r.FechaInicio == inicio
+                    && (r.Estado ?? "") != "cancelada")
+                .SumAsync(r => (int?)r.NumeroHuespedes) ?? 0;
+
+            if (aplicaTopeDelDia
+                && ocupadosDia + dto.NumeroHuespedes > capacidadDelDia)
+            {
+                return Conflict(new { mensaje = "El cupo de este horario ya no está disponible." });
+            }
+        }
+
+        existente.FechaInicio = inicio;
+        existente.FechaFin = fin;
+        existente.NumeroHuespedes = dto.NumeroHuespedes;
+        existente.PrecioTotal = CalcularPrecioTotal(
+            publicacion, await GetPrecioAdicionalExperienciaAsync(publicacion),
+            inicio, fin, dto.NumeroHuespedes);
+        existente.UpdatedAt = DateTime.Now;
 
         try
         {
@@ -78,30 +310,421 @@ public class ReservaController : ControllerBase
         {
             return Conflict();
         }
+        catch (DbUpdateException ex) when (IsExclusionViolation(ex))
+        {
+            // Lost the concurrency race against another committed edit whose range
+            // now overlaps ours; the EXCLUDE rejected the update.
+            return Conflict(OverlapConflict());
+        }
+
+        await tx.CommitAsync();
 
         return NoContent();
     }
 
+    // Create (W4): binds CreateReservaDto (validator finally runs), derives
+    // UsuarioId from the token subject, recomputes PrecioTotal from the
+    // authoritative publication, and pins Estado to "pendiente". The client's
+    // own UsuarioId/PrecioTotal/Estado (if any) are never read.
     [HttpPost]
-    public async Task<ActionResult<Reserva>> PostReserva(Reserva reserva)
+    [Authorize]
+    public async Task<ActionResult<Reserva>> PostReserva(CreateReservaDto dto)
     {
-        if (!await _context.Publicaciones.AnyAsync(p => p.Id == reserva.PublicacionId))
+        var publicacion = await _context.Publicaciones
+            .Include(p => p.Anfitrion)
+            .FirstOrDefaultAsync(p => p.Id == dto.PublicacionId);
+        if (publicacion == null)
         {
-            return NotFound($"La publicacion con id {reserva.PublicacionId} no existe.");
+            return NotFound($"La publicacion con id {dto.PublicacionId} no existe.");
         }
 
-        if (reserva.FechaFin < reserva.FechaInicio)
+        // A host may not book their own listing: it would let them fabricate
+        // stays, skew availability and later review their own publication. The
+        // host is the publicacion's anfitrion owner (a NULL UsuarioId is a legacy
+        // unlinked host, so there is nobody to block).
+        var sub = User.GetSubjectId();
+        if (sub.HasValue && publicacion.Anfitrion?.UsuarioId == sub.Value)
+        {
+            return BadRequest(new { mensaje = "No podés reservar tu propia publicación." });
+        }
+
+        if (dto.FechaFin < dto.FechaInicio)
         {
             return BadRequest("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
         }
 
+        if (dto.NumeroHuespedes > publicacion.CapacidadMaxima)
+        {
+            return BadRequest($"La capacidad máxima de esta publicación es de {publicacion.CapacidadMaxima} personas.");
+        }
+
+        // Serialize with a host rescheduling this publication: the reschedule
+        // takes the same advisory lock, so a booking can't land on the date
+        // while it is being moved to another one.
+        var esExperiencia = string.Equals(publicacion.Tipo, "experiencia", StringComparison.OrdinalIgnoreCase);
+        await using var tx = await _context.Database.BeginTransactionAsync();
+        if (esExperiencia)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock({0}::bigint)", publicacion.Id);
+        }
+
+        // Effective dates: lodging keeps the caller's [check-in, check-out) range;
+        // an experience is a single point in time, so it self-exempts from the
+        // lodging EXCLUDE and its double-booking is prevented by per-slot capacity
+        // (design TD2/TD3). This also keeps new rows consistent with M3's pre-clean.
+        var (inicio, fin) = EffectiveDates(publicacion, dto);
+
+        // Strict half-open overlap predicate (see the PUT comment above). The DB
+        // EXCLUDE constraint is what actually guarantees correctness under
+        // concurrency; this read only yields a friendly message when there is no
+        // race.
+        var hayConflicto = await _context.Reservas
+            .AnyAsync(r => r.PublicacionId == dto.PublicacionId
+                && r.Estado != "cancelada"
+                && r.FechaInicio < fin
+                && inicio < r.FechaFin);
+
+        if (hayConflicto)
+        {
+            return Conflict(OverlapConflict());
+        }
+
+        // Experience slot capacity (A4): the experience range collapses to an
+        // empty daterange so the EXCLUDE never fires here; the binding guard
+        // instead lives in this same booking transaction, which already holds
+        // the publication advisory lock taken above (it serializes concurrent
+        // bookings for this publication, so the count below cannot race).
+        if (esExperiencia)
+        {
+            // The SPA books experiences at date level without binding horarios,
+            // and the pre-audit flow never required one, so a date with no
+            // published horario is still bookable instead of a hard 409.
+            // Capacity:
+            //   * a day with configured cupos keeps that sum as the day ceiling;
+            //   * a day with slots but no cupos is NOT day-capped here — its
+            //     capacity is enforced per slot when the reservation is bound to
+            //     the horario (ReservaHorario binding check), so a date-level
+            //     booking against publication capacity would refuse legitimate
+            //     double-slot days in advance;
+            //   * a horario-less day falls back to the publication capacity.
+            var cuposPorDia = await _context.Horarios
+                .Where(h => h.PublicacionId == publicacion.Id && h.Fecha == inicio)
+                .Select(h => h.Cupos ?? 0)
+                .ToListAsync();
+
+            var cuposConfigurados = cuposPorDia.Sum();
+            var hayDiaSinSlots = cuposPorDia.Count == 0;
+            var capacidadDelDia = cuposConfigurados > 0
+                ? cuposConfigurados
+                : publicacion.CapacidadMaxima;
+            var aplicaTopeDelDia = cuposConfigurados > 0 || hayDiaSinSlots;
+
+            var ocupadosDia = await _context.Reservas
+                .Where(r => r.PublicacionId == publicacion.Id
+                    && r.FechaInicio == inicio
+                    && (r.Estado ?? "") != "cancelada")
+                .SumAsync(r => (int?)r.NumeroHuespedes) ?? 0;
+
+            if (aplicaTopeDelDia
+                && ocupadosDia + dto.NumeroHuespedes > capacidadDelDia)
+            {
+                return Conflict(new { mensaje = "El cupo de este horario ya no está disponible." });
+            }
+        }
+
+        var reserva = new Reserva
+        {
+            PublicacionId = dto.PublicacionId,
+            UsuarioId = sub,
+            NombreHuesped = dto.NombreHuesped,
+            EmailHuesped = dto.EmailHuesped,
+            TelefonoHuesped = dto.TelefonoHuesped,
+            FechaInicio = inicio,
+            FechaFin = fin,
+            NumeroHuespedes = dto.NumeroHuespedes,
+            PrecioTotal = CalcularPrecioTotal(
+                publicacion, await GetPrecioAdicionalExperienciaAsync(publicacion),
+                inicio, fin, dto.NumeroHuespedes),
+            Estado = "pendiente",
+        };
+
+        // Short reservation (<24h): check-in is today or tomorrow, so the guest
+        // gets a one-hour grace window to pay before the row auto-cancels.
+        if (inicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
+        {
+            reserva.FechaExpiracionGracia = DateTime.Now.AddHours(1);
+        }
+
         _context.Reservas.Add(reserva);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsExclusionViolation(ex))
+        {
+            // The pre-check is inherently racy: two concurrent POSTs for the same
+            // publication and overlapping dates both read "no conflict" and both
+            // attempt the insert. The EXCLUDE is the tie-breaker, so the loser is
+            // rejected by the database and surfaces here as a 409 (not a 500).
+            return Conflict(OverlapConflict());
+        }
+
+        await tx.CommitAsync();
+
+        // Confirmation + simulated payment reminder to the guest address given in
+        // the booking form (not the account's login email: a guest can book for
+        // someone else). Fire-and-forget-safe: a failed email never fails the
+        // reservation itself.
+        if (!string.IsNullOrWhiteSpace(dto.EmailHuesped))
+        {
+            await _notificaciones.ReservaCreadaAsync(
+                dto.EmailHuesped!.Trim().ToLowerInvariant(),
+                dto.NombreHuesped ?? "huésped",
+                publicacion.Titulo ?? "tu reserva",
+                inicio,
+                fin,
+                dto.NumeroHuespedes,
+                reserva.PrecioTotal);
+        }
+
+        // In-site copy for the host (never fails the reservation; the service
+        // logs and swallows).
+        await _notificacionesSitio.NotificarAsync(
+            publicacion.Anfitrion?.UsuarioId,
+            publicacion.Anfitrion?.Email,
+            "reserva_creada",
+            $"Nueva reserva pendiente de confirmación para {publicacion.Titulo ?? "tu publicación"}",
+            reserva.Id);
 
         return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);
     }
 
+    [HttpPut("{id}/confirmar")]
+    [Authorize]
+    public async Task<IActionResult> ConfirmarReserva(int id)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (!CallerCanMutateReserva(reserva))
+        {
+            return Forbid();
+        }
+
+        if (reserva.Estado != "pendiente")
+        {
+            return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden confirmar reservas pendientes." });
+        }
+
+        // Atomic transition: the WHERE estado == 'pendiente' makes the write the
+        // race tie-breaker against any concurrent payer/canceller/expiration pass
+        // (no rowversion column; a lost transition answers 409 instead of
+        // last-write-wins stamping a cancelled row as confirmed).
+        var confirmadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado == "pendiente")
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "confirmada")
+                .SetProperty(r => r.UpdatedAt, DateTime.Now));
+
+        if (confirmadas == 0)
+        {
+            return Conflict(new { mensaje = "La reserva ya no está en estado pendiente." });
+        }
+
+        // Keep the still-tracked entity in sync with what was written so the
+        // response payload reports the new state (no SaveChanges from here).
+        reserva.Estado = "confirmada";
+
+        await _notificacionesSitio.NotificarAsync(
+            reserva.UsuarioId,
+            reserva.EmailHuesped,
+            "reserva_confirmada",
+            $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue confirmada",
+            reserva.Id);
+
+        return Ok(new { mensaje = "Reserva confirmada exitosamente.", reserva });
+    }
+
+    [HttpPut("{id}/pagar")]
+    [Authorize]
+    public async Task<IActionResult> PagarReserva(int id, [FromBody] PagarReservaDto dto)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (!CallerCanMutateReserva(reserva))
+        {
+            return Forbid();
+        }
+
+        if (reserva.Estado != "pendiente")
+        {
+            return BadRequest(new { mensaje = $"La reserva ya tiene estado '{reserva.Estado}'. Solo se pueden pagar reservas pendientes." });
+        }
+
+        // Short reservation whose grace has already lapsed is about to be
+        // auto-cancelled; refuse the payment before the service marks it.
+        if (reserva.FechaExpiracionGracia != null && !EstaEnGracia(reserva))
+        {
+            return BadRequest(new { mensaje = "La reserva venció y se cancelará." });
+        }
+
+        // Atomic payment stamp: every payment attribute is written in the SAME
+        // conditional update, so a row cancelled by a concurrent expiration pass
+        // can never gain a payment record (0 rows affected → 409).
+        var ahoraPago = DateTime.Now;
+        var idTransaccion = $"TXN-{Guid.NewGuid():N}".Substring(0, 20);
+        var pagadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado == "pendiente")
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "confirmada")
+                .SetProperty(r => r.MetodoPago, dto.MetodoPago)
+                .SetProperty(r => r.FechaPago, ahoraPago)
+                .SetProperty(r => r.IdTransaccion, idTransaccion)
+                .SetProperty(r => r.UpdatedAt, ahoraPago));
+
+        if (pagadas == 0)
+        {
+            return Conflict(new { mensaje = "La reserva ya no está en estado pendiente." });
+        }
+
+        // The simulated payment auto-confirms the reservation, so the guest gets
+        // the same in-site confirmation as the manual path above.
+        await _notificacionesSitio.NotificarAsync(
+            reserva.UsuarioId,
+            reserva.EmailHuesped,
+            "reserva_confirmada",
+            $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue confirmada",
+            reserva.Id);
+
+        return Ok(new
+        {
+            mensaje = "Pago simulado exitosamente. Reserva confirmada.",
+            reserva.Id,
+            Estado = "confirmada",
+            MetodoPago = dto.MetodoPago,
+            FechaPago = ahoraPago,
+            idTransaccion,
+            reserva.PrecioTotal,
+        });
+    }
+
+    [HttpPut("{id}/cancelar")]
+    [Authorize]
+    public async Task<IActionResult> CancelarReserva(int id)
+    {
+        var reserva = await _context.Reservas.FindAsync(id);
+
+        if (reserva == null)
+        {
+            return NotFound();
+        }
+
+        if (!CallerCanMutateReserva(reserva))
+        {
+            return Forbid();
+        }
+
+        if (reserva.Estado == "cancelada")
+        {
+            return BadRequest(new { mensaje = "La reserva ya está cancelada." });
+        }
+
+        if (reserva.Estado == "completada")
+        {
+            return BadRequest(new { mensaje = "No se puede cancelar una reserva ya completada." });
+        }
+
+        // A host rescheduled the experience onto another date: the guest did not
+        // choose this change, so declining it must never carry the normal
+        // penalty/grace restrictions.
+        if (reserva.CancelacionLibre)
+        {
+            // Unrestricted cancellation; only the terminal-state checks above apply.
+        }
+        else if (reserva.FechaExpiracionGracia != null)
+        {
+            // Short reservation: cancel is allowed only while pending and inside
+            // grace. A paid reservation and an expired grace both lock the row.
+            if (reserva.Estado == "confirmada")
+            {
+                return BadRequest(new { mensaje = "Ya pagaste, no se puede cancelar." });
+            }
+
+            if (!EstaEnGracia(reserva))
+            {
+                return BadRequest(new { mensaje = "La hora para cancelar venció." });
+            }
+        }
+        else if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today))
+        {
+            return BadRequest(new { mensaje = "No se puede cancelar una reserva cuya fecha de inicio ya pasó o es hoy." });
+        }
+
+        // Atomic transition conditional on every state the business rules above
+        // allow for THIS row. A short reservation's allowed set is {pendiente}
+        // only (a paid row is locked), so a graceful concurrent payment wins the
+        // race and this update finds 0 rows → 409, never a cancelled contract.
+        var estadosCanceldables = reserva.FechaExpiracionGracia != null && !reserva.CancelacionLibre
+            ? new[] { "pendiente" }
+            : new[] { "pendiente", "confirmada" };
+        var canceladas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado != null && estadosCanceldables.Contains(r.Estado))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Estado, "cancelada")
+                .SetProperty(r => r.UpdatedAt, DateTime.Now));
+
+        if (canceladas == 0)
+        {
+            return Conflict(new { mensaje = "La reserva ya no está en un estado cancelable." });
+        }
+
+        // Response payload consistency (see ConfirmarReserva note).
+        reserva.Estado = "cancelada";
+
+        // Notify the OTHER side: a guest cancellation reaches the host, a
+        // host/admin cancellation reaches the guest.
+        var subCancelador = User.GetSubjectId();
+        var canceloElHuesped = subCancelador.HasValue && reserva.UsuarioId == subCancelador.Value;
+        if (canceloElHuesped)
+        {
+            var anfitrionDestino = await _context.Publicaciones
+                .AsNoTracking()
+                .Where(p => p.Id == reserva.PublicacionId)
+                .Select(p => new { UsuarioId = p.Anfitrion!.UsuarioId, Email = p.Anfitrion!.Email })
+                .FirstOrDefaultAsync();
+            await _notificacionesSitio.NotificarAsync(
+                anfitrionDestino?.UsuarioId,
+                anfitrionDestino?.Email,
+                "reserva_cancelada",
+                $"Tu huésped canceló la reserva de {await TituloReservaAsync(reserva.PublicacionId)}",
+                reserva.Id);
+        }
+        else
+        {
+            await _notificacionesSitio.NotificarAsync(
+                reserva.UsuarioId,
+                reserva.EmailHuesped,
+                "reserva_cancelada",
+                $"Tu reserva en {await TituloReservaAsync(reserva.PublicacionId)} fue cancelada",
+                reserva.Id);
+        }
+
+        return Ok(new { mensaje = "Reserva cancelada exitosamente.", reserva });
+    }
+
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> DeleteReserva(int id)
     {
         var reserva = await _context.Reservas.FindAsync(id);
@@ -111,9 +734,174 @@ public class ReservaController : ControllerBase
             return NotFound();
         }
 
-        _context.Reservas.Remove(reserva);
-        await _context.SaveChangesAsync();
+        if (!CallerCanMutateReserva(reserva))
+        {
+            return Forbid();
+        }
+
+        if (reserva.CancelacionLibre)
+        {
+            // Rescheduled by the host: the guest may delete it at any time, the
+            // same way cancellation is unrestricted.
+        }
+        else if (reserva.FechaExpiracionGracia != null)
+        {
+            // Short reservation: delete mirrors the edit gate (grace window, not
+            // the "1 day or less" rule).
+            if (reserva.Estado == "confirmada")
+            {
+                return BadRequest("Ya pagaste, no se puede eliminar.");
+            }
+
+            if (!EstaEnGracia(reserva))
+            {
+                return BadRequest("La hora para eliminar venció.");
+            }
+        }
+        else if (reserva.FechaInicio <= DateOnly.FromDateTime(DateTime.Today).AddDays(1))
+        {
+            return BadRequest("No es posible eliminar una reserva cuando falta un día o menos para la fecha de entrada.");
+        }
+
+        // Atomic delete conditional on every state the gates above allow for
+        // THIS row. Short reservations only ever delete a 'pendiente' row, so a
+        // concurrent payment inside the grace race removes the row from reach
+        // (0 rows → the caller must re-read; a paid row is never hard-deleted).
+        var estadosEliminables = reserva.FechaExpiracionGracia != null && !reserva.CancelacionLibre
+            ? new[] { "pendiente" }
+            : new[] { "pendiente", "confirmada" };
+        var eliminadas = await _context.Reservas
+            .Where(r => r.Id == id && r.Estado != null && estadosEliminables.Contains(r.Estado))
+            .ExecuteDeleteAsync();
+        if (eliminadas == 0)
+        {
+            return BadRequest("La reserva ya no puede eliminarse.");
+        }
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Authoritative reservation price, always computed from the publication row
+    /// and never taken from the request body (spec "Server-side price recompute").
+    /// Lodging uses the half-open range <c>[check-in, check-out)</c> so the
+    /// checkout day is free: nights = fecha_fin - fecha_inicio, clamped to at
+    /// least 1 (a same-day request prices one night, matching the client).
+    /// Experience: the spec ("experience: from the booked horario/experiencia
+    /// price", reserva-ownership-enforcement §Server-side price recompute) does
+    /// not close a formula and horarios carry no price column, so the unit price
+    /// is <c>precio_por_noche + experiencias.precio_adicional</c> charged once per
+    /// guest. When a publication defines several experiencia rows the first (by
+    /// id) supplies the add-on, since the reservation does not select one.
+    /// </summary>
+    private static decimal CalcularPrecioTotal(
+        Publicacione publicacion, decimal? precioAdicional,
+        DateOnly fechaInicio, DateOnly fechaFin, int numeroHuespedes)
+    {
+        if (string.Equals(publicacion.Tipo, "hospedaje", StringComparison.OrdinalIgnoreCase))
+        {
+            var nights = fechaFin.DayNumber - fechaInicio.DayNumber;
+            if (nights < 1)
+            {
+                nights = 1;
+            }
+
+            return publicacion.PrecioPorNoche * nights;
+        }
+
+        return (publicacion.PrecioPorNoche + (precioAdicional ?? 0m)) * numeroHuespedes;
+    }
+
+    /// <summary>
+    /// Half-open effective range for a reservation, given the publication type.
+    /// Lodging stores the caller's <c>[check-in, check-out)</c> as-is; an
+    /// experience is booked to a single day, so <c>fecha_fin</c> is forced equal
+    /// to <c>fecha_inicio</c>. That makes <c>daterange(fecha_inicio, fecha_fin,
+    /// '[)')</c> the EMPTY range, which never overlaps anything and so
+    /// self-exempts the experience from the lodging <c>EXCLUDE</c> (design TD3);
+    /// its double-booking is instead bounded by per-slot capacity. This keeps new
+    /// rows consistent with the M3 pre-clean.
+    /// </summary>
+    private static (DateOnly Inicio, DateOnly Fin) EffectiveDates(Publicacione publicacion, CreateReservaDto dto)
+    {
+        if (string.Equals(publicacion.Tipo, "experiencia", StringComparison.OrdinalIgnoreCase))
+        {
+            return (dto.FechaInicio, dto.FechaInicio);
+        }
+
+        return (dto.FechaInicio, dto.FechaFin);
+    }
+
+    /// <summary>
+    /// The single 409 payload for an overlap/slot conflict (spec "Overlap
+    /// surfaces as HTTP 409", design "409 body { mensaje }").
+    /// </summary>
+    private static object OverlapConflict() =>
+        new { mensaje = "Las fechas seleccionadas no están disponibles. Alguien ya reservó en ese rango de fechas." };
+
+    /// <summary>
+    /// True when a failed <c>SaveChanges</c> was rejected by the PostgreSQL
+    /// exclusion constraint (SQLSTATE 23P01). The Npgsql/EF provider wraps the
+    /// <see cref="PostgresException"/> inside a <see cref="DbUpdateException"/>,
+    /// so the SQLSTATE has to be read from the inner exception.
+    /// </summary>
+    private static bool IsExclusionViolation(DbUpdateException ex) =>
+        ex.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.ExclusionViolation;
+
+    /// <summary>
+    /// Loads the add-on price for experience publications from the authoritative
+    /// experiencias row; lodging never pays one, so it short-circuits to null.
+    /// </summary>
+    private async Task<decimal?> GetPrecioAdicionalExperienciaAsync(Publicacione publicacion)
+    {
+        if (!string.Equals(publicacion.Tipo, "experiencia", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return await _context.Experiencias
+            .Where(e => e.PublicacionId == publicacion.Id)
+            .OrderBy(e => e.Id)
+            .Select(e => e.PrecioAdicional)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Publication title for the in-site notification messages; the reservations
+    /// are loaded without navigations, so it is fetched by projection. Falls back
+    /// to a generic label when the row is missing.
+    /// </summary>
+    private async Task<string> TituloReservaAsync(int publicacionId) =>
+        await _context.Publicaciones
+            .AsNoTracking()
+            .Where(p => p.Id == publicacionId)
+            .Select(p => p.Titulo)
+            .FirstOrDefaultAsync() ?? "tu reserva";
+
+    /// <summary>
+    /// True while a short reservation's one-hour grace window has not yet
+    /// elapsed. Short reservations carry a non-null <c>FechaExpiracionGracia</c>;
+    /// a normal (far-future) reservation always returns false here and is
+    /// governed by the legacy date-based rules instead.
+    /// </summary>
+    private static bool EstaEnGracia(Reserva r) =>
+        r.FechaExpiracionGracia != null && DateTime.Now < r.FechaExpiracionGracia.Value;
+
+    /// <summary>
+    /// Owner-or-admin gate for reservation mutations. Owner means the token
+    /// subject equals <c>reservas.usuario_id</c>; rows with a NULL owner (legacy
+    /// reservations the W2 backfill could not match) are admin-only. Landed in
+    /// W3b and reused by W4's DTO-bound PUT; list/detail scoping is enforced
+    /// separately in the GET actions above.
+    /// </summary>
+    private bool CallerCanMutateReserva(Reserva reserva)
+    {
+        if (User.IsInRole(AuthConstants.AdminRole))
+        {
+            return true;
+        }
+
+        var sub = User.GetSubjectId();
+        return reserva.UsuarioId.HasValue && sub.HasValue && reserva.UsuarioId.Value == sub.Value;
     }
 }

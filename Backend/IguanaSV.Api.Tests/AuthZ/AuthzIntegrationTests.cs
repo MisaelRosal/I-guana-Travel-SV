@@ -1,0 +1,1103 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Net;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+using IguanaSV.Api.Auth;
+using IguanaSV.Api.Entities;
+using IguanaSV.Api.Infrastructure;
+using IguanaSV.Api.Tests.AuthN;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Xunit;
+
+namespace IguanaSV.Api.Tests.AuthZ;
+
+/// <summary>
+/// Vertical integration slice for the <c>authz-roles-ownership</c> capability.
+/// Every scenario drives the real pipeline (cookie JWT from W3a + CSRF gate +
+/// the new [Authorize] matrix) over HTTP against the same ephemeral
+/// Testcontainers Postgres as the AuthN slice (shared collection fixture).
+/// Identity comes from three sources on purpose: real register/login sessions
+/// (usuario), hand-minted tokens with a chosen <c>rol</c> claim (anfitrion,
+/// admin), and no cookies at all (anonymous) — mirroring the spec's matrix of
+/// 401 / 403 / 2xx expectations. DB rows needed by the ownership gates are
+/// seeded directly through <see cref="IguanasDbContext"/>.
+/// Traces: authz-roles-ownership spec requirements "Public read, protected
+/// write", "Host verification is admin-only", "Role changes are admin-only",
+/// "Registrar binds identity from the token", "Publication ownership gate",
+/// "Host and image destructive routes authenticated".
+/// </summary>
+[Collection("AuthN")]
+public sealed class AuthzIntegrationTests
+{
+    private const string Password = "Secret123!";
+
+    private readonly AuthApiFixture _fixture;
+    private readonly AuthApiFactory _factory;
+
+    public AuthzIntegrationTests(AuthApiFixture fixture)
+    {
+        Skip.IfNot(fixture.DockerAvailable,
+            "Docker/Testcontainers unavailable: AuthZ integration tests skipped (environment).");
+        _fixture = fixture;
+        _factory = fixture.Factory;
+    }
+
+    // ---- Requirement: Public read, protected write -----------------------------
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task AnonymousPublicationMutations_Returns401()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+
+        var anon = Client();
+        var delete = await anon.DeleteAsync($"/api/Publicacione/{seed.PublicacionId}");
+        Assert.Equal(HttpStatusCode.Unauthorized, delete.StatusCode);
+
+        var post = await Client().PostAsync("/api/Publicacione", PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Unauthorized, post.StatusCode);
+
+        var put = await Client().PutAsync($"/api/Publicacione/{seed.PublicacionId}",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Unauthorized, put.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task AnonymousDestructiveUploadAndHostRoutes_Returns401()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+
+        // Spec scenario: anonymous asset delete -> 401.
+        var imgDelete = await Client().DeleteAsync("/api/Imagenes/whatever.png");
+        Assert.Equal(HttpStatusCode.Unauthorized, imgDelete.StatusCode);
+
+        // Spec scenario: upload write route must require a session.
+        var upload = await Client().PostAsync("/api/Imagenes/upload",
+            new MultipartFormDataContent());
+        Assert.Equal(HttpStatusCode.Unauthorized, upload.StatusCode);
+
+        var registrar = await Client().PostAsync("/api/Anfitrione/registrar", Json(new
+        {
+            municipioId = seed.MunicipioId,
+            nombre = "Ghost Host",
+            email = NewEmail(),
+        }));
+        Assert.Equal(HttpStatusCode.Unauthorized, registrar.StatusCode);
+
+        // The historically-public admin route.
+        var verificacion = await Client().PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.Unauthorized, verificacion.StatusCode);
+
+        var reservaPut = await Client().PutAsync($"/api/Reserva/{seed.ReservaId}/cancelar", content: null);
+        Assert.Equal(HttpStatusCode.Unauthorized, reservaPut.StatusCode);
+
+        var reservaList = await Client().GetAsync("/api/Reserva");
+        Assert.Equal(HttpStatusCode.Unauthorized, reservaList.StatusCode);
+
+        var notificacion = await Client().PostAsync("/api/Notificacione", Json(new
+        {
+            reservaId = seed.ReservaId,
+            tipo = "info",
+            mensaje = "anon attempt",
+            destinatarioEmail = "x@y.test",
+        }));
+        Assert.Equal(HttpStatusCode.Unauthorized, notificacion.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task AnonymousCatalogReads_Remain200()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+
+        foreach (var path in new[]
+        {
+            "/api/Publicacione",
+            $"/api/Publicacione/{seed.PublicacionId}",
+            "/api/Categoria",
+            "/api/Departamento",
+            "/api/Municipio",
+            $"/api/Reserva/disponibilidad/{seed.PublicacionId}",
+        })
+        {
+            var res = await Client().GetAsync(path);
+            Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        }
+    }
+
+    // ---- Requirement: Publication ownership gate --------------------------------
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task NonOwnerHost_EditDeleteAndCrossCreateForeignPublication_Returns403()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+        var intruder = await RegisterUserAsync(); // authenticated, no host row at all
+        var client = AuthedClient(intruder);
+
+        var put = await client.PutAsync($"/api/Publicacione/{seed.PublicacionId}",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
+
+        var delete = await client.DeleteAsync($"/api/Publicacione/{seed.PublicacionId}");
+        Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
+
+        // Creating under SOMEONE ELSE's host id must also be refused.
+        var post = await client.PostAsync("/api/Publicacione",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task Owner_EditDeleteAndCreateOwnPublication_Returns2xx()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var client = AuthedClient(owner);
+
+        // New hosts start unverified; creation requires the admin validation.
+        var verif = await AuthedClient(AdminSession())
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.NoContent, verif.StatusCode);
+
+        var post = await client.PostAsync("/api/Publicacione",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Created, post.StatusCode);
+
+        var put = await client.PutAsync($"/api/Publicacione/{seed.PublicacionId}",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId, titulo: "Renamed by owner"));
+        Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+
+        var delete = await client.DeleteAsync($"/api/Publicacione/{seed.PublicacionId}");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task Owner_UnverifiedHost_CannotCreatePublication_UntilAdminVerifies()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var client = AuthedClient(owner);
+
+        // New host rows start unverified: creation is locked by the admin gate.
+        var blocked = await client.PostAsync("/api/Publicacione",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Forbidden, blocked.StatusCode);
+
+        // The admin verification unlocks the same request for the owner.
+        var verif = await AuthedClient(AdminSession())
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.NoContent, verif.StatusCode);
+
+        var created = await client.PostAsync("/api/Publicacione",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task Admin_CanEditAnyPublication_Returns2xx()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+        var client = AuthedClient(AdminSession());
+
+        var put = await client.PutAsync($"/api/Publicacione/{seed.PublicacionId}",
+            PublicationBody(seed.AnfitrionId, seed.CategoriaId, titulo: "Renamed by admin"));
+        Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+
+        var delete = await client.DeleteAsync($"/api/Publicacione/{seed.PublicacionId}");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task PublicacionesByHost_ListIsOwnerOrAdminOnly()
+    {
+        // The by-host list includes reservas (guest PII) -> not a catalog read.
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+
+        var anon = await Client().GetAsync($"/api/Publicacione/anfitrion/{seed.AnfitrionId}");
+        Assert.Equal(HttpStatusCode.Unauthorized, anon.StatusCode);
+
+        var intruder = await RegisterUserAsync();
+        var intruderRes = await AuthedClient(intruder).GetAsync($"/api/Publicacione/anfitrion/{seed.AnfitrionId}");
+        Assert.Equal(HttpStatusCode.Forbidden, intruderRes.StatusCode);
+
+        var ownerRes = await AuthedClient(owner).GetAsync($"/api/Publicacione/anfitrion/{seed.AnfitrionId}");
+        Assert.Equal(HttpStatusCode.OK, ownerRes.StatusCode);
+
+        var adminRes = await AuthedClient(AdminSession()).GetAsync($"/api/Publicacione/anfitrion/{seed.AnfitrionId}");
+        Assert.Equal(HttpStatusCode.OK, adminRes.StatusCode);
+    }
+
+    // ---- Requirement: Host verification is admin-only ---------------------------
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task Verificacion_AdminOnly_NonAdmin403_Admin2xx_AnonymousCovered()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+
+        // A plain authenticated usuario MUST NOT reach the route.
+        var usuario = await RegisterUserAsync();
+        var usuarioRes = await AuthedClient(usuario)
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.Forbidden, usuarioRes.StatusCode);
+
+        // Neither may the host's OWN anfitrion-role token self-verify.
+        var anfitrionToken = MintToken(usuario.UserId.ToString(), "anfitrion");
+        var self = AuthedClient(new Session(usuario.UserId, usuario.Email, anfitrionToken, NewCsrf()));
+        var selfRes = await self.PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.Forbidden, selfRes.StatusCode);
+        Assert.False(await ReadHostVerifiedAsync(seed.AnfitrionId));
+
+        // Admin with a valid CSRF pair applies the change.
+        var adminRes = await AuthedClient(AdminSession())
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.NoContent, adminRes.StatusCode);
+        Assert.True(await ReadHostVerifiedAsync(seed.AnfitrionId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task PostAnfitrione_NonAdmin_CannotSelfVerify()
+    {
+        // The generic create route binds the whole entity: a non-admin could
+        // historically send verificado = true and bypass the admin gate.
+        var owner = await RegisterUserAsync();
+        var (municipioId, _) = await SeedGeoAndCategoryAsync();
+
+        var res = await AuthedClient(owner).PostAsync("/api/Anfitrione", Json(new
+        {
+            usuarioId = owner.UserId,
+            municipioId,
+            nombre = "Self-verified attempt",
+            email = NewEmail(),
+            verificado = true,
+        }));
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        var hostId = doc.RootElement.GetProperty("id").GetInt32();
+        Assert.False(await ReadHostVerifiedAsync(hostId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task GenericHostEdit_CannotSelfVerifyOrReassignOwnership()
+    {
+        // The whole-entity PUT could historically flip Verificado/UsuarioId from
+        // the body, bypassing the admin-only verificacion gate. It must now
+        // preserve both for non-admin callers.
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var client = AuthedClient(owner);
+
+        var res = await client.PutAsync($"/api/Anfitrione/{seed.AnfitrionId}", Json(new
+        {
+            id = seed.AnfitrionId,
+            municipioId = seed.MunicipioId,
+            nombre = "Renamed Host",
+            email = "renamed@authz.test",
+            verificado = true,
+            usuarioId = 999999,
+        }));
+
+        Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+        Assert.False(await ReadHostVerifiedAsync(seed.AnfitrionId));
+        Assert.Equal(owner.UserId, await ReadHostOwnerAsync(seed.AnfitrionId));
+    }
+
+    // ---- Requirement: host profile (perfil) is owner-or-admin --------------------
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task HostProfile_EditorIsOwnerOrAdmin()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+
+        var intruder = await RegisterUserAsync();
+        var intruderRes = await AuthedClient(intruder)
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/perfil", Json(new { descripcion = "hijacked" }));
+        Assert.Equal(HttpStatusCode.Forbidden, intruderRes.StatusCode);
+
+        var ownerRes = await AuthedClient(owner)
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/perfil", Json(new { descripcion = "my bio" }));
+        Assert.Equal(HttpStatusCode.OK, ownerRes.StatusCode);
+    }
+
+    // ---- Requirement: host self-profile (mi-perfil) and PII projections ---------
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_AnonymousGetAndPut_Returns401()
+    {
+        var get = await Client().GetAsync("/api/Anfitrione/mi-perfil");
+        Assert.Equal(HttpStatusCode.Unauthorized, get.StatusCode);
+
+        var put = await Client().PutAsync("/api/Anfitrione/mi-perfil", Json(new { descripcion = "anon" }));
+        Assert.Equal(HttpStatusCode.Unauthorized, put.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_OwnerGetAndPut_PersistsAllFieldsAndPreservesVerificationAndOwner()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+
+        // Flip verification ON through the admin path first: editing the
+        // profile must never reset verificado (locked decision mirrors the
+        // PUT /{id} guard — self-service edits leave Verificado/UsuarioId out).
+        var verif = await AuthedClient(AdminSession())
+            .PutAsync($"/api/Anfitrione/{seed.AnfitrionId}/verificacion", Json(true));
+        Assert.Equal(HttpStatusCode.NoContent, verif.StatusCode);
+
+        // A second municipio proves the location reassignment really writes.
+        var (otroMunicipioId, _) = await SeedGeoAndCategoryAsync();
+
+        var client = AuthedClient(owner);
+        var get = await client.GetAsync("/api/Anfitrione/mi-perfil");
+        Assert.Equal(HttpStatusCode.OK, get.StatusCode);
+        using (var doc = JsonDocument.Parse(await get.Content.ReadAsStringAsync()))
+        {
+            // Resolved from the token sub, not from any id in the request.
+            Assert.Equal(seed.AnfitrionId, doc.RootElement.GetProperty("id").GetInt32());
+            Assert.True(doc.RootElement.GetProperty("verificado").GetBoolean());
+        }
+
+        var nuevoEmail = NewEmail();
+        var put = await client.PutAsync("/api/Anfitrione/mi-perfil", Json(new
+        {
+            email = nuevoEmail,
+            telefono = "7777-8888",
+            municipioId = otroMunicipioId,
+            descripcion = "Editado por el propio anfitrión.",
+        }));
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        using (var doc = JsonDocument.Parse(await put.Content.ReadAsStringAsync()))
+        {
+            // The response is re-read fresh: after the FK reassign it must
+            // carry the NEW municipio nav, not the tracked entity's stale one
+            // (the SPA syncs both cascade selects from this body).
+            Assert.Equal(otroMunicipioId, doc.RootElement.GetProperty("municipioId").GetInt32());
+            Assert.Equal(otroMunicipioId,
+                doc.RootElement.GetProperty("municipio").GetProperty("id").GetInt32());
+        }
+
+        await using (var db = NewDb())
+        {
+            var host = await db.Anfitriones.AsNoTracking().FirstAsync(a => a.Id == seed.AnfitrionId);
+            Assert.Equal(nuevoEmail, host.Email);
+            Assert.Equal("7777-8888", host.Telefono);
+            Assert.Equal(otroMunicipioId, host.MunicipioId);
+            Assert.Equal("Editado por el propio anfitrión.", host.Descripcion);
+        }
+
+        Assert.True(await ReadHostVerifiedAsync(seed.AnfitrionId));
+        Assert.Equal(owner.UserId, await ReadHostOwnerAsync(seed.AnfitrionId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_UsuarioWithoutHostRow_Returns404()
+    {
+        var user = await RegisterUserAsync();
+        var client = AuthedClient(user);
+
+        var get = await client.GetAsync("/api/Anfitrione/mi-perfil");
+        Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
+
+        var put = await client.PutAsync("/api/Anfitrione/mi-perfil", Json(new { descripcion = "sin host" }));
+        Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_EmailTakenByAnotherHost_Returns409()
+    {
+        var owner = await RegisterUserAsync();
+        var (municipioId, _) = await SeedGeoAndCategoryAsync();
+        var ownHostId = await SeedHostAsync(owner.UserId, municipioId);
+
+        var emailOtro = NewEmail();
+        await SeedHostAsync((await RegisterUserAsync()).UserId, municipioId, email: emailOtro);
+
+        var res = await AuthedClient(owner)
+            .PutAsync("/api/Anfitrione/mi-perfil", Json(new { email = emailOtro }));
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        Assert.False(string.IsNullOrWhiteSpace(doc.RootElement.GetProperty("mensaje").GetString()));
+
+        // The friendly pre-check must not have mutated the row either.
+        await using var db = NewDb();
+        var host = await db.Anfitriones.AsNoTracking().FirstAsync(a => a.Id == ownHostId);
+        Assert.NotEqual(emailOtro, host.Email);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task MiPerfil_UnknownMunicipio_Returns400AndKeepsCurrent()
+    {
+        var owner = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+
+        var res = await AuthedClient(owner)
+            .PutAsync("/api/Anfitrione/mi-perfil", Json(new { municipioId = 987654 }));
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+
+        await using var db = NewDb();
+        var host = await db.Anfitriones.AsNoTracking().FirstAsync(a => a.Id == seed.AnfitrionId);
+        Assert.Equal(seed.MunicipioId, host.MunicipioId);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task HostList_AnonymousProjectionStripsPii_AdminKeepsFullRows()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+
+        var anon = await Client().GetAsync("/api/Anfitrione");
+        Assert.Equal(HttpStatusCode.OK, anon.StatusCode);
+        using (var doc = JsonDocument.Parse(await anon.Content.ReadAsStringAsync()))
+        {
+            // Every row of the bulk response is projected: no contact PII and
+            // no internal user link (the historical leak of the full list).
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                Assert.False(item.TryGetProperty("email", out _));
+                Assert.False(item.TryGetProperty("telefono", out _));
+                Assert.False(item.TryGetProperty("usuarioId", out _));
+            }
+
+            var seeded = doc.RootElement.EnumerateArray()
+                .First(i => i.GetProperty("id").GetInt32() == seed.AnfitrionId);
+            Assert.True(seeded.TryGetProperty("nombre", out _));
+            Assert.True(seeded.TryGetProperty("municipio", out _));
+        }
+
+        // Admin keeps the unprojected rows: AdminPanelPage reads email/telefono.
+        var admin = await AuthedClient(AdminSession()).GetAsync("/api/Anfitrione");
+        Assert.Equal(HttpStatusCode.OK, admin.StatusCode);
+        using (var doc = JsonDocument.Parse(await admin.Content.ReadAsStringAsync()))
+        {
+            var seeded = doc.RootElement.EnumerateArray()
+                .First(i => i.GetProperty("id").GetInt32() == seed.AnfitrionId);
+            Assert.True(seeded.TryGetProperty("email", out _));
+            Assert.True(seeded.TryGetProperty("telefono", out _));
+            Assert.True(seeded.TryGetProperty("usuarioId", out _));
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task HostDetail_StripsUsuarioIdForAnonymous_OwnerAndAdminKeepIt()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+
+        var anon = await Client().GetAsync($"/api/Anfitrione/{seed.AnfitrionId}");
+        Assert.Equal(HttpStatusCode.OK, anon.StatusCode);
+        using (var doc = JsonDocument.Parse(await anon.Content.ReadAsStringAsync()))
+        {
+            // Email/telefono remain public by product decision (perfil page).
+            Assert.True(doc.RootElement.TryGetProperty("email", out _));
+            Assert.True(doc.RootElement.TryGetProperty("telefono", out _));
+            // The internal user link has no product need for strangers.
+            Assert.False(doc.RootElement.TryGetProperty("usuarioId", out _));
+        }
+
+        var owner = await RegisterUserAsync();
+        var (municipioId, _) = await SeedGeoAndCategoryAsync();
+        var ownedHostId = await SeedHostAsync(owner.UserId, municipioId);
+
+        var ownerRes = await AuthedClient(owner).GetAsync($"/api/Anfitrione/{ownedHostId}");
+        Assert.Equal(HttpStatusCode.OK, ownerRes.StatusCode);
+        using (var doc = JsonDocument.Parse(await ownerRes.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(owner.UserId, doc.RootElement.GetProperty("usuarioId").GetInt32());
+        }
+
+        var adminRes = await AuthedClient(AdminSession()).GetAsync($"/api/Anfitrione/{seed.AnfitrionId}");
+        Assert.Equal(HttpStatusCode.OK, adminRes.StatusCode);
+        using (var doc = JsonDocument.Parse(await adminRes.Content.ReadAsStringAsync()))
+        {
+            // Key present (even when NULL for an orphan row) = full entity.
+            Assert.True(doc.RootElement.TryGetProperty("usuarioId", out _));
+        }
+    }
+
+    // ---- Requirement: Registrar binds identity from the token --------------------
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task Registrar_BindsSubjectFromToken_AndPromotesCaller()
+    {
+        var user = await RegisterUserAsync();
+        var (municipioId, _) = await SeedGeoAndCategoryAsync();
+
+        var res = await AuthedClient(user).PostAsync("/api/Anfitrione/registrar", Json(new
+        {
+            municipioId,
+            nombre = "Real Host",
+            email = user.Email,
+        }));
+
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        var hostId = doc.RootElement.GetProperty("id").GetInt32();
+
+        Assert.Equal(user.UserId, await ReadHostOwnerAsync(hostId));
+        Assert.Equal("anfitrion", await ReadUserRolAsync(user.UserId));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task Registrar_IgnoresBodyUsuarioId_VictimRoleUntouched()
+    {
+        var attacker = await RegisterUserAsync();
+        var victim = await RegisterUserAsync();
+        var (municipioId, _) = await SeedGeoAndCategoryAsync();
+
+        var res = await AuthedClient(attacker).PostAsync("/api/Anfitrione/registrar", Json(new
+        {
+            usuarioId = victim.UserId, // mass-assignment attempt: must be ignored
+            municipioId,
+            nombre = "Sneaky Host",
+            email = attacker.Email,
+        }));
+
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        var hostId = doc.RootElement.GetProperty("id").GetInt32();
+
+        // The host row links to the TOKEN sub, never the body id, and only the
+        // caller's role changes.
+        Assert.Equal(attacker.UserId, await ReadHostOwnerAsync(hostId));
+        Assert.Equal("anfitrion", await ReadUserRolAsync(attacker.UserId));
+        Assert.Equal("usuario", await ReadUserRolAsync(victim.UserId));
+    }
+
+    // ---- Reservation owner-or-admin gates ----------------------------------------
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task ReservaCancel_OwnerAllowed_StrangerForbidden()
+    {
+        var owner = await RegisterUserAsync();
+        // SeedPublicationOwnedByUserAsync already creates one pending reservation
+        // owned by <paramref name="owner"/> on seed.PublicacionId. The W5 EXCLUDE
+        // (reservas_no_overlap_lodging) forbids a second, fully-overlapping active
+        // row on the same publication, so reuse the seeded one instead of adding a
+        // duplicate — the owner/stranger assertions are unchanged.
+        var seed = await SeedPublicationOwnedByUserAsync(owner.UserId);
+        var reservaId = seed.ReservaId;
+
+        var stranger = await RegisterUserAsync();
+        var strangerRes = await AuthedClient(stranger).PutAsync($"/api/Reserva/{reservaId}/cancelar", content: null);
+        Assert.Equal(HttpStatusCode.Forbidden, strangerRes.StatusCode);
+
+        var ownerRes = await AuthedClient(owner).PutAsync($"/api/Reserva/{reservaId}/cancelar", content: null);
+        Assert.Equal(HttpStatusCode.OK, ownerRes.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task ReservaOrphan_NullOwner_AdminOnly()
+    {
+        // SeedPublicationOwnedByRandomHostAsync already seeds a NULL-owner
+        // (orphan) pending reservation on the fresh publication; reuse it. The W5
+        // EXCLUDE forbids a second, fully-overlapping active row on the same
+        // publication, so we must not seed a duplicate on the same dates.
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+        var reservaId = seed.ReservaId;
+
+        var stranger = await RegisterUserAsync();
+        var strangerRes = await AuthedClient(stranger).PutAsync($"/api/Reserva/{reservaId}/cancelar", content: null);
+        Assert.Equal(HttpStatusCode.Forbidden, strangerRes.StatusCode);
+
+        var adminRes = await AuthedClient(AdminSession()).PutAsync($"/api/Reserva/{reservaId}/cancelar", content: null);
+        Assert.Equal(HttpStatusCode.OK, adminRes.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task ReservaHorario_ListIsAdminOnly_AndDetailIsGuestHostOrAdminOnly()
+    {
+        var guest = await RegisterUserAsync();
+        var host = await RegisterUserAsync();
+        var outsider = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(host.UserId);
+        await SetReservaOwnerAsync(seed.ReservaId, guest.UserId);
+        var horarioId = await SeedHorarioAsync(seed.PublicacionId);
+        await SeedReservaHorarioAsync(seed.ReservaId, horarioId);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Client().GetAsync("/api/ReservaHorario")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await AuthedClient(guest).GetAsync("/api/ReservaHorario")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await AuthedClient(host).GetAsync("/api/ReservaHorario")).StatusCode);
+
+        var list = await AuthedClient(AdminSession()).GetAsync("/api/ReservaHorario");
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        Assert.Contains(seed.ReservaId.ToString(), await list.Content.ReadAsStringAsync());
+
+        var detailPath = $"/api/ReservaHorario/{seed.ReservaId}/{horarioId}";
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Client().GetAsync(detailPath)).StatusCode);
+
+        var outsiderRes = await AuthedClient(outsider).GetAsync(detailPath);
+        Assert.Equal(HttpStatusCode.NotFound, outsiderRes.StatusCode);
+        Assert.DoesNotContain("Guest Person", await outsiderRes.Content.ReadAsStringAsync());
+
+        foreach (var allowed in new[] { guest, host, AdminSession() })
+        {
+            var allowedRes = await AuthedClient(allowed).GetAsync(detailPath);
+            Assert.Equal(HttpStatusCode.OK, allowedRes.StatusCode);
+            Assert.Contains("Guest Person", await allowedRes.Content.ReadAsStringAsync());
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task ReservaHorario_MutationsRequireGuestHostOrAdmin()
+    {
+        var guest = await RegisterUserAsync();
+        var host = await RegisterUserAsync();
+        var outsider = await RegisterUserAsync();
+        var seed = await SeedPublicationOwnedByUserAsync(host.UserId);
+        await SetReservaOwnerAsync(seed.ReservaId, guest.UserId);
+        var otherListing = await SeedPublicationOwnedByUserAsync(outsider.UserId);
+        var foreignHorarioId = await SeedHorarioAsync(otherListing.PublicacionId);
+        var horarios = new int[8];
+        for (var i = 0; i < horarios.Length; i++)
+        {
+            horarios[i] = await SeedHorarioAsync(seed.PublicacionId, i);
+        }
+
+        // PUT and DELETE operate on existing pairs; reserve a distinct pair for each allowed delete.
+        await SeedReservaHorarioAsync(seed.ReservaId, horarios[1]);
+        await SeedReservaHorarioAsync(seed.ReservaId, horarios[2]);
+        await SeedReservaHorarioAsync(seed.ReservaId, horarios[3]);
+        await SeedReservaHorarioAsync(seed.ReservaId, horarios[4]);
+
+        var anonymousPost = await Client().PostAsync("/api/ReservaHorario", Json(new
+        {
+            reservaId = seed.ReservaId,
+            horarioId = horarios[0],
+        }));
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousPost.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await Client().PutAsync($"/api/ReservaHorario/{seed.ReservaId}/{horarios[1]}",
+                Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] }))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await Client().DeleteAsync($"/api/ReservaHorario/{seed.ReservaId}/{horarios[1]}")).StatusCode);
+
+        var outsiderPost = await AuthedClient(outsider).PostAsync("/api/ReservaHorario", Json(new
+        {
+            reservaId = seed.ReservaId,
+            horarioId = horarios[0],
+        }));
+        Assert.Equal(HttpStatusCode.Forbidden, outsiderPost.StatusCode);
+        Assert.False(await ReservaHorarioExistsAsync(seed.ReservaId, horarios[0]));
+
+        var crossPublicationPost = await AuthedClient(guest).PostAsync("/api/ReservaHorario", Json(new
+        {
+            reservaId = seed.ReservaId,
+            horarioId = foreignHorarioId,
+        }));
+        Assert.Equal(HttpStatusCode.BadRequest, crossPublicationPost.StatusCode);
+        Assert.False(await ReservaHorarioExistsAsync(seed.ReservaId, foreignHorarioId));
+
+        foreach (var (session, horarioId) in new[]
+        {
+            (guest, horarios[0]),
+            (host, horarios[5]),
+            (AdminSession(), horarios[6]),
+        })
+        {
+            var created = await AuthedClient(session).PostAsync("/api/ReservaHorario", Json(new
+            {
+                reservaId = seed.ReservaId,
+                horarioId,
+            }));
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+
+        var pairPath = $"/api/ReservaHorario/{seed.ReservaId}/{horarios[1]}";
+        var putBody = Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] });
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await AuthedClient(outsider).PutAsync(pairPath, putBody)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await AuthedClient(guest).PutAsync(pairPath, Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] }))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await AuthedClient(host).PutAsync(pairPath, Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] }))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await AuthedClient(AdminSession()).PutAsync(pairPath, Json(new { reservaId = seed.ReservaId, horarioId = horarios[1] }))).StatusCode);
+
+        var forbiddenDelete = await AuthedClient(outsider)
+            .DeleteAsync($"/api/ReservaHorario/{seed.ReservaId}/{horarios[4]}");
+        Assert.Equal(HttpStatusCode.Forbidden, forbiddenDelete.StatusCode);
+        Assert.True(await ReservaHorarioExistsAsync(seed.ReservaId, horarios[4]));
+
+        foreach (var (session, horarioId) in new[]
+        {
+            (guest, horarios[1]),
+            (host, horarios[2]),
+            (AdminSession(), horarios[3]),
+        })
+        {
+            var deleted = await AuthedClient(session)
+                .DeleteAsync($"/api/ReservaHorario/{seed.ReservaId}/{horarioId}");
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+            Assert.False(await ReservaHorarioExistsAsync(seed.ReservaId, horarioId));
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "AuthZ")]
+    public async Task GenericNotifications_AreAdminOnlyForReadsAndMutations()
+    {
+        var seed = await SeedPublicationOwnedByRandomHostAsync();
+        var notificationId = await SeedNotificationAsync(seed.ReservaId, "private notification detail");
+        var outsider = await RegisterUserAsync();
+        var notificationBody = new
+        {
+            reservaId = seed.ReservaId,
+            tipo = "info",
+            mensaje = "admin notification",
+            destinatarioEmail = "admin@authz.test",
+        };
+
+        foreach (var response in new[]
+        {
+            await Client().GetAsync("/api/Notificacione"),
+            await Client().GetAsync($"/api/Notificacione/{notificationId}"),
+            await Client().PostAsync("/api/Notificacione", Json(notificationBody)),
+            await Client().PutAsync($"/api/Notificacione/{notificationId}", Json(notificationBody)),
+            await Client().DeleteAsync($"/api/Notificacione/{notificationId}"),
+        })
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        var client = AuthedClient(outsider);
+        var list = await client.GetAsync("/api/Notificacione");
+        Assert.Equal(HttpStatusCode.Forbidden, list.StatusCode);
+        Assert.DoesNotContain("private notification detail", await list.Content.ReadAsStringAsync());
+        var detail = await client.GetAsync($"/api/Notificacione/{notificationId}");
+        Assert.Equal(HttpStatusCode.Forbidden, detail.StatusCode);
+        Assert.DoesNotContain("private notification detail", await detail.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.PostAsync("/api/Notificacione", Json(notificationBody))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.PutAsync($"/api/Notificacione/{notificationId}", Json(notificationBody))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.DeleteAsync($"/api/Notificacione/{notificationId}")).StatusCode);
+
+        var admin = AuthedClient(AdminSession());
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/Notificacione")).StatusCode);
+        var adminDetail = await admin.GetAsync($"/api/Notificacione/{notificationId}");
+        Assert.Equal(HttpStatusCode.OK, adminDetail.StatusCode);
+        Assert.Contains("private notification detail", await adminDetail.Content.ReadAsStringAsync());
+
+        var created = await admin.PostAsync("/api/Notificacione", Json(notificationBody));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using var createdDoc = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var createdId = createdDoc.RootElement.GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await admin.PutAsync($"/api/Notificacione/{createdId}", Json(notificationBody))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/Notificacione/{createdId}")).StatusCode);
+    }
+
+    // ---- helpers -----------------------------------------------------------------
+
+    private sealed record Session(int UserId, string Email, string Auth, string Csrf);
+
+    private sealed record Seed(
+        int MunicipioId,
+        int CategoriaId,
+        int AnfitrionId,
+        int PublicacionId,
+        int ReservaId);
+
+    private HttpClient Client() =>
+        _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = false, // drive cookies explicitly (same contract as the AuthN slice)
+        });
+
+    /// <summary>Authenticated client: valid auth cookie plus matching CSRF double-submit pair.</summary>
+    private HttpClient AuthedClient(Session session)
+    {
+        var client = Client();
+        client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie",
+            $"{AuthConstants.AuthCookieName}={session.Auth}; {AuthConstants.CsrfCookieName}={session.Csrf}");
+        client.DefaultRequestHeaders.TryAddWithoutValidation(AuthConstants.CsrfHeaderName, session.Csrf);
+        return client;
+    }
+
+    /// <summary>Register through the real endpoint and capture the issued session cookies.</summary>
+    private async Task<Session> RegisterUserAsync()
+    {
+        var email = NewEmail();
+        var res = await Client().PostAsync("/api/Auth/register", Json(new
+        {
+            nombre = "Authz",
+            apellido = "Tester",
+            email,
+            password = Password,
+        }));
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        var id = doc.RootElement.GetProperty("id").GetInt32();
+        return new Session(
+            id,
+            email,
+            ParseCookie(res, AuthConstants.AuthCookieName).Value,
+            ParseCookie(res, AuthConstants.CsrfCookieName).Value);
+    }
+
+    /// <summary>
+    /// An admin session built by minting a token with rol=admin against the
+    /// fixture's test key — identical technique to the AuthN forged-cookie
+    /// helpers, with a self-paired CSRF value the middleware accepts.
+    /// </summary>
+    private Session AdminSession() =>
+        new(UserId: 0, Email: "admin@authz.test", Auth: MintToken("0", "admin"), Csrf: NewCsrf());
+
+    private string MintToken(string sub, string rol)
+    {
+        var creds = new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(AuthApiFactory.TestJwtKey)),
+            SecurityAlgorithms.HmacSha256);
+        var now = DateTimeOffset.UtcNow;
+        var token = new JwtSecurityToken(
+            issuer: AuthApiFactory.TestIssuer,
+            audience: AuthApiFactory.TestAudience,
+            claims: new[] { new Claim(AuthConstants.SubClaim, sub), new Claim(AuthConstants.RolClaim, rol) },
+            notBefore: now.UtcDateTime,
+            expires: now.AddMinutes(60).UtcDateTime,
+            signingCredentials: creds);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static string NewCsrf() => Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+
+    private static string NewEmail() => $"u{Guid.NewGuid():N}@authz.test".ToLowerInvariant();
+
+    private static ParsedCookie ParseCookie(HttpResponseMessage res, string name)
+    {
+        var raws = res.Headers.TryGetValues("Set-Cookie", out var values)
+            ? values.ToList()
+            : new List<string>();
+        foreach (var raw in raws)
+        {
+            var cookie = ParsedCookie.Parse(raw);
+            if (string.Equals(cookie.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return cookie;
+            }
+        }
+        throw new InvalidOperationException($"Response did not set a '{name}' cookie.");
+    }
+
+    private static StringContent Json(object body) =>
+        new(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+    /// <summary>Body valid against <c>CreatePublicacioneValidator</c> (precio/capacidad > 0, titulo >= 3).</summary>
+    private static StringContent PublicationBody(int anfitrionId, int categoriaId, string titulo = "Authz Fixture Pub") =>
+        Json(new
+        {
+            anfitrionId,
+            categoriaId,
+            titulo,
+            descripcion = "Seeded by the AuthZ slice.",
+            tipo = "hospedaje",
+            precioPorNoche = 100,
+            capacidadMaxima = 4,
+            horarios = Array.Empty<object>(),
+            experiencia = Array.Empty<object>(),
+            publicacionAmenidads = Array.Empty<object>(),
+        });
+
+    private IguanasDbContext NewDb()
+    {
+        var options = new DbContextOptionsBuilder<IguanasDbContext>()
+            .UseNpgsql(_fixture.ConnectionString!)
+            .Options;
+        return new IguanasDbContext(options);
+    }
+
+    /// <summary>Create a departamento/municipio/categoria triple with unique names.</summary>
+    private async Task<(int MunicipioId, int CategoriaId)> SeedGeoAndCategoryAsync()
+    {
+        var tag = Guid.NewGuid().ToString("N");
+        await using var db = NewDb();
+
+        var departamento = new Departamento { Nombre = $"Dep {tag}" };
+        var municipio = new Municipio { Nombre = $"Mun {tag}", Departamento = departamento };
+        var categoria = new Categoria { Nombre = $"Cat {tag}", Tipo = "hospedaje" };
+        db.Departamentos.Add(departamento);
+        db.Municipios.Add(municipio);
+        db.Categorias.Add(categoria);
+        await db.SaveChangesAsync();
+        return (municipio.Id, categoria.Id);
+    }
+
+    private async Task<int> SeedHostAsync(int? usuarioId, int municipioId, string? email = null)
+    {
+        await using var db = NewDb();
+        var host = new Anfitrione
+        {
+            UsuarioId = usuarioId,
+            MunicipioId = municipioId,
+            Nombre = $"Host {Guid.NewGuid():N}",
+            Email = email ?? NewEmail(),
+            Verificado = false,
+        };
+        db.Anfitriones.Add(host);
+        await db.SaveChangesAsync();
+        return host.Id;
+    }
+
+    private async Task<int> SeedPublicacionAsync(int anfitrionId, int categoriaId)
+    {
+        await using var db = NewDb();
+        var publicacion = new Publicacione
+        {
+            AnfitrionId = anfitrionId,
+            CategoriaId = categoriaId,
+            Tipo = "hospedaje",
+            Titulo = "Authz seed publication",
+            Descripcion = "Seeded for ownership gates.",
+            PrecioPorNoche = 50m,
+            CapacidadMaxima = 2,
+            Estado = "activo",
+        };
+        db.Publicaciones.Add(publicacion);
+        await db.SaveChangesAsync();
+        return publicacion.Id;
+    }
+
+    private async Task<int> SeedReservaAsync(int publicacionId, int? usuarioId)
+    {
+        await using var db = NewDb();
+        var reserva = new Reserva
+        {
+            PublicacionId = publicacionId,
+            UsuarioId = usuarioId,
+            NombreHuesped = "Guest Person",
+            EmailHuesped = NewEmail(),
+            FechaInicio = DateOnly.FromDateTime(DateTime.Today).AddDays(30),
+            FechaFin = DateOnly.FromDateTime(DateTime.Today).AddDays(33),
+            NumeroHuespedes = 1,
+            PrecioTotal = 150m,
+            Estado = "pendiente",
+        };
+        db.Reservas.Add(reserva);
+        await db.SaveChangesAsync();
+        return reserva.Id;
+    }
+
+    private async Task<int> SeedHorarioAsync(int publicacionId, int dayOffset = 0)
+    {
+        await using var db = NewDb();
+        var horario = new Horario
+        {
+            PublicacionId = publicacionId,
+            Fecha = DateOnly.FromDateTime(DateTime.Today).AddDays(90 + dayOffset),
+            HoraInicio = new TimeOnly(8, 0),
+            HoraFin = new TimeOnly(9, 0),
+            Disponible = true,
+            Cupos = 2,
+        };
+        db.Horarios.Add(horario);
+        await db.SaveChangesAsync();
+        return horario.Id;
+    }
+
+    private async Task SeedReservaHorarioAsync(int reservaId, int horarioId)
+    {
+        await using var db = NewDb();
+        db.ReservaHorarios.Add(new ReservaHorario { ReservaId = reservaId, HorarioId = horarioId });
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SetReservaOwnerAsync(int reservaId, int usuarioId)
+    {
+        await using var db = NewDb();
+        var reserva = await db.Reservas.FirstAsync(r => r.Id == reservaId);
+        reserva.UsuarioId = usuarioId;
+        await db.SaveChangesAsync();
+    }
+
+    private async Task<bool> ReservaHorarioExistsAsync(int reservaId, int horarioId)
+    {
+        await using var db = NewDb();
+        return await db.ReservaHorarios.AnyAsync(rh => rh.ReservaId == reservaId && rh.HorarioId == horarioId);
+    }
+
+    private async Task<int> SeedNotificationAsync(int reservaId, string message)
+    {
+        await using var db = NewDb();
+        var notification = new Notificacione
+        {
+            ReservaId = reservaId,
+            Tipo = "info",
+            Mensaje = message,
+            Leida = false,
+            DestinatarioEmail = "guest@authz.test",
+        };
+        db.Notificaciones.Add(notification);
+        await db.SaveChangesAsync();
+        return notification.Id;
+    }
+
+    /// <summary>Full chain: fresh user -> host row -> publication -> pending reserva.</summary>
+    private async Task<Seed> SeedPublicationOwnedByUserAsync(int usuarioId)
+    {
+        var (municipioId, categoriaId) = await SeedGeoAndCategoryAsync();
+        var anfitrionId = await SeedHostAsync(usuarioId, municipioId);
+        var publicacionId = await SeedPublicacionAsync(anfitrionId, categoriaId);
+        var reservaId = await SeedReservaAsync(publicacionId, usuarioId);
+        return new Seed(municipioId, categoriaId, anfitrionId, publicacionId, reservaId);
+    }
+
+    /// <summary>Chain owned by a DB-only host (no login): nobody's subject but admin/mystery can claim it.</summary>
+    private async Task<Seed> SeedPublicationOwnedByRandomHostAsync()
+    {
+        var (municipioId, categoriaId) = await SeedGeoAndCategoryAsync();
+        var anfitrionId = await SeedHostAsync(usuarioId: null, municipioId);
+        var publicacionId = await SeedPublicacionAsync(anfitrionId, categoriaId);
+        var reservaId = await SeedReservaAsync(publicacionId, usuarioId: null);
+        return new Seed(municipioId, categoriaId, anfitrionId, publicacionId, reservaId);
+    }
+
+    private async Task<bool> ReadHostVerifiedAsync(int hostId)
+    {
+        await using var db = NewDb();
+        return await db.Anfitriones.Where(a => a.Id == hostId).Select(a => a.Verificado).FirstAsync() == true;
+    }
+
+    private async Task<int?> ReadHostOwnerAsync(int hostId)
+    {
+        await using var db = NewDb();
+        return await db.Anfitriones.Where(a => a.Id == hostId).Select(a => a.UsuarioId).FirstAsync();
+    }
+
+    private async Task<string> ReadUserRolAsync(int userId)
+    {
+        await using var db = NewDb();
+        return await db.Usuarios.Where(u => u.Id == userId).Select(u => u.Rol).FirstAsync();
+    }
+}
