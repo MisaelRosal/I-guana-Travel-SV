@@ -8,20 +8,33 @@ public class MinioStorageService : IMinioStorageService
     private readonly IMinioClient _minio;
     private readonly string _bucket;
     private readonly string _publicEndpoint;
+    private readonly bool _manageBucketPolicy;
+    private readonly bool _publicUrlIncludesBucket;
 
     public MinioStorageService(IConfiguration configuration)
     {
         var endpoint = configuration["Minio:Endpoint"];
         var accessKey = configuration["Minio:AccessKey"];
         var secretKey = configuration["Minio:SecretKey"];
+        var region = configuration["Minio:Region"];
+        var useSsl = configuration.GetValue("Minio:UseSSL", false);
         _bucket = configuration["Minio:BucketName"] ?? "rutasv";
-        _publicEndpoint = (configuration["Minio:PublicEndpoint"] ?? $"http://{endpoint}").TrimEnd('/');
+        _publicEndpoint = (configuration["Minio:PublicEndpoint"] ?? $"{(useSsl ? "https" : "http")}://{endpoint}").TrimEnd('/');
+        _manageBucketPolicy = configuration.GetValue("Minio:ManageBucketPolicy", true);
+        _publicUrlIncludesBucket = configuration.GetValue("Minio:PublicUrlIncludesBucket", true);
 
-        _minio = new MinioClient()
-            .WithEndpoint(endpoint)
-            .WithCredentials(accessKey, secretKey)
-            .WithSSL(false)
-            .Build();
+        _minio = string.IsNullOrWhiteSpace(region)
+            ? new MinioClient()
+                .WithEndpoint(endpoint)
+                .WithCredentials(accessKey, secretKey)
+                .WithSSL(useSsl)
+                .Build()
+            : new MinioClient()
+                .WithEndpoint(endpoint)
+                .WithRegion(region)
+                .WithCredentials(accessKey, secretKey)
+                .WithSSL(useSsl)
+                .Build();
     }
 
     public async Task EnsureBucketExistsAsync(CancellationToken cancellationToken = default)
@@ -33,6 +46,11 @@ public class MinioStorageService : IMinioStorageService
         {
             await _minio.MakeBucketAsync(
                 new MakeBucketArgs().WithBucket(_bucket), cancellationToken);
+        }
+
+        if (!_manageBucketPolicy)
+        {
+            return;
         }
 
         // Public-read-only policy for catalog images: an anonymous visitor must be
@@ -90,7 +108,8 @@ public class MinioStorageService : IMinioStorageService
                     .WithContentType(contentType),
                 cancellationToken);
 
-            return $"{_publicEndpoint}/{_bucket}/{fileName}";
+            var bucketPath = _publicUrlIncludesBucket ? $"/{_bucket}" : string.Empty;
+            return $"{_publicEndpoint}{bucketPath}/{fileName}";
         }
     }
     public async Task DeleteAsync(string fileName, CancellationToken cancellationToken = default)

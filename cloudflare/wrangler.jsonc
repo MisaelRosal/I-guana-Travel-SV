@@ -1,0 +1,54 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "iguana-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-19",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "API_BASE_URL": "https://iguana-api.i-guanatravelsv.workers.dev",
+    "FRONTEND_BASE_URL": "https://i-guana-travel-sv.pages.dev",
+    "R2_ENDPOINT": "ba454298403b8632c6fb606410cb3131.r2.cloudflarestorage.com",
+    "R2_BUCKET": "i-guana-travel",
+    "R2_PUBLIC_URL": "https://pub-763e1f624d9b44269f1b8862948a634b.r2.dev"
+  },
+  "containers": [
+    {
+      "class_name": "BackendContainer",
+      "image": "../Backend/Dockerfile",
+      "image_build_context": "../Backend",
+      "instance_type": "standard-1",
+      "max_instances": 1
+    },
+    {
+      "class_name": "TranslateContainer",
+      "image": "docker.io/libretranslate/libretranslate:v1.9.6",
+      "instance_type": "standard-1",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BACKEND_CONTAINER",
+        "class_name": "BackendContainer"
+      },
+      {
+        "name": "TRANSLATE_CONTAINER",
+        "class_name": "TranslateContainer"
+      }
+    ]
+  },
+  "exports": {
+    "BackendContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    },
+    "TranslateContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}

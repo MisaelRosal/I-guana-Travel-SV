@@ -1,0 +1,1 @@
+{"name":"iguana-cloudflare-worker","private":true,"type":"module","scripts":{"deploy":"wrangler deploy","dev":"wrangler dev"},"dependencies":{"@cloudflare/containers":"^0.3.7","wrangler":"^4.166.0"}}

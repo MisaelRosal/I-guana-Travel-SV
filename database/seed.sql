@@ -77,5 +77,5 @@ ON CONFLICT (nombre) DO NOTHING;
 -- SEED: Amenidades
 -- =============================================
 INSERT INTO amenidades (nombre)
-VALUES ('Wi-Fi'),('Piscina'),('Estacionamiento'),('Aire acondicionado'),('Cocina'),('Lavadora'),('TV'),('Desayuno incluido'),('Pet Friendly'),('Terraza')
+VALUES ('Wi-Fi'),('Piscina'),('Estacionamiento'),('Aire acondicionado'),('Cocina'),('Lavadora'),('TV'),('Desayuno incluido'),('Pet Friendly'),('Terraza'),('Acceso para sillas de ruedas'),('Agua caliente'),('Calefacción'),('Gimnasio'),('Área de trabajo'),('Secadora de pelo')
 ON CONFLICT (nombre) DO NOTHING;

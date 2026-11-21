@@ -48,6 +48,8 @@ docker-compose.override.yml
 # HERRAMIENTAS / MISC
 # =========================
 .playwright-mcp/
+.wrangler/
+.dev.vars
 
 # =========================
 # SISTEMA OPERATIVO / EDITOR
