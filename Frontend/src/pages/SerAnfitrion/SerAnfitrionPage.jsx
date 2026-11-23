@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { localePath } from '../../i18n/routes.jsx'
-import { getMunicipios, registrarAnfitrion, obtenerSesion, guardarSesion } from '../../services/anfitriones.js'
+import { esAdmin, getMunicipios, registrarAnfitrion, obtenerSesion, guardarSesion } from '../../services/anfitriones.js'
 import { api, readCsrfToken } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
 
@@ -16,6 +16,7 @@ export default function SerAnfitrionPage() {
   const { t } = useTranslation('publicacion')
   const navigate = useNavigate()
   const usuario = obtenerSesion()
+  const yaEsAnfitrion = usuario?.rol === 'anfitrion' || esAdmin(usuario?.rol)
   const [departamentos, setDepartamentos] = useState([])
   const [municipios, setMunicipios] = useState([])
   const [departamentoId, setDepartamentoId] = useState('')
@@ -155,6 +156,23 @@ export default function SerAnfitrionPage() {
             className="cursor-pointer mt-6 inline-block rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white hover:bg-verde-bosque transition-colors"
           >
             {t('loginRequired.cta')}
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (yaEsAnfitrion) {
+    return (
+      <div className="flex justify-center px-4 py-20">
+        <div className="w-full max-w-md rounded-[22px] border border-cafe-claro/60 bg-white p-6 text-center sm:p-8">
+          <h1 className="text-2xl font-bold text-verde-bosque">{t('alreadyHost.heading')}</h1>
+          <p className="mt-3 text-sm leading-relaxed text-cafe">{t('alreadyHost.body')}</p>
+          <Link
+            to={localePath('panel')}
+            className="mt-6 inline-block cursor-pointer rounded-full bg-iguana-hondo px-6 py-2.5 font-semibold text-white transition-colors hover:bg-verde-bosque"
+          >
+            {t('alreadyHost.cta')}
           </Link>
         </div>
       </div>

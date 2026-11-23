@@ -23,6 +23,7 @@ const fixtures = vi.hoisted(() => ({
 }))
 
 vi.mock('../../../services/anfitriones.js', () => ({
+  esAdmin: (rol) => rol === 'admin' || rol === 'administrador',
   getMunicipios: vi.fn(async () => [{ id: 5, nombre: 'Suchitoto', departamentoId: 1 }]),
   registrarAnfitrion: vi.fn(async (datos) => ({ id: 9, ...datos })),
   obtenerSesion: vi.fn(() => fixtures.usuario),
@@ -123,6 +124,25 @@ describe('ES active: extraction keeps the canonical Spanish UI byte-comparable',
 
     fireEvent.click(screen.getByRole('button', { name: 'Crear perfil de anfitrión' }))
     expect(screen.getAllByText('La foto de perfil es obligatoria.')).toHaveLength(2)
+  })
+})
+
+describe('Usuario ya anfitrión o admin: no vuelve a ver el formulario', () => {
+  it('muestra el estado ya anfitrión y no el formulario', async () => {
+    fixtures.usuario = { id: 2, rol: 'anfitrion', nombre: 'Ana', apellido: 'Pérez', email: 'ana@correo.com' }
+    renderSerAnfitrion()
+
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Ya eres anfitrión')
+    expect(screen.getByRole('link', { name: 'Ir al panel' })).toHaveAttribute('href', '/panel')
+    expect(screen.queryByRole('button', { name: 'Crear perfil de anfitrión' })).toBeNull()
+  })
+
+  it('también bloquea el formulario para un admin', async () => {
+    fixtures.usuario = { id: 3, rol: 'admin', nombre: 'Admin', apellido: 'Prueba', email: 'admin@correo.com' }
+    renderSerAnfitrion()
+
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Ya eres anfitrión')
+    expect(screen.queryByRole('button', { name: 'Crear perfil de anfitrión' })).toBeNull()
   })
 })
 

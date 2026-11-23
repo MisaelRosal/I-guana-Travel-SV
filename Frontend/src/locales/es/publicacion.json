@@ -1,6 +1,11 @@
 {
   "heading": "Conviértete en anfitrión",
   "subtitle": "Crea tu perfil de anfitrión. Necesitamos una foto de tu persona.",
+  "alreadyHost": {
+    "heading": "Ya eres anfitrión",
+    "body": "Tu cuenta ya tiene perfil de anfitrión. Podés administrar tus publicaciones desde el panel.",
+    "cta": "Ir al panel"
+  },
   "loginRequired": {
     "body": "Para ofrecer tus experiencias necesitás iniciar sesión.",
     "cta": "Iniciar sesión"

@@ -1,6 +1,11 @@
 {
   "heading": "Become a host",
   "subtitle": "Create your host profile. We need a photo of you.",
+  "alreadyHost": {
+    "heading": "You're already a host",
+    "body": "Your account already has a host profile. You can manage your listings from the panel.",
+    "cta": "Go to panel"
+  },
   "loginRequired": {
     "body": "To offer your experiences you need to sign in.",
     "cta": "Sign in"

@@ -60,7 +60,10 @@ export default function Footer() {
   if (esAdmin(rol)) {
     explorar.push({ key: 'admin', to: localePath('admin'), label: t('header:nav.adminPanel') })
   }
-  explorar.push({ key: 'becomeHost', to: localePath('becomeHost'), label: t('becomeHost') })
+  const esAnfitrion = rol === 'anfitrion' || esAdmin(rol)
+  if (!esAnfitrion) {
+    explorar.push({ key: 'becomeHost', to: localePath('becomeHost'), label: t('becomeHost') })
+  }
 
   return (
     <footer className="bg-verde-bosque text-crema/75 mt-16">
@@ -90,15 +93,21 @@ export default function Footer() {
 
         <div>
           <h3 className="text-white font-semibold mb-3">{t('hosts.heading')}</h3>
-          <p className="leading-relaxed">
-            {t('hosts.prompt')}{' '}
-            <Link
-              to={localePath('becomeHost')}
-              className="cursor-pointer font-medium text-verde-hoja transition-colors hover:text-white"
-            >
-              {t('becomeHost')}
-            </Link>
-          </p>
+          {esAnfitrion ? (
+            <p className="leading-relaxed font-medium text-verde-hoja" role="status">
+              {t('alreadyHost')}
+            </p>
+          ) : (
+            <p className="leading-relaxed">
+              {t('hosts.prompt')}{' '}
+              <Link
+                to={localePath('becomeHost')}
+                className="cursor-pointer font-medium text-verde-hoja transition-colors hover:text-white"
+              >
+                {t('becomeHost')}
+              </Link>
+            </p>
+          )}
         </div>
 
         <div>
