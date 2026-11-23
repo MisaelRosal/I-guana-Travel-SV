@@ -7,6 +7,7 @@ import { api, readCsrfToken } from '../../services/api.js'
 import Toast from '../../components/Toast.jsx'
 
 const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
+const descripcionCls = 'w-full rounded-none border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40 transition-colors'
 const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 export default function SerAnfitrionPage() {
@@ -241,7 +242,7 @@ export default function SerAnfitrionPage() {
                 <label className={labelCls} htmlFor="anf-descripcion">{t('descLabel')}</label>
                 <textarea
                   id="anf-descripcion"
-                  className={inputCls + ' h-24 resize-none'}
+                  className={descripcionCls + ' h-24 resize-none'}
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
                   placeholder={t('descPlaceholder')}

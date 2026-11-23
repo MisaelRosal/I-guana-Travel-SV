@@ -7,6 +7,7 @@ import { useModalAccesible } from '../hooks/useModalAccesible.js'
 import LocationPicker from './LocationPicker.jsx'
 
 const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
+const descripcionCls = 'w-full rounded-none border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
 const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
 
 export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion, anfitrionFijo }) {
@@ -623,7 +624,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[22px] bg-crema"
+        className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[22px] bg-crema"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cafe-claro/30 bg-crema px-4 py-4 sm:px-6">
           <h2 id="crear-publicacion-titulo" className="text-xl font-bold text-verde-bosque">{esEdicion ? t('modal.editTitle') : t('modal.createTitle')}</h2>
@@ -696,7 +697,7 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls}>{t('modal.description')} *</label>
-                <textarea required value={descripcion} onChange={(e) => setDescripcion(e.target.value)} className={inputCls + ' h-20 resize-none'} placeholder={tipo === 'hospedaje' ? t('modal.descPhStay') : t('modal.descPhExp')} />
+                <textarea required value={descripcion} onChange={(e) => setDescripcion(e.target.value)} className={descripcionCls + ' h-20 resize-none'} placeholder={tipo === 'hospedaje' ? t('modal.descPhStay') : t('modal.descPhExp')} />
               </div>
               <div>
                 <label className={labelCls}>{t('modal.host')} *</label>
