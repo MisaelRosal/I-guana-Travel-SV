@@ -10,6 +10,7 @@ import { esAdmin, getMiPerfil } from '../services/anfitriones.js'
 import { leerSesionCache, restaurarSesion, cerrarSesion as cerrarSesionEnServidor } from '../services/session.js'
 import { useChatNoLeidos } from '../hooks/useChatNoLeidos.js'
 import { useNotificaciones } from '../hooks/useNotificaciones.js'
+import { useModalAccesible } from '../hooks/useModalAccesible.js'
 
 // NOTE (W3a): the role/name read from the session here drives VISIBILITY only
 // (which links/buttons to show). It is a UI convenience backed by the cache that
@@ -230,12 +231,24 @@ export default function Header() {
     links.push({ to: localePath('admin'), label: t('nav.adminPanel') })
   }
 
+  // Cerrar sesión pasa por una confirmación: un click accidental en el menú
+  // expulsaba al usuario y tenía que volver a loguearse.
+  const [confirmandoSalida, setConfirmandoSalida] = useState(false)
+  const refDialogoSalida = useModalAccesible(() => setConfirmandoSalida(false), confirmandoSalida)
+
+  const pedirConfirmacionSalida = () => {
+    setMenuAbierto(false)
+    setMenuMovilAbierto(false)
+    setConfirmandoSalida(true)
+  }
+
   const cerrarSesion = async () => {
     // Ask the server to expire the auth + CSRF cookies, then drop the UI cache.
     await cerrarSesionEnServidor()
     setUsuario(null)
     setMenuAbierto(false)
     setMenuMovilAbierto(false)
+    setConfirmandoSalida(false)
     navigate(localePath('catalog'))
   }
 
@@ -326,7 +339,7 @@ export default function Header() {
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={cerrarSesion}
+                    onClick={pedirConfirmacionSalida}
                     className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium text-cafe transition-colors hover:bg-crema hover:text-verde-bosque"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
@@ -440,7 +453,7 @@ export default function Header() {
                 )}
                 <button
                   type="button"
-                  onClick={cerrarSesion}
+                  onClick={pedirConfirmacionSalida}
                   className="cursor-pointer text-sm px-3 py-2 rounded-full text-left text-crema/85 hover:text-white hover:bg-white/10"
                 >
                   {t('user.signOut')}
@@ -462,6 +475,44 @@ export default function Header() {
     {/* The assistant bubble is off for delivery (ASISTENTE_ENABLED=false). The
         messages bubble stays mounted for visitors too: the inbox already shows
         a sign-in prompt, and the unread poll only runs with a session. */}
+    {/* Confirmación de cierre de sesión: evita el logout por un click accidental
+        en el menú del avatar o en el menú móvil. */}
+    {confirmandoSalida && (
+      <div
+        ref={refDialogoSalida}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cerrar-sesion-titulo"
+        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
+        onClick={() => setConfirmandoSalida(false)}
+      >
+        <div
+          className="w-full max-w-sm rounded-[22px] bg-white p-6 ring-1 ring-black/5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 id="cerrar-sesion-titulo" className="text-lg font-bold text-iguana-hondo">
+            {t('user.signOutConfirmTitle')}
+          </h2>
+          <p className="mt-2 text-sm text-cafe">{t('user.signOutConfirmBody')}</p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmandoSalida(false)}
+              className="cursor-pointer rounded-full border border-cafe-claro px-4 py-2 text-sm font-semibold text-cafe transition-colors hover:bg-crema"
+            >
+              {t('common:actions.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={cerrarSesion}
+              className="cursor-pointer rounded-full bg-iguana-hondo px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-verde-bosque"
+            >
+              {t('user.signOut')}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <MessageLauncher unreadCount={noLeidos} />
     </>
   )

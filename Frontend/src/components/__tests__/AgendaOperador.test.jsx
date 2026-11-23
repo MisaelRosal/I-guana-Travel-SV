@@ -25,14 +25,24 @@ const publicaciones = [
   },
 ]
 
+// Las fechas son relativas a hoy: con valores fijos el fixture se vence solo
+// y la reserva pendiente pasa a "pasada" al correr el calendario.
+function enDias(n) {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mes}-${dia}`
+}
+
 const agendaMock = [
   {
     id: 10,
     publicacionId: 1,
     publicacionTitulo: 'Cabaña El Tronador',
     tipo: 'hospedaje',
-    fechaInicio: '2026-11-15',
-    fechaFin: '2026-11-18',
+    fechaInicio: enDias(0),
+    fechaFin: enDias(2),
     numeroHuespedes: 3,
     precioTotal: 270,
     estado: 'confirmada',
@@ -47,8 +57,8 @@ const agendaMock = [
     publicacionId: 2,
     publicacionTitulo: 'Tour de las Aves',
     tipo: 'experiencia',
-    fechaInicio: '2026-11-20',
-    fechaFin: '2026-11-20',
+    fechaInicio: enDias(0),
+    fechaFin: enDias(1),
     numeroHuespedes: 2,
     precioTotal: 50,
     estado: 'pendiente',

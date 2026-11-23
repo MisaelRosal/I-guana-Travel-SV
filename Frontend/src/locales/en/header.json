@@ -20,7 +20,9 @@
     "profilePhotoAlt": "Profile photo",
     "myAccount": "My account",
     "myProfile": "My profile",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "signOutConfirmTitle": "Sign out?",
+    "signOutConfirmBody": "You'll be signed out of your account. You can sign back in anytime."
   },
   "session": {
     "signIn": "Sign in"

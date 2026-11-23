@@ -20,7 +20,9 @@
     "profilePhotoAlt": "Foto de perfil",
     "myAccount": "Mi cuenta",
     "myProfile": "Mi perfil",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "signOutConfirmTitle": "¿Cerrar sesión?",
+    "signOutConfirmBody": "Vas a salir de tu cuenta. Podés volver a entrar cuando quieras."
   },
   "session": {
     "signIn": "Iniciar sesión"
