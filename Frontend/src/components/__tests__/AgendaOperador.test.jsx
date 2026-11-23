@@ -7,10 +7,9 @@ import AgendaOperador from '../AgendaOperador.jsx'
 
 vi.mock('../../services/reservas.js', () => ({
   getAgenda: vi.fn(async () => []),
-  confirmarReserva: vi.fn(async () => ({ mensaje: 'Reserva confirmada exitosamente.' })),
 }))
 
-import { getAgenda, confirmarReserva } from '../../services/reservas.js'
+import { getAgenda } from '../../services/reservas.js'
 
 const publicaciones = [
   {
@@ -136,31 +135,21 @@ describe('AgendaOperador (A-20)', () => {
     fireEvent.change(select, { target: { value: '1' } })
   })
 
-  it('confirms a pending reservation from the upcoming list', async () => {
-    // The "empty state" test above queues an unconsumed mockResolvedValueOnce([])
-    // that would hijack this test's initial load; start from a clean mock.
+  it('shows pending confirmation without a host confirm button', async () => {
     getAgenda.mockReset()
     getAgenda.mockResolvedValue([...agendaMock])
 
     renderAgenda()
     await screen.findByText('Juan Pérez')
 
-    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeInTheDocument()
+    expect(screen.getByText('Pendiente de confirmación')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirmar' })).toBeNull()
+  })
 
-    // After confirmation the backend persists 'confirmada', so the reload
-    // triggered by the component must return the updated row.
-    getAgenda.mockResolvedValue([{ ...agendaMock[1], estado: 'confirmada' }])
+  it('shows reservation confirmed when the guest has paid or confirmed', async () => {
+    renderAgenda()
+    await screen.findByText('María López')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
-
-    await waitFor(() => {
-      expect(confirmarReserva).toHaveBeenCalledWith(20)
-      expect(getAgenda).toHaveBeenCalledTimes(2)
-    })
-
-    // The reloaded row is confirmed, so the button disappears.
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Confirmar' })).not.toBeInTheDocument()
-    })
+    expect(screen.getByText('Reserva confirmada')).toBeInTheDocument()
   })
 })

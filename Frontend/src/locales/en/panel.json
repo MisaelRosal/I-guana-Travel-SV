@@ -89,8 +89,8 @@
     "confirm": "Confirm",
     "confirmError": "Could not confirm the reservation. Try again.",
     "estado": {
-      "pendiente": "Pending",
-      "confirmada": "Confirmed",
+      "pendiente": "Pending confirmation",
+      "confirmada": "Reservation confirmed",
       "completada": "Completed",
       "cancelada": "Cancelled"
     }
