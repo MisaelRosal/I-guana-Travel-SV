@@ -27,6 +27,7 @@ COPY IguanaSV.Api/ IguanaSV.Api/
 RUN dotnet build -c Release IguanaSV.Api/IguanaSV.Api.csproj
 
 COPY migrate-and-seed.sh /usr/local/bin/migrate-and-seed.sh
-RUN chmod +x /usr/local/bin/migrate-and-seed.sh
+RUN sed -i 's/\r$//' /usr/local/bin/migrate-and-seed.sh \
+    && chmod +x /usr/local/bin/migrate-and-seed.sh
 
 ENTRYPOINT ["/usr/local/bin/migrate-and-seed.sh"]
