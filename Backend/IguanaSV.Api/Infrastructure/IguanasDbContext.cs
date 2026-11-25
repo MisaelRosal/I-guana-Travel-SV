@@ -50,6 +50,8 @@ public class IguanasDbContext : DbContext
 
     public virtual DbSet<ReporteEvidencia> ReporteEvidencias { get; set; }
 
+    public virtual DbSet<SoporteReporte> SoporteReportes { get; set; }
+
     public virtual DbSet<Usuario> Usuarios { get; set; }
 
     public virtual DbSet<VerificacionEmail> VerificacionesEmail { get; set; }
@@ -850,6 +852,49 @@ public class IguanasDbContext : DbContext
                 .HasForeignKey(d => d.ReporteId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("reporte_evidencias_reporte_id_fkey");
+        });
+
+        modelBuilder.Entity<SoporteReporte>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("reportes_soporte_pkey");
+
+            entity.ToTable("reportes_soporte");
+
+            entity.HasIndex(e => e.Estado, "idx_reportes_soporte_estado");
+            entity.HasIndex(e => e.CreadoEn, "idx_reportes_soporte_creado");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Nombre).HasMaxLength(100).HasColumnName("nombre");
+            entity.Property(e => e.Email).HasMaxLength(150).HasColumnName("email");
+            entity.Property(e => e.Asunto).HasMaxLength(200).HasColumnName("asunto");
+            entity.Property(e => e.Mensaje).HasColumnName("mensaje");
+            entity.Property(e => e.Estado)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'pendiente'")
+                .HasColumnName("estado");
+            entity.Property(e => e.CreadoEn)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("creado_en");
+            entity.Property(e => e.ActualizadoEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("actualizado_en");
+            entity.Property(e => e.NotasAdmin).HasColumnName("notas_admin");
+            entity.Property(e => e.ResueltoPorAdminId).HasColumnName("resuelto_por_admin_id");
+            entity.Property(e => e.ResueltoEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("resuelto_en");
+
+            entity.HasOne(d => d.Usuario).WithMany()
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("reportes_soporte_usuario_id_fkey");
+
+            entity.HasOne(d => d.ResueltoPorAdmin).WithMany()
+                .HasForeignKey(d => d.ResueltoPorAdminId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("reportes_soporte_resuelto_por_admin_id_fkey");
         });
 
         modelBuilder.Entity<Usuario>(entity =>

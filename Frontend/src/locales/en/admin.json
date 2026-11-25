@@ -101,6 +101,34 @@
     "updated": "Report updated.",
     "saveError": "The report could not be updated."
   },
+  "support": {
+    "title": "Technical support",
+    "subtitle": "Reports submitted from the contact form.",
+    "loading": "Loading support reports...",
+    "error": "Support reports could not be loaded.",
+    "retry": "Retry",
+    "empty": "No support reports.",
+    "manage": "View / Manage",
+    "detailTitle": "Support report #{{id}}",
+    "notes": "Admin notes",
+    "save": "Save",
+    "saving": "Saving...",
+    "close": "Close",
+    "saveError": "The support report could not be updated.",
+    "table": {
+      "date": "Date",
+      "person": "Person",
+      "subject": "Subject",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "pendiente": "Pending",
+      "en_revision": "In review",
+      "resuelto": "Resolved",
+      "rechazado": "Rejected"
+    }
+  },
   "toast": {
     "hostDeleted": "The profile of \"{{name}}\" was deleted.",
     "hostDeleteError": "The host profile could not be deleted.",

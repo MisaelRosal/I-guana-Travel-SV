@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Logo from '../components/Logo.jsx'
+import ModalSoporte from '../components/ModalSoporte.jsx'
 import { localePath } from '../i18n/routes.jsx'
 import { esAdmin } from '../services/anfitriones.js'
 
@@ -38,6 +39,7 @@ export default function Footer() {
   // AD-3 keeps one canonical string per concept instead of duplicated keys).
   const { t } = useTranslation('footer')
   const [usuario, setUsuario] = useState(leerSesion)
+  const [soporteAbierto, setSoporteAbierto] = useState(false)
 
   useEffect(() => {
     const actualizar = () => setUsuario(leerSesion())
@@ -128,6 +130,13 @@ export default function Footer() {
               </a>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => setSoporteAbierto(true)}
+            className="mt-4 cursor-pointer text-sm font-semibold text-verde-hoja transition-colors hover:text-white"
+          >
+            {t('support.cta')}
+          </button>
         </div>
       </div>
 
@@ -144,6 +153,10 @@ export default function Footer() {
           </p>
         </div>
       </div>
+
+      {soporteAbierto && (
+        <ModalSoporte usuario={usuario} onCerrar={() => setSoporteAbierto(false)} />
+      )}
     </footer>
   )
 }

@@ -1207,6 +1207,86 @@ namespace IguanaSV.Api.Migrations
                     b.ToTable("reserva_horario", (string)null);
                 });
 
+            modelBuilder.Entity("IguanaSV.Api.Entities.SoporteReporte", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ActualizadoEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("actualizado_en");
+
+                    b.Property<string>("Asunto")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("asunto");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("creado_en")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("estado")
+                        .HasDefaultValueSql("'pendiente'");
+
+                    b.Property<string>("Mensaje")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mensaje");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("NotasAdmin")
+                        .HasColumnType("text")
+                        .HasColumnName("notas_admin");
+
+                    b.Property<DateTime?>("ResueltoEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("resuelto_en");
+
+                    b.Property<int?>("ResueltoPorAdminId")
+                        .HasColumnType("integer")
+                        .HasColumnName("resuelto_por_admin_id");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id")
+                        .HasName("reportes_soporte_pkey");
+
+                    b.HasIndex("ResueltoPorAdminId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex(new[] { "CreadoEn" }, "idx_reportes_soporte_creado");
+
+                    b.HasIndex(new[] { "Estado" }, "idx_reportes_soporte_estado");
+
+                    b.ToTable("reportes_soporte", (string)null);
+                });
+
             modelBuilder.Entity("IguanaSV.Api.Entities.Usuario", b =>
                 {
                     b.Property<int>("Id")
@@ -1704,6 +1784,25 @@ namespace IguanaSV.Api.Migrations
                     b.Navigation("Horario");
 
                     b.Navigation("Reserva");
+                });
+
+            modelBuilder.Entity("IguanaSV.Api.Entities.SoporteReporte", b =>
+                {
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "ResueltoPorAdmin")
+                        .WithMany()
+                        .HasForeignKey("ResueltoPorAdminId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("reportes_soporte_resuelto_por_admin_id_fkey");
+
+                    b.HasOne("IguanaSV.Api.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("reportes_soporte_usuario_id_fkey");
+
+                    b.Navigation("ResueltoPorAdmin");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("IguanaSV.Api.Entities.VerificacionEmail", b =>

@@ -101,6 +101,34 @@
     "updated": "Reporte actualizado.",
     "saveError": "No se pudo actualizar el reporte."
   },
+  "support": {
+    "title": "Soporte técnico",
+    "subtitle": "Reportes enviados desde el formulario de contacto.",
+    "loading": "Cargando reportes de soporte...",
+    "error": "No se pudieron cargar los reportes de soporte.",
+    "retry": "Reintentar",
+    "empty": "No hay reportes de soporte.",
+    "manage": "Ver / Gestionar",
+    "detailTitle": "Reporte de soporte #{{id}}",
+    "notes": "Notas del admin",
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "close": "Cerrar",
+    "saveError": "No se pudo actualizar el reporte de soporte.",
+    "table": {
+      "date": "Fecha",
+      "person": "Persona",
+      "subject": "Asunto",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "status": {
+      "pendiente": "Pendiente",
+      "en_revision": "En revisión",
+      "resuelto": "Resuelto",
+      "rechazado": "Rechazado"
+    }
+  },
   "toast": {
     "hostDeleted": "El perfil de «{{name}}» fue eliminado.",
     "hostDeleteError": "No se pudo eliminar el perfil del anfitrión.",

@@ -12,6 +12,21 @@
   "follow": {
     "heading": "Follow us"
   },
+  "support": {
+    "cta": "Technical support",
+    "title": "Contact technical support",
+    "subtitle": "Tell us what is happening and an administrator will review it.",
+    "name": "Name",
+    "email": "Email",
+    "subject": "Subject",
+    "message": "Problem description",
+    "send": "Send report",
+    "sending": "Sending...",
+    "cancel": "Cancel",
+    "close": "Close",
+    "success": "We received your report. An administrator will review it soon.",
+    "error": "The report could not be sent. Please try again."
+  },
   "legal": {
     "copyright": "© {{year}} I Guana Travel SV. All rights reserved.",
     "terms": "Terms and conditions",

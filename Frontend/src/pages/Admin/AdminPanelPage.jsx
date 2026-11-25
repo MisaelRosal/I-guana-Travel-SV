@@ -7,6 +7,7 @@ import { esAdmin } from '../../services/anfitriones.js'
 import { eliminarResena, getMisResenas } from '../../services/resenas.js'
 import { Estrellas } from '../../components/Estrellas.jsx'
 import CrearPublicacionModal from '../../components/CrearPublicacionModal.jsx'
+import SoporteAdminPanel from '../../components/SoporteAdminPanel.jsx'
 import { cambiarEstadoReporte, getTodosReportes } from '../../services/reportes.js'
 import { cambiarBaneoUsuario, eliminarUsuario, getUsuariosAdmin } from '../../services/adminUsuarios.js'
 
@@ -791,6 +792,8 @@ export default function AdminPanelPage() {
           )}
         </div>
       )}
+
+      {pestana === 'reportes' && <SoporteAdminPanel />}
 
       {reporteSeleccionado && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
