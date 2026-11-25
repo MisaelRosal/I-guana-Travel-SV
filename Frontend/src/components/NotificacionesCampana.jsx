@@ -59,7 +59,7 @@ export default function NotificacionesCampana({ datos }) {
       </button>
 
       {abierto && (
-        <div role="menu" aria-label={t('notifications.title')} className="absolute right-0 top-full z-20 mt-2 w-80 overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white shadow-xl">
+        <div role="menu" aria-label={t('notifications.title')} className="fixed left-4 right-4 top-20 z-[70] w-auto overflow-hidden rounded-[22px] border border-cafe-claro/40 bg-white shadow-xl md:absolute md:left-auto md:right-0 md:top-full md:mt-2 md:w-80">
           <div className="flex items-center justify-between gap-2 border-b border-cafe-claro/40 px-4 py-3">
             <span className="text-sm font-bold text-cafe">{t('notifications.title')}</span>
             <button
