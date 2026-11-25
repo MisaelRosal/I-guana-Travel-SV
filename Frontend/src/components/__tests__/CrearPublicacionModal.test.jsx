@@ -360,7 +360,7 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
         puntoEncuentroLongitud: -89.38,
         destinoLatitud: 14.02,
         destinoLongitud: -90.1,
-      })),
+      }), { timeoutMs: 180000 }),
       { timeout: 3000 },
     )
   })
@@ -438,7 +438,7 @@ describe('Puntos opcionales: punto de encuentro y destino', () => {
         puntoEncuentroLongitud: -89.38,
         destinoLatitud: null,
         destinoLongitud: null,
-      })),
+      }), { timeoutMs: 180000 }),
       { timeout: 3000 },
     )
   })

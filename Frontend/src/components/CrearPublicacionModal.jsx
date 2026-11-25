@@ -9,6 +9,7 @@ import LocationPicker from './LocationPicker.jsx'
 const inputCls = 'w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
 const descripcionCls = 'w-full rounded-none border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-verde-hoja focus:outline-none focus:ring-2 focus:ring-verde-hoja/40'
 const labelCls = 'block text-sm font-semibold text-verde-bosque mb-1'
+const PUBLICATION_SAVE_TIMEOUT_MS = 180000
 
 export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pubExistente, esEdicion, anfitrionFijo }) {
   const { t } = useTranslation('experiencia')
@@ -500,14 +501,14 @@ export default function CrearPublicacionModal({ abierto, onCerrar, onCreada, pub
         await api.put(`/Publicacione/${pubExistente.id}`, {
           ...publicacion,
           id: pubExistente.id,
-        })
+        }, { timeoutMs: PUBLICATION_SAVE_TIMEOUT_MS })
 
         await sincronizarImagenes(pubExistente.id)
       } else {
         // Upload BEFORE creating: a failed upload aborts here and no
         // publication is created imageless.
         const urls = await subirArchivos()
-        const res = await api.post('/Publicacione', publicacion)
+        const res = await api.post('/Publicacione', publicacion, { timeoutMs: PUBLICATION_SAVE_TIMEOUT_MS })
         const pubId = res.id
 
         for (let i = 0; i < urls.length; i++) {
