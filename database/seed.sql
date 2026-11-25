@@ -60,6 +60,22 @@ ON CONFLICT (nombre) DO NOTHING;
 UPDATE categorias SET tipo = 'hospedaje' WHERE nombre = 'Hospedaje';
 
 -- =============================================
+-- SEED: Categorias de hospedaje
+-- =============================================
+INSERT INTO categorias (nombre, descripcion, tipo) VALUES
+  ('Cabaña', 'Alojamiento tipo cabaña, ideal para descansar en contacto con la naturaleza.', 'hospedaje'),
+  ('Departamento', 'Departamento completo o independiente para huéspedes.', 'hospedaje'),
+  ('Villa', 'Villa amplia con espacios privados y amenidades para grupos o familias.', 'hospedaje'),
+  ('Casa', 'Casa completa para alquiler vacacional.', 'hospedaje'),
+  ('Apartamento', 'Apartamento amueblado para estancias cortas o largas.', 'hospedaje'),
+  ('Hostal', 'Alojamiento económico con habitaciones privadas o compartidas.', 'hospedaje'),
+  ('Hotel', 'Habitaciones dentro de un hotel o establecimiento turístico.', 'hospedaje'),
+  ('Glamping', 'Alojamiento de lujo en contacto con la naturaleza.', 'hospedaje')
+ON CONFLICT (nombre) DO UPDATE SET
+  descripcion = EXCLUDED.descripcion,
+  tipo = 'hospedaje';
+
+-- =============================================
 -- SEED: Categorias de experiencia
 -- (absorbed from the retired add_categorias_experiencias.sql; reference data only)
 -- =============================================
