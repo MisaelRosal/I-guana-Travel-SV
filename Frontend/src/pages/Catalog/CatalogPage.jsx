@@ -6,6 +6,7 @@ import { getCategorias, getDepartamentos, getExperiencias, getProximasExperienci
 import { getResumenResenas } from '../../services/resenas.js'
 import imagenHero from '../../assets/EL-TUNCO.jpg'
 import ExperienceCard from '../../components/ExperienceCard.jsx'
+import MapaPublicaciones from '../../components/MapaPublicaciones.jsx'
 import LoadingIguana from '../../components/LoadingIguana.jsx'
 import Toast from '../../components/Toast.jsx'
 import useFavoritos from '../../hooks/useFavoritos.js'
@@ -640,6 +641,8 @@ export default function CatalogPage() {
           </div>
         </section>
       )}
+
+      <MapaPublicaciones publicaciones={experiencias} />
     </div>
   )
 }

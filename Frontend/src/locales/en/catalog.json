@@ -46,6 +46,13 @@
     "emptyWithFilters": "Try changing your search filters.",
     "emptyNoContent": "Create the first listing from the operator panel."
   },
+  "map": {
+    "title": "Explore the map",
+    "subtitle": "{{count}} places to discover stays and experiences.",
+    "legendStays": "Stays",
+    "legendExperiences": "Experiences",
+    "view": "View listing"
+  },
   "upcoming": {
     "title": "Upcoming experiences",
     "subtitle_one": "The experience with availability coming up soon.",

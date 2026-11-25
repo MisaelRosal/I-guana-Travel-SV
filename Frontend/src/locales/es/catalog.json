@@ -46,6 +46,13 @@
     "emptyWithFilters": "Prueba cambiando los filtros de búsqueda.",
     "emptyNoContent": "Crea la primera publicación desde el panel del operador."
   },
+  "map": {
+    "title": "Explora el mapa",
+    "subtitle": "{{count}} puntos para descubrir hospedajes y experiencias.",
+    "legendStays": "Hospedajes",
+    "legendExperiences": "Experiencias",
+    "view": "Ver publicación"
+  },
   "upcoming": {
     "title": "Próximas experiencias",
     "subtitle_one": "La experiencia con pronta disponibilidad por fecha.",
