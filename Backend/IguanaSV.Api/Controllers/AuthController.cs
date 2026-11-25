@@ -389,6 +389,11 @@ public class AuthController : ControllerBase
             return Unauthorized(new { mensaje = "Correo o contraseña incorrectos." });
         }
 
+        if (usuario.Baneado || usuario.Eliminado)
+        {
+            return Unauthorized(new { mensaje = "Esta cuenta está bloqueada." });
+        }
+
         if (!usuario.EmailVerificado)
         {
             // Deliberately specific: the user already knows the address (they
@@ -441,6 +446,11 @@ public class AuthController : ControllerBase
         var email = info.Email.Trim().ToLowerInvariant();
         var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
         var esNuevo = usuario is null;
+
+        if (usuario is not null && (usuario.Baneado || usuario.Eliminado))
+        {
+            return Unauthorized(new { mensaje = "Esta cuenta está bloqueada." });
+        }
 
         if (usuario is null)
         {

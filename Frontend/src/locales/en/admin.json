@@ -13,6 +13,7 @@
     "hosts": "Hosts",
     "listings": "Listings",
     "reviews": "Reviews",
+    "users": "Users",
     "reports": "Reports"
   },
   "chip": {
@@ -63,11 +64,53 @@
     "deleteError": "The review could not be deleted.",
     "hostReply": "Host reply"
   },
+  "users": {
+    "searchLabel": "Search users",
+    "searchPlaceholder": "Name or email",
+    "loading": "Loading users...",
+    "empty": "No regular users registered.",
+    "error": "Users could not be loaded.",
+    "retry": "Retry",
+    "verified": "Email verified",
+    "unverified": "Email unverified",
+    "ban": "Ban",
+    "unban": "Reactivate",
+    "delete": "Delete account",
+    "deleteConfirm": "Delete this account?",
+    "table": {
+      "user": "User",
+      "contact": "Contact",
+      "status": "Status",
+      "joined": "Joined",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "banned": "Banned"
+    }
+  },
+  "reports": {
+    "loading": "Loading reports...",
+    "empty": "No reports.",
+    "error": "Reports could not be loaded.",
+    "retry": "Retry",
+    "manage": "View / Manage",
+    "save": "Save",
+    "saving": "Saving...",
+    "close": "Close",
+    "updated": "Report updated.",
+    "saveError": "The report could not be updated."
+  },
   "toast": {
     "hostDeleted": "The profile of \"{{name}}\" was deleted.",
     "hostDeleteError": "The host profile could not be deleted.",
     "hostStateError": "The host status could not be updated.",
     "listingDeleted": "\"{{title}}\" was deleted.",
-    "listingDeleteError": "The listing could not be deleted."
+    "listingDeleteError": "The listing could not be deleted.",
+    "userBanned": "\"{{name}}\" was banned.",
+    "userUnbanned": "\"{{name}}\" was reactivated.",
+    "userStateError": "The account status could not be updated.",
+    "userDeleted": "\"{{name}}\" was deleted.",
+    "userDeleteError": "The account could not be deleted."
   }
 }

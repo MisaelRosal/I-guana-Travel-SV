@@ -276,6 +276,7 @@ app.UseCors("AllowFrontend");
 // Order matters: authenticate (populates User) → CSRF gate (needs User) →
 // authorize (needs both) → endpoints.
 app.UseAuthentication();
+app.UseMiddleware<AccountStatusMiddleware>();
 app.UseMiddleware<CsrfMiddleware>();
 app.UseAuthorization();
 

@@ -885,6 +885,18 @@ public class IguanasDbContext : DbContext
             entity.Property(e => e.Telefono)
                 .HasMaxLength(20)
                 .HasColumnName("telefono");
+            entity.Property(e => e.Baneado)
+                .HasDefaultValue(false)
+                .HasColumnName("baneado");
+            entity.Property(e => e.BaneadoEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("baneado_en");
+            entity.Property(e => e.Eliminado)
+                .HasDefaultValue(false)
+                .HasColumnName("eliminado");
+            entity.Property(e => e.EliminadoEn)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("eliminado_en");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")

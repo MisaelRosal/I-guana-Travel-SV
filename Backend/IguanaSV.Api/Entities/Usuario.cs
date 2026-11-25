@@ -30,5 +30,13 @@ public partial class Usuario
 
     public DateTime? UpdatedAt { get; set; }
 
+    public bool Baneado { get; set; }
+
+    public DateTime? BaneadoEn { get; set; }
+
+    public bool Eliminado { get; set; }
+
+    public DateTime? EliminadoEn { get; set; }
+
     public virtual ICollection<Resena> Resenas { get; set; } = new List<Resena>();
 }

@@ -55,6 +55,13 @@ const fixtures = vi.hoisted(() => ({
       },
     ],
   },
+  usuarios: [
+    {
+      id: 10, nombre: 'Pepe', apellido: 'Gómez', email: 'pepe@correo.com',
+      telefono: null, emailVerificado: true, baneado: false,
+      createdAt: '2026-01-01T12:00:00', baneadoEn: null,
+    },
+  ],
 }))
 
 vi.mock('../../../services/anfitriones.js', () => ({
@@ -68,7 +75,12 @@ vi.mock('../../../services/resenas.js', () => ({
 
 vi.mock('../../../services/api.js', () => ({
   api: {
-    get: vi.fn(async (url) => (url === '/Anfitrione' ? fixtures.anfitriones : fixtures.publicaciones)),
+    get: vi.fn(async (url) => {
+      if (url === '/Anfitrione') return fixtures.anfitriones
+      if (String(url).startsWith('/admin/usuarios')) return fixtures.usuarios
+      if (url === '/Reporte') return []
+      return fixtures.publicaciones
+    }),
     put: vi.fn(async () => ({ ok: true })),
     delete: vi.fn(async () => ({ ok: true })),
   },
@@ -251,6 +263,30 @@ describe('Reseñas tab: admin moderation', () => {
     expect(eliminarResena).toHaveBeenCalledWith(9)
     expect(await screen.findByText('La reseña fue eliminada.')).toBeInTheDocument()
     expect(getMisResenas).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('Usuarios tab: admin can ban and delete regular accounts', () => {
+  it('loads regular users and performs ban/delete actions', async () => {
+    vi.clearAllMocks()
+
+    renderAdmin()
+    await screen.findByRole('heading', { level: 1 })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usuarios' }))
+    expect(await screen.findByText('Pepe Gómez')).toBeInTheDocument()
+    expect(screen.getByText('pepe@correo.com')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Banear' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Banear' }))
+    expect(api.put).toHaveBeenCalledWith('/admin/usuarios/10/baneo', { baneado: true })
+    expect(await screen.findByText(/fue baneada/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTitle('Eliminar cuenta'))
+    expect(await screen.findByText('¿Eliminar esta cuenta?')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Sí, eliminar'))
+    expect(api.delete).toHaveBeenCalledWith('/admin/usuarios/10')
+    expect(await screen.findByText(/fue eliminada/)).toBeInTheDocument()
   })
 })
 

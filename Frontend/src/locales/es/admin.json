@@ -13,6 +13,7 @@
     "hosts": "Anfitriones",
     "listings": "Publicaciones",
     "reviews": "Reseñas",
+    "users": "Usuarios",
     "reports": "Reportes"
   },
   "chip": {
@@ -63,11 +64,53 @@
     "deleteError": "No se pudo eliminar la reseña.",
     "hostReply": "Respuesta del anfitrión"
   },
+  "users": {
+    "searchLabel": "Buscar usuarios",
+    "searchPlaceholder": "Nombre o correo",
+    "loading": "Cargando usuarios...",
+    "empty": "No hay usuarios normales registrados.",
+    "error": "No se pudieron cargar los usuarios.",
+    "retry": "Reintentar",
+    "verified": "Correo verificado",
+    "unverified": "Correo sin verificar",
+    "ban": "Banear",
+    "unban": "Reactivar",
+    "delete": "Eliminar cuenta",
+    "deleteConfirm": "¿Eliminar esta cuenta?",
+    "table": {
+      "user": "Usuario",
+      "contact": "Contacto",
+      "status": "Estado",
+      "joined": "Alta",
+      "actions": "Acciones"
+    },
+    "status": {
+      "active": "Activo",
+      "banned": "Baneado"
+    }
+  },
+  "reports": {
+    "loading": "Cargando reportes...",
+    "empty": "No hay reportes.",
+    "error": "No se pudieron cargar los reportes.",
+    "retry": "Reintentar",
+    "manage": "Ver / Gestionar",
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "close": "Cerrar",
+    "updated": "Reporte actualizado.",
+    "saveError": "No se pudo actualizar el reporte."
+  },
   "toast": {
     "hostDeleted": "El perfil de «{{name}}» fue eliminado.",
     "hostDeleteError": "No se pudo eliminar el perfil del anfitrión.",
     "hostStateError": "No se pudo actualizar el estado del anfitrión.",
     "listingDeleted": "«{{title}}» fue eliminada.",
-    "listingDeleteError": "No se pudo eliminar la publicación."
+    "listingDeleteError": "No se pudo eliminar la publicación.",
+    "userBanned": "La cuenta de \"{{name}}\" fue baneada.",
+    "userUnbanned": "La cuenta de \"{{name}}\" fue reactivada.",
+    "userStateError": "No se pudo actualizar el estado de la cuenta.",
+    "userDeleted": "La cuenta de \"{{name}}\" fue eliminada.",
+    "userDeleteError": "No se pudo eliminar la cuenta."
   }
 }

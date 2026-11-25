@@ -213,6 +213,11 @@ public class ReporteController : ControllerBase
     public async Task<IActionResult> Todos(
         [FromQuery] int? page, [FromQuery] int? pageSize)
     {
+        if (!await User.IsFreshAdminAsync(_context))
+        {
+            return Forbid();
+        }
+
         // Opt-in pagination (M11): without pageSize the list stays full for the
         // current admin panel; when given, it is clamped defensively.
         IQueryable<Reporte> query = _context.Reportes
@@ -276,8 +281,10 @@ public class ReporteController : ControllerBase
 
         reporte.Estado = dto.Estado;
         reporte.NotasAdmin = string.IsNullOrWhiteSpace(dto.NotasAdmin) ? null : dto.NotasAdmin.Trim();
-        reporte.ResueltoPorAdminId = sub.Value;
-        reporte.ResueltoEn = DateTime.Now;
+
+        var finalizado = dto.Estado is "resuelto" or "rechazado";
+        reporte.ResueltoPorAdminId = finalizado ? sub.Value : null;
+        reporte.ResueltoEn = finalizado ? DateTime.Now : null;
         await _context.SaveChangesAsync();
         return Ok(new { ok = true });
     }

@@ -1222,11 +1222,31 @@ namespace IguanaSV.Api.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("apellido");
 
+                    b.Property<bool>("Baneado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("baneado");
+
+                    b.Property<DateTime?>("BaneadoEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("baneado_en");
+
                     b.Property<DateTime?>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("Eliminado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("eliminado");
+
+                    b.Property<DateTime?>("EliminadoEn")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("eliminado_en");
 
                     b.Property<string>("Email")
                         .IsRequired()
